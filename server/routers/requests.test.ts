@@ -23,6 +23,7 @@ function context(role: "user" | "hr" | "government" | "manager" | "admin"): Trpc
       name: "Test User",
       email: "test@example.com",
       loginMethod: "manus",
+      companyId: 1,
       role,
       accountStatus: "active",
       createdAt: new Date(),
@@ -43,6 +44,7 @@ describe("requests router authorization and review workflow", () => {
       canManage: true,
     });
     dbMocks.updateRequestStatus.mockResolvedValue({ success: true });
+    dbMocks.createRequestWithHistory.mockResolvedValue({ id: 52, reference: "HR-TEST", status: "submitted" });
     dbMocks.addRequestNote.mockResolvedValue({ success: true });
     dbMocks.getUserModulePermissions.mockImplementation((_userId: number, role: string) => {
       if (role === "hr") return [{ module: "hr", canView: true, canManage: true }, { module: "government", canView: false, canManage: false }];
@@ -56,6 +58,12 @@ describe("requests router authorization and review workflow", () => {
     const caller = requestsRouter.createCaller(context("user"));
     await expect(caller.operations({})).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(dbMocks.getOperationsRequests).not.toHaveBeenCalled();
+  });
+
+  it("creates a request inside the employee company for the approval workflow", async () => {
+    const caller = requestsRouter.createCaller(context("user"));
+    await expect(caller.create({ type: "hr", category: "إجازة", subject: "طلب إجازة سنوية", details: "أرغب في تقديم طلب إجازة سنوية مع تحديد المدة.", priority: "normal" })).resolves.toMatchObject({ id: 52 });
+    expect(dbMocks.createRequestWithHistory).toHaveBeenCalledWith(expect.objectContaining({ type: "hr", employeeId: 10, companyId: 1 }));
   });
 
   it("allows HR staff to update an HR request status with an auditable note", async () => {

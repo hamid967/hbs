@@ -34,6 +34,7 @@ export const requestsRouter = router({
       ...input,
       reference: createRequestReference(input.type),
       employeeId: ctx.user.id,
+      companyId: ctx.user.companyId,
     });
     return request;
   }),

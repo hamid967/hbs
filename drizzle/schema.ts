@@ -106,12 +106,25 @@ export const employeeProfiles = mysqlTable("employeeProfiles", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("employeeProfiles_user_unique").on(table.userId), uniqueIndex("employeeProfiles_company_number_unique").on(table.companyId, table.employeeNumber)]);
 
+export const approvalTasks = mysqlTable("approvalTasks", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  requestId: int("requestId").notNull().references(() => serviceRequests.id, { onDelete: "cascade" }),
+  approverRole: mysqlEnum("approverRole", ["hr", "government", "manager", "admin"]).notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected", "cancelled"]).default("pending").notNull(),
+  decidedByUserId: int("decidedByUserId").references(() => users.id, { onDelete: "set null" }),
+  decisionNote: text("decisionNote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  decidedAt: timestamp("decidedAt"),
+}, table => [uniqueIndex("approvalTasks_request_role_unique").on(table.requestId, table.approverRole)]);
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type UserModulePermission = typeof userModulePermissions.$inferSelect;
 export type CompanyPermissionTemplate = typeof companyPermissionTemplates.$inferSelect;
 export type Department = typeof departments.$inferSelect;
 export type EmployeeProfile = typeof employeeProfiles.$inferSelect;
+export type ApprovalTask = typeof approvalTasks.$inferSelect;
 
 export const requestTypes = ["hr", "government"] as const;
 export const requestStatuses = ["submitted", "in_review", "approved", "rejected", "completed"] as const;

@@ -132,6 +132,7 @@ export const assistantRouter = router({
       details: session.draftDetails,
       priority: session.draftPriority || "normal",
       employeeId: ctx.user.id,
+      companyId: ctx.user.companyId,
     });
     await markChatConverted(session.id);
     return request;
