@@ -32,6 +32,7 @@ import {
   UsersRound,
   Rocket,
   LayoutTemplate,
+  Wrench,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -47,6 +48,7 @@ const menuItems = [
   { icon: UsersRound, label: "طلبات العروض", path: "/demo-requests" },
   { icon: Rocket, label: "خارطة التطوير", path: "/roadmap" },
   { icon: LayoutTemplate, label: "مساحة MVP", path: "/mvp" },
+  { icon: Wrench, label: "أدوات HR", path: "/hr-tools" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
