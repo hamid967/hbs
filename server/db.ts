@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, chatMessages, chatSessions, demoRequests, hrSystemPlans, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, hrSystemPlans, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -26,6 +26,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   }
   values.lastSignedIn = user.lastSignedIn ?? new Date();
   updateSet.lastSignedIn = values.lastSignedIn;
+  values.companyId = user.companyId ?? 1;
+  if (user.companyId !== undefined) updateSet.companyId = user.companyId;
   const bootstrap = getBootstrapAccountSettings({ openId: user.openId, email: user.email, ownerOpenId: ENV.ownerOpenId });
   values.role = user.role ?? bootstrap.role;
   values.accountStatus = user.accountStatus ?? bootstrap.accountStatus;
@@ -51,21 +53,23 @@ export async function getUserModulePermissions(userId: number, role: UserRole): 
   return rows.length ? normalizeModulePermissions(rows) : defaultModulePermissionsForRole(role);
 }
 
-export async function listUserAccounts(status?: "pending" | "active" | "suspended" | "rejected") {
+export async function listUserAccounts(status?: "pending" | "active" | "suspended" | "rejected", companyId?: number) {
   const db = await getDb();
   if (!db) return [];
-  const accounts = await db.select().from(users).where(status ? eq(users.accountStatus, status) : undefined).orderBy(desc(users.createdAt));
+  const conditions = [status ? eq(users.accountStatus, status) : undefined, companyId ? eq(users.companyId, companyId) : undefined].filter(Boolean);
+  const accounts = await db.select().from(users).where(conditions.length ? and(...conditions) : undefined).orderBy(desc(users.createdAt));
   if (!accounts.length) return [];
   const rows = await db.select().from(userModulePermissions).where(inArray(userModulePermissions.userId, accounts.map(account => account.id)));
   return accounts.map(account => ({ ...account, modulePermissions: rows.filter(row => row.userId === account.id).length ? normalizeModulePermissions(rows.filter(row => row.userId === account.id)) : defaultModulePermissionsForRole(account.role) }));
 }
 
-export async function updateUserAccount(input: { userId: number; actorId: number; accountStatus: "pending" | "active" | "suspended" | "rejected"; role: UserRole; modulePermissions?: ModulePermission[]; note?: string }) {
+export async function updateUserAccount(input: { userId: number; actorId: number; companyId?: number; accountStatus: "pending" | "active" | "suspended" | "rejected"; role: UserRole; modulePermissions?: ModulePermission[]; note?: string }) {
   const db = await getDb();
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
   await db.transaction(async tx => {
     const user = (await tx.select().from(users).where(eq(users.id, input.userId)).limit(1))[0];
     if (!user) throw new Error("الحساب غير موجود");
+    if (input.companyId !== undefined && user.companyId !== input.companyId) throw new Error("لا تملك صلاحية تعديل حساب تابع لشركة أخرى");
     await tx.update(users).set({ accountStatus: input.accountStatus, role: input.role }).where(eq(users.id, input.userId));
     if (user.accountStatus !== input.accountStatus || user.role !== input.role) await tx.insert(accountActivationHistory).values(createActivationHistoryRecord({ userId: input.userId, actorId: input.actorId, previousStatus: user.accountStatus, nextStatus: input.accountStatus, assignedRole: input.role, note: input.note }));
     if (input.modulePermissions) {
@@ -78,6 +82,55 @@ export async function updateUserAccount(input: { userId: number; actorId: number
       }
     }
   });
+  return { success: true } as const;
+}
+
+export function companyTemplatePermissions(template: { hrCanView: boolean; hrCanManage: boolean; governmentCanView: boolean; governmentCanManage: boolean }): ModulePermission[] {
+  return normalizeModulePermissions([{ module: "hr", canView: template.hrCanView, canManage: template.hrCanManage }, { module: "government", canView: template.governmentCanView, canManage: template.governmentCanManage }]);
+}
+
+export async function getCompanyPermissionTemplates(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(companyPermissionTemplates).where(eq(companyPermissionTemplates.companyId, companyId)).orderBy(desc(companyPermissionTemplates.updatedAt));
+}
+
+export async function createCompanyPermissionTemplate(input: { companyId: number; createdByUserId: number; title: string; description?: string; role: UserRole; modulePermissions: ModulePermission[] }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const permissions = normalizeModulePermissions(input.modulePermissions);
+  const hr = permissions.find(permission => permission.module === "hr")!;
+  const government = permissions.find(permission => permission.module === "government")!;
+  await db.insert(companyPermissionTemplates).values({ companyId: input.companyId, createdByUserId: input.createdByUserId, title: input.title, description: input.description ?? null, role: input.role, hrCanView: hr.canView, hrCanManage: hr.canManage, governmentCanView: government.canView, governmentCanManage: government.canManage });
+  const created = (await db.select().from(companyPermissionTemplates).where(and(eq(companyPermissionTemplates.companyId, input.companyId), eq(companyPermissionTemplates.title, input.title))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ قالب الصلاحيات");
+  return created;
+}
+
+export async function getCompanyPermissionTemplate(id: number, companyId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  return (await db.select().from(companyPermissionTemplates).where(and(eq(companyPermissionTemplates.id, id), eq(companyPermissionTemplates.companyId, companyId))).limit(1))[0];
+}
+
+export async function updateCompanyPermissionTemplate(input: { id: number; companyId: number; title: string; description?: string; role: UserRole; modulePermissions: ModulePermission[] }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const existing = await getCompanyPermissionTemplate(input.id, input.companyId);
+  if (!existing) throw new Error("قالب الشركة غير موجود أو لا يتبع لشركتك");
+  const permissions = normalizeModulePermissions(input.modulePermissions);
+  const hr = permissions.find(permission => permission.module === "hr")!;
+  const government = permissions.find(permission => permission.module === "government")!;
+  await db.update(companyPermissionTemplates).set({ title: input.title, description: input.description ?? null, role: input.role, hrCanView: hr.canView, hrCanManage: hr.canManage, governmentCanView: government.canView, governmentCanManage: government.canManage }).where(and(eq(companyPermissionTemplates.id, input.id), eq(companyPermissionTemplates.companyId, input.companyId)));
+  return getCompanyPermissionTemplate(input.id, input.companyId);
+}
+
+export async function deleteCompanyPermissionTemplate(id: number, companyId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const existing = await getCompanyPermissionTemplate(id, companyId);
+  if (!existing) throw new Error("قالب الشركة غير موجود أو لا يتبع لشركتك");
+  await db.delete(companyPermissionTemplates).where(and(eq(companyPermissionTemplates.id, id), eq(companyPermissionTemplates.companyId, companyId)));
   return { success: true } as const;
 }
 

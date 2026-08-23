@@ -18,9 +18,10 @@ import RequestDetail from "./pages/RequestDetail";
 import MvpStudio from "./pages/MvpStudio";
 import HrToolsCenter from "./pages/HrToolsCenter";
 import AccountManagement from "./pages/AccountManagement";
+import CompanyPermissionTemplates from "./pages/CompanyPermissionTemplates";
 
 function Router() {
-  return <Switch><Route path="/" component={MarketingHome} /><Route path="/request-demo" component={RequestDemo} /><Route path="/app" component={Home} /><Route path="/assistant" component={AssistantIntake} /><Route path="/hr-system" component={HrSystemDesigner} /><Route path="/hr-tools" component={HrToolsCenter} /><Route path="/requests/new" component={NewRequest} /><Route path="/requests/:id" component={RequestDetail} /><Route path="/my-requests" component={MyRequests} /><Route path="/operations" component={Operations} /><Route path="/demo-requests" component={DemoRequestsAdmin} /><Route path="/roadmap" component={DeliveryRoadmap} /><Route path="/mvp" component={MvpStudio} /><Route path="/accounts" component={AccountManagement} /><Route path="/404" component={NotFound} /><Route component={NotFound} /></Switch>;
+  return <Switch><Route path="/" component={MarketingHome} /><Route path="/request-demo" component={RequestDemo} /><Route path="/app" component={Home} /><Route path="/assistant" component={AssistantIntake} /><Route path="/hr-system" component={HrSystemDesigner} /><Route path="/hr-tools" component={HrToolsCenter} /><Route path="/requests/new" component={NewRequest} /><Route path="/requests/:id" component={RequestDetail} /><Route path="/my-requests" component={MyRequests} /><Route path="/operations" component={Operations} /><Route path="/demo-requests" component={DemoRequestsAdmin} /><Route path="/roadmap" component={DeliveryRoadmap} /><Route path="/mvp" component={MvpStudio} /><Route path="/accounts" component={AccountManagement} /><Route path="/company-templates" component={CompanyPermissionTemplates} /><Route path="/404" component={NotFound} /><Route component={NotFound} /></Switch>;
 }
 
 export default function App() {

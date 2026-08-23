@@ -1,5 +1,12 @@
 import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
+export const companies = mysqlTable("companies", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 160 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 /**
  * Core user table backing auth flow.
  * Extend this file with additional tables as your product grows.
@@ -16,6 +23,7 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
+  companyId: int("companyId").notNull().default(1).references(() => companies.id, { onDelete: "restrict" }),
   role: mysqlEnum("role", ["user", "hr", "government", "manager", "admin"]).default("user").notNull(),
   accountStatus: mysqlEnum("accountStatus", ["pending", "active", "suspended", "rejected"]).default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -59,9 +67,25 @@ export const userModulePermissionHistory = mysqlTable("userModulePermissionHisto
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const companyPermissionTemplates = mysqlTable("companyPermissionTemplates", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 120 }).notNull(),
+  description: varchar("description", { length: 360 }),
+  role: mysqlEnum("role", ["user", "hr", "government", "manager", "admin"]).notNull(),
+  hrCanView: boolean("hrCanView").default(false).notNull(),
+  hrCanManage: boolean("hrCanManage").default(false).notNull(),
+  governmentCanView: boolean("governmentCanView").default(false).notNull(),
+  governmentCanManage: boolean("governmentCanManage").default(false).notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("companyPermissionTemplates_company_title_unique").on(table.companyId, table.title)]);
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type UserModulePermission = typeof userModulePermissions.$inferSelect;
+export type CompanyPermissionTemplate = typeof companyPermissionTemplates.$inferSelect;
 
 export const requestTypes = ["hr", "government"] as const;
 export const requestStatuses = ["submitted", "in_review", "approved", "rejected", "completed"] as const;

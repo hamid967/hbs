@@ -35,6 +35,7 @@ import {
   LayoutTemplate,
   Wrench,
   UserCog,
+  Building2,
   Clock3,
 } from "lucide-react";
 import { useLocation } from "wouter";
@@ -53,6 +54,7 @@ const menuItems = [
   { icon: LayoutTemplate, label: "مساحة MVP", path: "/mvp" },
   { icon: Wrench, label: "أدوات HR", path: "/hr-tools" },
   { icon: UserCog, label: "إدارة الحسابات", path: "/accounts", adminOnly: true },
+  { icon: Building2, label: "قوالب الشركة", path: "/company-templates", adminOnly: true },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
