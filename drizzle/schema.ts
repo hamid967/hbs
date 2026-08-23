@@ -160,6 +160,26 @@ export const serviceRequests = mysqlTable("serviceRequests", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const leaveRequests = mysqlTable("leaveRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  requestId: int("requestId").notNull().references(() => serviceRequests.id, { onDelete: "cascade" }).unique(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  leaveType: mysqlEnum("leaveType", ["annual", "sick", "emergency"]).notNull(),
+  startDate: varchar("startDate", { length: 10 }).notNull(),
+  endDate: varchar("endDate", { length: 10 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const expenseRequests = mysqlTable("expenseRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  requestId: int("requestId").notNull().references(() => serviceRequests.id, { onDelete: "cascade" }).unique(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  expenseType: mysqlEnum("expenseType", ["travel", "operating"]).notNull(),
+  amountSar: varchar("amountSar", { length: 32 }).notNull(),
+  reason: text("reason").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const requestHistory = mysqlTable("requestHistory", {
   id: int("id").autoincrement().primaryKey(),
   requestId: int("requestId").notNull().references(() => serviceRequests.id, { onDelete: "cascade" }),

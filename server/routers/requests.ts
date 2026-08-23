@@ -6,6 +6,8 @@ import {
   getOperationsRequests,
   getRequestDetail,
   getUserModulePermissions,
+  saveExpenseRequestDetails,
+  saveLeaveRequestDetails,
   updateRequestStatus,
   addRequestNote,
 } from "../db";
@@ -36,6 +38,22 @@ export const requestsRouter = router({
       employeeId: ctx.user.id,
       companyId: ctx.user.companyId,
     });
+    return request;
+  }),
+
+  createLeave: protectedProcedure.input(z.object({ leaveType: z.enum(["annual", "sick", "emergency"]), startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), details: z.string().trim().max(1000).optional() })).mutation(async ({ ctx, input }) => {
+    if (input.endDate < input.startDate) throw new TRPCError({ code: "BAD_REQUEST", message: "تاريخ النهاية يجب أن يكون بعد تاريخ البداية" });
+    const label = { annual: "إجازة سنوية", sick: "إجازة مرضية", emergency: "إجازة طارئة" }[input.leaveType];
+    const request = await createRequestWithHistory({ type: "hr", category: label, subject: `${label} من ${input.startDate} إلى ${input.endDate}`, details: input.details || `طلب ${label}`, priority: "normal", reference: createRequestReference("hr"), employeeId: ctx.user.id, companyId: ctx.user.companyId });
+    await saveLeaveRequestDetails({ requestId: request.id, companyId: ctx.user.companyId, ...input });
+    return request;
+  }),
+
+  createExpense: protectedProcedure.input(z.object({ expenseType: z.enum(["travel", "operating"]), amountSar: z.string().regex(/^\d+(\.\d{1,2})?$/), reason: z.string().trim().min(3).max(1000) })).mutation(async ({ ctx, input }) => {
+    const amount = Number(input.amountSar); if (!Number.isFinite(amount) || amount <= 0) throw new TRPCError({ code: "BAD_REQUEST", message: "المبلغ غير صالح" });
+    const label = input.expenseType === "travel" ? "مصروف سفر" : "مصروف تشغيل";
+    const request = await createRequestWithHistory({ type: "hr", category: label, subject: `${label} بقيمة ${amount.toFixed(2)} ر.س`, details: input.reason, priority: "normal", reference: createRequestReference("hr"), employeeId: ctx.user.id, companyId: ctx.user.companyId });
+    await saveExpenseRequestDetails({ requestId: request.id, companyId: ctx.user.companyId, ...input });
     return request;
   }),
 

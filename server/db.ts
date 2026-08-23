@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeProfiles, hrSystemPlans, inAppNotifications, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeProfiles, expenseRequests, hrSystemPlans, inAppNotifications, leaveRequests, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -204,6 +204,20 @@ export async function createRequestWithHistory(input: {
   const request = (await db.select().from(serviceRequests).where(eq(serviceRequests.reference, input.reference)).limit(1))[0];
   if (!request) throw new Error("تعذر قراءة الطلب المنشأ");
   return request;
+}
+
+export async function saveLeaveRequestDetails(input: { requestId: number; companyId: number; leaveType: "annual" | "sick" | "emergency"; startDate: string; endDate: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await db.insert(leaveRequests).values(input).onDuplicateKeyUpdate({ set: { leaveType: input.leaveType, startDate: input.startDate, endDate: input.endDate } });
+  return { success: true } as const;
+}
+
+export async function saveExpenseRequestDetails(input: { requestId: number; companyId: number; expenseType: "travel" | "operating"; amountSar: string; reason: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await db.insert(expenseRequests).values(input).onDuplicateKeyUpdate({ set: { expenseType: input.expenseType, amountSar: input.amountSar, reason: input.reason } });
+  return { success: true } as const;
 }
 
 export async function getEmployeeRequests(employeeId: number, filters: { type?: RequestType; status?: "submitted" | "in_review" | "approved" | "rejected" | "completed" }) {
