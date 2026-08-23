@@ -15,6 +15,13 @@
       "when": 1787474982763,
       "tag": "0001_regular_nico_minoru",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1787475645673,
+      "tag": "0002_dark_sauron",
+      "breakpoints": true
     }
   ]
 }

@@ -56,6 +56,40 @@ export const requestHistory = mysqlTable("requestHistory", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const chatSessions = mysqlTable("chatSessions", {
+  id: int("id").autoincrement().primaryKey(),
+  employeeId: int("employeeId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: mysqlEnum("status", ["open", "converted", "closed"]).default("open").notNull(),
+  draftType: mysqlEnum("draftType", requestTypes),
+  draftCategory: varchar("draftCategory", { length: 120 }),
+  draftSubject: varchar("draftSubject", { length: 240 }),
+  draftDetails: text("draftDetails"),
+  draftPriority: mysqlEnum("draftPriority", requestPriorities),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const chatMessages = mysqlTable("chatMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("sessionId").notNull().references(() => chatSessions.id, { onDelete: "cascade" }),
+  role: mysqlEnum("role", ["user", "assistant"]).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const hrSystemPlans = mysqlTable("hrSystemPlans", {
+  id: int("id").autoincrement().primaryKey(),
+  employeeId: int("employeeId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  businessActivity: varchar("businessActivity", { length: 240 }).notNull(),
+  companySize: varchar("companySize", { length: 80 }).notNull(),
+  operatingNotes: text("operatingNotes"),
+  generatedContent: text("generatedContent").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export type ServiceRequest = typeof serviceRequests.$inferSelect;
 export type InsertServiceRequest = typeof serviceRequests.$inferInsert;
 export type RequestHistoryEntry = typeof requestHistory.$inferSelect;
+export type ChatSession = typeof chatSessions.$inferSelect;
+export type HrSystemPlan = typeof hrSystemPlans.$inferSelect;

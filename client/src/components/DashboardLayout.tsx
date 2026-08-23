@@ -22,11 +22,13 @@ import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   ClipboardList,
+  BotMessageSquare,
   FilePlus2,
   LayoutDashboard,
   LogOut,
   PanelRight,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -36,6 +38,8 @@ const menuItems = [
   { icon: LayoutDashboard, label: "لوحة التحكم", path: "/" },
   { icon: FilePlus2, label: "طلب جديد", path: "/requests/new" },
   { icon: ClipboardList, label: "طلباتي", path: "/my-requests" },
+  { icon: BotMessageSquare, label: "مساعد الطلبات", path: "/assistant" },
+  { icon: Sparkles, label: "مصمم نظام HR", path: "/hr-system" },
   { icon: ShieldCheck, label: "مركز العمليات", path: "/operations" },
 ];
 

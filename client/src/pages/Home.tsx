@@ -1,6 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building2, ChevronLeft, Clock3, FilePlus2, Landmark, Sparkles } from "lucide-react";
+import { ArrowLeft, BotMessageSquare, Building2, ChevronLeft, Clock3, FilePlus2, Landmark, Sparkles, WandSparkles } from "lucide-react";
 import { useLocation } from "wouter";
 
 const serviceCards = [
@@ -36,6 +36,10 @@ export default function Home() {
               <ArrowLeft className="mt-1 size-4 text-[#9ca8a1] transition-transform group-hover:-translate-x-1" />
             </button>)}
           </div>
+        </section>
+
+        <section className="mt-8 grid gap-4 md:grid-cols-2">
+          <button onClick={() => setLocation("/assistant")} className="group overflow-hidden rounded-3xl bg-[#e3f0e5] p-6 text-right transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(21,50,35,.10)]"><div className="flex items-start justify-between"><span className="flex size-11 items-center justify-center rounded-2xl bg-white text-[#28704d]"><BotMessageSquare className="size-5" /></span><ArrowLeft className="size-4 text-[#4f7962] transition-transform group-hover:-translate-x-1" /></div><p className="mt-7 text-lg font-bold text-[#1e4e37]">مساعد استقبال الطلبات</p><p className="mt-2 text-sm leading-6 text-[#597767]">اكتب ما تحتاجه، وسيساعدك المساعد على تنظيمه وتحويله إلى مسودة طلب قابلة للمراجعة.</p></button><button onClick={() => setLocation("/hr-system")} className="group overflow-hidden rounded-3xl bg-[#f5e7d2] p-6 text-right transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(92,56,22,.10)]"><div className="flex items-start justify-between"><span className="flex size-11 items-center justify-center rounded-2xl bg-white text-[#9a5b1f]"><WandSparkles className="size-5" /></span><ArrowLeft className="size-4 text-[#957146] transition-transform group-hover:-translate-x-1" /></div><p className="mt-7 text-lg font-bold text-[#69451e]">مصمم نظام الموارد البشرية</p><p className="mt-2 text-sm leading-6 text-[#836441]">أدخل نشاط الشركة وحجمها، ثم أنشئ مخطط نظام موارد بشرية مناسباً لمراحل العمل القادمة.</p></button>
         </section>
 
         <section className="mt-8 grid gap-5 lg:grid-cols-[1.4fr_0.6fr]">
