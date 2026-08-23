@@ -30,6 +30,7 @@ import {
   ShieldCheck,
   Sparkles,
   UsersRound,
+  Rocket,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -43,6 +44,7 @@ const menuItems = [
   { icon: Sparkles, label: "مصمم نظام HR", path: "/hr-system" },
   { icon: ShieldCheck, label: "مركز العمليات", path: "/operations" },
   { icon: UsersRound, label: "طلبات العروض", path: "/demo-requests" },
+  { icon: Rocket, label: "خارطة التطوير", path: "/roadmap" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
