@@ -111,6 +111,7 @@ export const approvalTasks = mysqlTable("approvalTasks", {
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
   requestId: int("requestId").notNull().references(() => serviceRequests.id, { onDelete: "cascade" }),
   approverRole: mysqlEnum("approverRole", ["hr", "government", "manager", "admin"]).notNull(),
+  assigneeUserId: int("assigneeUserId").references(() => users.id, { onDelete: "set null" }),
   status: mysqlEnum("status", ["pending", "approved", "rejected", "cancelled"]).default("pending").notNull(),
   decidedByUserId: int("decidedByUserId").references(() => users.id, { onDelete: "set null" }),
   decisionNote: text("decisionNote"),

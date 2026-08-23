@@ -192,8 +192,9 @@ export async function createRequestWithHistory(input: {
     const request = (await tx.select().from(serviceRequests).where(eq(serviceRequests.reference, input.reference)).limit(1))[0];
     if (!request) throw new Error("تعذر إنشاء الطلب");
     await tx.insert(requestHistory).values({ requestId: request.id, actorId: input.employeeId, action: "created", nextStatus: "submitted", note: "تم إنشاء الطلب وإرساله للمراجعة.", visibleToEmployee: true });
-    const approverRole = request.type === "hr" ? "hr" as const : "government" as const;
-    await tx.insert(approvalTasks).values({ companyId, requestId: request.id, approverRole });
+    const profile = (await tx.select().from(employeeProfiles).where(eq(employeeProfiles.userId, input.employeeId)).limit(1))[0];
+    const approverRole = profile?.managerUserId ? "manager" as const : request.type === "hr" ? "hr" as const : "government" as const;
+    await tx.insert(approvalTasks).values({ companyId, requestId: request.id, approverRole, assigneeUserId: profile?.managerUserId ?? null });
     const approvers = await tx.select({ id: users.id }).from(users).where(and(eq(users.companyId, companyId), eq(users.role, approverRole), eq(users.accountStatus, "active")));
     if (approvers.length) await tx.insert(inAppNotifications).values(approvers.map(approver => ({ companyId, recipientUserId: approver.id, type: "approval_required" as const, title: "موافقة جديدة بانتظارك", body: `طلب ${request.reference} يحتاج إلى قرارك.`, href: "/approvals", relatedRequestId: request.id })));
   });
@@ -242,10 +243,11 @@ export async function updateRequestStatus(id: number, actorId: number, previousS
   return { success: true } as const;
 }
 
-export async function getApprovalInbox(companyId: number, roles: Array<"hr" | "government" | "manager" | "admin">) {
+export async function getApprovalInbox(companyId: number, recipientUserId: number, roles: Array<"hr" | "government" | "manager" | "admin">) {
   const db = await getDb();
   if (!db || !roles.length) return [];
-  return db.select({ task: approvalTasks, request: serviceRequests, employee: { id: users.id, name: users.name, email: users.email } }).from(approvalTasks).innerJoin(serviceRequests, eq(approvalTasks.requestId, serviceRequests.id)).innerJoin(users, eq(serviceRequests.employeeId, users.id)).where(and(eq(approvalTasks.companyId, companyId), eq(approvalTasks.status, "pending"), inArray(approvalTasks.approverRole, roles))).orderBy(desc(approvalTasks.createdAt));
+  const rows = await db.select({ task: approvalTasks, request: serviceRequests, employee: { id: users.id, name: users.name, email: users.email } }).from(approvalTasks).innerJoin(serviceRequests, eq(approvalTasks.requestId, serviceRequests.id)).innerJoin(users, eq(serviceRequests.employeeId, users.id)).where(and(eq(approvalTasks.companyId, companyId), eq(approvalTasks.status, "pending"), inArray(approvalTasks.approverRole, roles))).orderBy(desc(approvalTasks.createdAt));
+  return rows.filter(row => row.task.approverRole !== "manager" || row.task.assigneeUserId === recipientUserId);
 }
 
 export async function listNotifications(companyId: number, recipientUserId: number) { const db = await getDb(); if (!db) return []; return db.select().from(inAppNotifications).where(and(eq(inAppNotifications.companyId, companyId), eq(inAppNotifications.recipientUserId, recipientUserId))).orderBy(desc(inAppNotifications.createdAt)).limit(50); }

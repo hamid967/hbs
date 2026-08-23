@@ -1,0 +1,2 @@
+ALTER TABLE `approvalTasks` ADD `assigneeUserId` int;--> statement-breakpoint
+ALTER TABLE `approvalTasks` ADD CONSTRAINT `approvalTasks_assigneeUserId_users_id_fk` FOREIGN KEY (`assigneeUserId`) REFERENCES `users`(`id`) ON DELETE set null ON UPDATE no action;
