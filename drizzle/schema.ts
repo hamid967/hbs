@@ -82,10 +82,36 @@ export const companyPermissionTemplates = mysqlTable("companyPermissionTemplates
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("companyPermissionTemplates_company_title_unique").on(table.companyId, table.title)]);
 
+export const departments = mysqlTable("departments", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 120 }).notNull(),
+  code: varchar("code", { length: 32 }),
+  managerUserId: int("managerUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("departments_company_name_unique").on(table.companyId, table.name)]);
+
+export const employeeProfiles = mysqlTable("employeeProfiles", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  employeeNumber: varchar("employeeNumber", { length: 40 }),
+  jobTitle: varchar("jobTitle", { length: 160 }),
+  departmentId: int("departmentId").references(() => departments.id, { onDelete: "set null" }),
+  managerUserId: int("managerUserId").references(() => users.id, { onDelete: "set null" }),
+  employmentStatus: mysqlEnum("employmentStatus", ["active", "on_leave", "inactive"]).default("active").notNull(),
+  joinedAt: timestamp("joinedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("employeeProfiles_user_unique").on(table.userId), uniqueIndex("employeeProfiles_company_number_unique").on(table.companyId, table.employeeNumber)]);
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type UserModulePermission = typeof userModulePermissions.$inferSelect;
 export type CompanyPermissionTemplate = typeof companyPermissionTemplates.$inferSelect;
+export type Department = typeof departments.$inferSelect;
+export type EmployeeProfile = typeof employeeProfiles.$inferSelect;
 
 export const requestTypes = ["hr", "government"] as const;
 export const requestStatuses = ["submitted", "in_review", "approved", "rejected", "completed"] as const;

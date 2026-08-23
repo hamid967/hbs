@@ -36,6 +36,7 @@ import {
   Wrench,
   UserCog,
   Building2,
+  UserRoundSearch,
   Clock3,
 } from "lucide-react";
 import { useLocation } from "wouter";
@@ -55,6 +56,7 @@ const menuItems = [
   { icon: Wrench, label: "أدوات HR", path: "/hr-tools" },
   { icon: UserCog, label: "إدارة الحسابات", path: "/accounts", adminOnly: true },
   { icon: Building2, label: "قوالب الشركة", path: "/company-templates", adminOnly: true },
+  { icon: UserRoundSearch, label: "دليل الموظفين", path: "/employees", requiresDirectoryAccess: true },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -87,7 +89,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   const hasOperationAccess = user.role === "admin" || Boolean(modulePermissions?.some(permission => permission.canView));
-  const visibleMenuItems = menuItems.filter(item => (!item.adminOnly || user.role === "admin") && (!item.requiresOperationAccess || hasOperationAccess));
+  const canManageDirectory = ["admin", "manager", "hr"].includes(user.role);
+  const visibleMenuItems = menuItems.filter(item => (!item.adminOnly || user.role === "admin") && (!item.requiresOperationAccess || hasOperationAccess) && (!item.requiresDirectoryAccess || canManageDirectory));
 
   return (
     <SidebarProvider dir="rtl" className="bg-[#f8f8f5] text-[#17211c]">

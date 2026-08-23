@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, hrSystemPlans, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeProfiles, hrSystemPlans, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -132,6 +132,46 @@ export async function deleteCompanyPermissionTemplate(id: number, companyId: num
   if (!existing) throw new Error("قالب الشركة غير موجود أو لا يتبع لشركتك");
   await db.delete(companyPermissionTemplates).where(and(eq(companyPermissionTemplates.id, id), eq(companyPermissionTemplates.companyId, companyId)));
   return { success: true } as const;
+}
+
+export async function listCompanyDepartments(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(departments).where(eq(departments.companyId, companyId)).orderBy(desc(departments.updatedAt));
+}
+
+export async function createCompanyDepartment(input: { companyId: number; name: string; code?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await db.insert(departments).values({ companyId: input.companyId, name: input.name, code: input.code ?? null });
+  const created = (await db.select().from(departments).where(and(eq(departments.companyId, input.companyId), eq(departments.name, input.name))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ القسم");
+  return created;
+}
+
+export async function listCompanyEmployees(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ user: users, profile: employeeProfiles, department: departments }).from(users).leftJoin(employeeProfiles, eq(employeeProfiles.userId, users.id)).leftJoin(departments, eq(employeeProfiles.departmentId, departments.id)).where(and(eq(users.companyId, companyId), eq(users.accountStatus, "active"))).orderBy(desc(users.lastSignedIn));
+  return rows.map(row => ({ ...row.user, profile: row.profile, department: row.department ? { id: row.department.id, name: row.department.name, code: row.department.code } : null }));
+}
+
+export async function saveEmployeeProfile(input: { companyId: number; userId: number; employeeNumber?: string; jobTitle?: string; departmentId?: number; managerUserId?: number; employmentStatus: "active" | "on_leave" | "inactive"; joinedAt?: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const user = (await db.select().from(users).where(and(eq(users.id, input.userId), eq(users.companyId, input.companyId))).limit(1))[0];
+  if (!user) throw new Error("الموظف غير موجود ضمن الشركة الحالية");
+  if (input.departmentId) {
+    const department = (await db.select().from(departments).where(and(eq(departments.id, input.departmentId), eq(departments.companyId, input.companyId))).limit(1))[0];
+    if (!department) throw new Error("القسم غير موجود ضمن الشركة الحالية");
+  }
+  if (input.managerUserId) {
+    const manager = (await db.select().from(users).where(and(eq(users.id, input.managerUserId), eq(users.companyId, input.companyId))).limit(1))[0];
+    if (!manager) throw new Error("المدير غير موجود ضمن الشركة الحالية");
+  }
+  const values = { companyId: input.companyId, userId: input.userId, employeeNumber: input.employeeNumber ?? null, jobTitle: input.jobTitle ?? null, departmentId: input.departmentId ?? null, managerUserId: input.managerUserId ?? null, employmentStatus: input.employmentStatus, joinedAt: input.joinedAt ?? null };
+  await db.insert(employeeProfiles).values(values).onDuplicateKeyUpdate({ set: { employeeNumber: values.employeeNumber, jobTitle: values.jobTitle, departmentId: values.departmentId, managerUserId: values.managerUserId, employmentStatus: values.employmentStatus, joinedAt: values.joinedAt } });
+  return (await db.select().from(employeeProfiles).where(eq(employeeProfiles.userId, input.userId)).limit(1))[0];
 }
 
 export async function createRequestWithHistory(input: {
