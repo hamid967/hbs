@@ -154,7 +154,7 @@ export async function markChatConverted(sessionId: number) {
   await db.update(chatSessions).set({ status: "converted" }).where(eq(chatSessions.id, sessionId));
 }
 
-export async function createHrSystemPlan(input: { employeeId: number; businessActivity: string; companySize: string; operatingNotes?: string; generatedContent: string }) {
+export async function createHrSystemPlan(input: { employeeId: number; businessActivity: string; companySize: string; operatingNotes?: string; workModel?: string; geographicFootprint?: string; growthHorizon?: string; peopleChallenges?: string; generatedContent: string }) {
   const db = await getDb();
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
   await db.insert(hrSystemPlans).values(input);

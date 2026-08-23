@@ -32,9 +32,13 @@ function context(): TrpcContext {
 const validPlan = {
   executiveSummary: "مخطط عملي مبني على حجم الشركة ونشاطها.",
   operatingModel: "مسؤول موارد بشرية داخلي مع دعم تشغيلي من المدراء.",
+  personalizationRationale: "تم تقديم الأولويات لأن الشركة التقنية في مرحلة نمو وتحتاج إلى توحيد الأساسيات أولاً.",
   modules: [{ name: "ملفات الموظفين", purpose: "توحيد البيانات", priority: "أساسي" }, { name: "الإجازات", purpose: "إدارة الاستحقاقات", priority: "مهم" }, { name: "التطوير", purpose: "رفع المهارات", priority: "متقدم" }],
+  organizationalRoles: [{ role: "مسؤول الموارد البشرية", responsibility: "إدارة البيانات والسياسات", timing: "فوراً" }, { role: "المدير المباشر", responsibility: "اعتماد الطلبات والتغذية الراجعة", timing: "خلال 30 يوماً" }, { role: "القيادة التنفيذية", responsibility: "اعتماد المقاييس", timing: "خلال 60 يوماً" }],
   workflows: [{ name: "التوظيف", outcome: "تعيين منظم", owner: "الموارد البشرية" }, { name: "التهيئة", outcome: "اندماج الموظف", owner: "المدير المباشر" }, { name: "مراجعة الأداء", outcome: "تغذية راجعة", owner: "الإدارة" }],
   policies: [{ name: "الإجازات", intent: "توضيح الاستحقاقات" }, { name: "السلوك المهني", intent: "تنظيم بيئة العمل" }, { name: "البيانات", intent: "حماية المعلومات" }],
+  executionDecisions: [{ decision: "توحيد ملفات الموظفين", recommendation: "ابدأ بقاعدة بيانات موحدة", whyNow: "لدعم النمو" }, { decision: "إطلاق التهيئة", recommendation: "اعتماد قائمة تهيئة", whyNow: "لتقليل وقت الاندماج" }, { decision: "تحديد مقاييس الموارد البشرية", recommendation: "مراجعة شهرية", whyNow: "لإتاحة القرار المبني على بيانات" }],
+  first90Days: [{ period: "الأيام 1–30", objective: "تجميع الأساسيات", actions: ["توحيد ملفات الموظفين"] }, { period: "الأيام 31–60", objective: "تشغيل التدفقات", actions: ["إطلاق طلبات الإجازة"] }, { period: "الأيام 61–90", objective: "قياس التحسن", actions: ["مراجعة مؤشرات الأداء"] }],
   implementationPhases: [{ phase: "التأسيس", timeline: "0–30 يوماً", actions: ["جمع البيانات"] }, { phase: "التشغيل", timeline: "31–90 يوماً", actions: ["إطلاق العمليات"] }],
   metrics: ["اكتمال الملفات", "زمن التوظيف", "رضا الموظفين"],
   risks: ["مراجعة المتطلبات المحلية", "تحديد الملاك التشغيليين"],
@@ -67,7 +71,20 @@ describe("assistant router", () => {
     llmMocks.invokeLLM.mockResolvedValue({ choices: [{ message: { content: JSON.stringify(validPlan) } }] });
     dbMocks.createHrSystemPlan.mockResolvedValue({ id: 30, businessActivity: "تقنية", companySize: "11–50 موظفاً" });
     const caller = assistantRouter.createCaller(context());
-    await expect(caller.hrSystem.generate({ businessActivity: "شركة تقنية", companySize: "11–50 موظفاً" })).resolves.toMatchObject({ id: 30 });
-    expect(dbMocks.createHrSystemPlan).toHaveBeenCalledWith(expect.objectContaining({ employeeId: 10, businessActivity: "شركة تقنية", companySize: "11–50 موظفاً" }));
+    await expect(caller.hrSystem.generate({ businessActivity: "شركة تقنية", companySize: "11–50 موظفاً", workModel: "هجين", geographicFootprint: "عدة مدن داخل الدولة", growthHorizon: "نمو معتدل خلال 12 شهراً", peopleChallenges: "توحيد العمليات" })).resolves.toMatchObject({ id: 30 });
+    expect(dbMocks.createHrSystemPlan).toHaveBeenCalledWith(expect.objectContaining({ employeeId: 10, businessActivity: "شركة تقنية", companySize: "11–50 موظفاً", workModel: "هجين", geographicFootprint: "عدة مدن داخل الدولة", growthHorizon: "نمو معتدل خلال 12 شهراً", peopleChallenges: "توحيد العمليات" }));
+    const savedPayload = dbMocks.createHrSystemPlan.mock.calls[0]?.[0] as { generatedContent: string };
+    expect(JSON.parse(savedPayload.generatedContent)).toMatchObject({ personalizationRationale: expect.any(String), organizationalRoles: expect.any(Array), executionDecisions: expect.any(Array), first90Days: expect.any(Array) });
+  });
+
+  it("lists and retrieves saved plans only through the current employee context", async () => {
+    const savedPlan = { id: 44, employeeId: 10, businessActivity: "شركة تقنية", companySize: "11–50 موظفاً", workModel: "هجين", geographicFootprint: "عدة مدن", growthHorizon: "نمو معتدل", peopleChallenges: "توحيد العمليات", generatedContent: JSON.stringify(validPlan) };
+    dbMocks.getHrSystemPlans.mockResolvedValue([savedPlan]);
+    dbMocks.getHrSystemPlan.mockResolvedValue(savedPlan);
+    const caller = assistantRouter.createCaller(context());
+    await expect(caller.hrSystem.list()).resolves.toEqual([savedPlan]);
+    await expect(caller.hrSystem.get({ id: 44 })).resolves.toEqual(savedPlan);
+    expect(dbMocks.getHrSystemPlans).toHaveBeenCalledWith(10);
+    expect(dbMocks.getHrSystemPlan).toHaveBeenCalledWith(44, 10);
   });
 });

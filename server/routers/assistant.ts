@@ -31,9 +31,13 @@ const intakeResultSchema = z.object({
 const planContentSchema = z.object({
   executiveSummary: z.string().min(1),
   operatingModel: z.string().min(1),
+  personalizationRationale: z.string().min(1),
   modules: z.array(z.object({ name: z.string(), purpose: z.string(), priority: z.enum(["أساسي", "مهم", "متقدم"]) })).min(3),
+  organizationalRoles: z.array(z.object({ role: z.string(), responsibility: z.string(), timing: z.string() })).min(3),
   workflows: z.array(z.object({ name: z.string(), outcome: z.string(), owner: z.string() })).min(3),
   policies: z.array(z.object({ name: z.string(), intent: z.string() })).min(3),
+  executionDecisions: z.array(z.object({ decision: z.string(), recommendation: z.string(), whyNow: z.string() })).min(3),
+  first90Days: z.array(z.object({ period: z.string(), objective: z.string(), actions: z.array(z.string()).min(1) })).min(3),
   implementationPhases: z.array(z.object({ phase: z.string(), timeline: z.string(), actions: z.array(z.string()).min(1) })).min(2),
   metrics: z.array(z.string()).min(3),
   risks: z.array(z.string()).min(2),
@@ -134,13 +138,13 @@ export const assistantRouter = router({
   }),
 
   hrSystem: router({
-    generate: protectedProcedure.input(z.object({ businessActivity: z.string().trim().min(3).max(240), companySize: z.string().trim().min(2).max(80), operatingNotes: z.string().trim().max(2000).optional() })).mutation(async ({ ctx, input }) => {
+    generate: protectedProcedure.input(z.object({ businessActivity: z.string().trim().min(3).max(240), companySize: z.string().trim().min(2).max(80), operatingNotes: z.string().trim().max(2000).optional(), workModel: z.string().trim().max(80).optional(), geographicFootprint: z.string().trim().max(160).optional(), growthHorizon: z.string().trim().max(80).optional(), peopleChallenges: z.string().trim().max(2000).optional() })).mutation(async ({ ctx, input }) => {
       const response = await invokeLLM({
         model: "gpt-5-mini",
         maxTokens: 3400,
         messages: [
-          { role: "system", content: "أنت مستشار عمليات موارد بشرية لمنصة داخلية. أنشئ مخططاً عملياً ومخصصاً لنظام موارد بشرية بالعربية. لا تقدّم استشارة قانونية أو تنظيميّة ملزمة، بل ضمّن تنبيهاً ضمن المخاطر بمراجعة المتطلبات المحلية مع مختص مختص. كن محدداً بنشاط وحجم الشركة ولا تختلق حقائق. اجعل المخرجات قابلة للتنفيذ في شركة فعلية." },
-          { role: "user", content: `نشاط الشركة: ${input.businessActivity}\nحجم الشركة: ${input.companySize}\nملاحظات تشغيلية: ${input.operatingNotes || "لا توجد ملاحظات إضافية"}\n\nأنشئ مخطط نظام موارد بشرية متدرجاً للاثني عشر شهراً الأولى.` },
+          { role: "system", content: "أنت مستشار عمليات موارد بشرية لمنصة داخلية. أنشئ مخططاً عملياً ومخصصاً لنظام موارد بشرية بالعربية. رتب التوصيات بحسب أثرها على الشركة في أول 90 يوماً، وفرّق بين الأساسي الآن وما يمكن تأجيله. اشرح كيف أثرت مدخلات الشركة في كل قرار. لا تقدّم استشارة قانونية أو تنظيميّة ملزمة، بل ضمّن تنبيهاً ضمن المخاطر بمراجعة المتطلبات المحلية مع مختص مختص. لا تختلق حقائق غير موجودة في المدخلات." },
+          { role: "user", content: `نشاط الشركة: ${input.businessActivity}\nحجم الشركة: ${input.companySize}\nنمط العمل: ${input.workModel || "غير محدد"}\nانتشار الفريق: ${input.geographicFootprint || "غير محدد"}\nأفق النمو: ${input.growthHorizon || "غير محدد"}\nأبرز التحديات البشرية أو التشغيلية: ${input.peopleChallenges || "غير محددة"}\nملاحظات تشغيلية إضافية: ${input.operatingNotes || "لا توجد ملاحظات إضافية"}\n\nأنشئ مخطط نظام موارد بشرية متدرجاً للاثني عشر شهراً الأولى، مع خطة تنفيذ مفصلة لأول 90 يوماً.` },
         ],
         response_format: {
           type: "json_schema",
@@ -152,14 +156,18 @@ export const assistantRouter = router({
               properties: {
                 executiveSummary: { type: "string" },
                 operatingModel: { type: "string" },
+                personalizationRationale: { type: "string" },
                 modules: { type: "array", items: { type: "object", properties: { name: { type: "string" }, purpose: { type: "string" }, priority: { type: "string", enum: ["أساسي", "مهم", "متقدم"] } }, required: ["name", "purpose", "priority"], additionalProperties: false } },
+                organizationalRoles: { type: "array", items: { type: "object", properties: { role: { type: "string" }, responsibility: { type: "string" }, timing: { type: "string" } }, required: ["role", "responsibility", "timing"], additionalProperties: false } },
                 workflows: { type: "array", items: { type: "object", properties: { name: { type: "string" }, outcome: { type: "string" }, owner: { type: "string" } }, required: ["name", "outcome", "owner"], additionalProperties: false } },
                 policies: { type: "array", items: { type: "object", properties: { name: { type: "string" }, intent: { type: "string" } }, required: ["name", "intent"], additionalProperties: false } },
+                executionDecisions: { type: "array", items: { type: "object", properties: { decision: { type: "string" }, recommendation: { type: "string" }, whyNow: { type: "string" } }, required: ["decision", "recommendation", "whyNow"], additionalProperties: false } },
+                first90Days: { type: "array", items: { type: "object", properties: { period: { type: "string" }, objective: { type: "string" }, actions: { type: "array", items: { type: "string" } } }, required: ["period", "objective", "actions"], additionalProperties: false } },
                 implementationPhases: { type: "array", items: { type: "object", properties: { phase: { type: "string" }, timeline: { type: "string" }, actions: { type: "array", items: { type: "string" } } }, required: ["phase", "timeline", "actions"], additionalProperties: false } },
                 metrics: { type: "array", items: { type: "string" } },
                 risks: { type: "array", items: { type: "string" } },
               },
-              required: ["executiveSummary", "operatingModel", "modules", "workflows", "policies", "implementationPhases", "metrics", "risks"],
+              required: ["executiveSummary", "operatingModel", "personalizationRationale", "modules", "organizationalRoles", "workflows", "policies", "executionDecisions", "first90Days", "implementationPhases", "metrics", "risks"],
               additionalProperties: false,
             },
           },
