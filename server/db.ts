@@ -224,7 +224,8 @@ export async function getRequestDetail(id: number, userId: number, role: UserRol
   const canView = permittedRequestTypes(role, permissions).includes(request.type);
   if (!canView && request.employeeId !== userId) return undefined;
   const history = await db.select().from(requestHistory).where(and(eq(requestHistory.requestId, id), ...(canManage ? [] : [eq(requestHistory.visibleToEmployee, true)]) )).orderBy(desc(requestHistory.createdAt));
-  return { request, history, canManage };
+  const safeHistory = canManage ? history : history.map(entry => entry.action === "status_change" ? { ...entry, note: entry.nextStatus ? `حالة المرحلة: ${entry.nextStatus}` : "تم تحديث مرحلة الموافقة." } : { ...entry, note: "تم تحديث مرحلة الموافقة." });
+  return { request, history: safeHistory, canManage };
 }
 
 export async function getOperationsRequests(filters: { type?: RequestType; status?: "submitted" | "in_review" | "approved" | "rejected" | "completed" }, permittedTypes: RequestType[]) {
