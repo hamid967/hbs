@@ -29,18 +29,20 @@ import {
   PanelRight,
   ShieldCheck,
   Sparkles,
+  UsersRound,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "لوحة التحكم", path: "/" },
+  { icon: LayoutDashboard, label: "لوحة التحكم", path: "/app" },
   { icon: FilePlus2, label: "طلب جديد", path: "/requests/new" },
   { icon: ClipboardList, label: "طلباتي", path: "/my-requests" },
   { icon: BotMessageSquare, label: "مساعد الطلبات", path: "/assistant" },
   { icon: Sparkles, label: "مصمم نظام HR", path: "/hr-system" },
   { icon: ShieldCheck, label: "مركز العمليات", path: "/operations" },
+  { icon: UsersRound, label: "طلبات العروض", path: "/demo-requests" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

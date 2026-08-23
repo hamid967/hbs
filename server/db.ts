@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { chatMessages, chatSessions, hrSystemPlans, requestHistory, serviceRequests, type InsertUser, users } from "../drizzle/schema";
+import { chatMessages, chatSessions, demoRequests, hrSystemPlans, requestHistory, serviceRequests, type InsertUser, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, type RequestType, type UserRole } from "./requestPolicy";
 
@@ -173,4 +173,27 @@ export async function getHrSystemPlan(id: number, employeeId: number) {
   const db = await getDb();
   if (!db) return undefined;
   return (await db.select().from(hrSystemPlans).where(and(eq(hrSystemPlans.id, id), eq(hrSystemPlans.employeeId, employeeId))).limit(1))[0];
+}
+
+export async function createDemoRequest(input: { fullName: string; workEmail: string; phone?: string; companyName: string; companySize: string; businessActivity?: string; interest: string; notes?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await db.insert(demoRequests).values(input);
+  const request = (await db.select().from(demoRequests).where(and(eq(demoRequests.workEmail, input.workEmail), eq(demoRequests.companyName, input.companyName))).orderBy(desc(demoRequests.createdAt)).limit(1))[0];
+  if (!request) throw new Error("تعذر حفظ طلب العرض");
+  return request;
+}
+
+export async function getDemoRequests(filters: { status?: "new" | "contacted" | "qualified" | "closed" }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = filters.status ? [eq(demoRequests.status, filters.status)] : [];
+  return db.select().from(demoRequests).where(conditions.length ? and(...conditions) : undefined).orderBy(desc(demoRequests.updatedAt));
+}
+
+export async function updateDemoRequest(input: { id: number; status: "new" | "contacted" | "qualified" | "closed"; ownerId?: number; internalNote?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await db.update(demoRequests).set({ status: input.status, ...(input.ownerId ? { ownerId: input.ownerId } : {}), ...(input.internalNote !== undefined ? { internalNote: input.internalNote } : {}) }).where(eq(demoRequests.id, input.id));
+  return { success: true } as const;
 }

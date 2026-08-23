@@ -88,8 +88,26 @@ export const hrSystemPlans = mysqlTable("hrSystemPlans", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const demoRequests = mysqlTable("demoRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  fullName: varchar("fullName", { length: 160 }).notNull(),
+  workEmail: varchar("workEmail", { length: 320 }).notNull(),
+  phone: varchar("phone", { length: 48 }),
+  companyName: varchar("companyName", { length: 180 }).notNull(),
+  companySize: varchar("companySize", { length: 80 }).notNull(),
+  businessActivity: varchar("businessActivity", { length: 240 }),
+  interest: varchar("interest", { length: 120 }).notNull(),
+  notes: text("notes"),
+  status: mysqlEnum("status", ["new", "contacted", "qualified", "closed"]).default("new").notNull(),
+  ownerId: int("ownerId").references(() => users.id, { onDelete: "set null" }),
+  internalNote: text("internalNote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export type ServiceRequest = typeof serviceRequests.$inferSelect;
 export type InsertServiceRequest = typeof serviceRequests.$inferInsert;
 export type RequestHistoryEntry = typeof requestHistory.$inferSelect;
 export type ChatSession = typeof chatSessions.$inferSelect;
 export type HrSystemPlan = typeof hrSystemPlans.$inferSelect;
+export type DemoRequest = typeof demoRequests.$inferSelect;
