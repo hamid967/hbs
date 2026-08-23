@@ -265,6 +265,13 @@ export async function decideApprovalTask(input: { id: number; companyId: number;
     const request = (await tx.select().from(serviceRequests).where(eq(serviceRequests.id, task.requestId)).limit(1))[0];
     if (!request) throw new Error("الطلب المرتبط بالمهمة غير موجود");
     await tx.update(approvalTasks).set({ status: input.decision, decidedByUserId: input.actorId, decisionNote: input.note ?? null, decidedAt: new Date() }).where(eq(approvalTasks.id, input.id));
+    if (task.approverRole === "manager" && input.decision === "approved") {
+      const nextRole = request.type === "hr" ? "hr" as const : "government" as const;
+      await tx.insert(approvalTasks).values({ companyId: input.companyId, requestId: request.id, approverRole: nextRole });
+      await tx.update(serviceRequests).set({ status: "in_review" }).where(eq(serviceRequests.id, request.id));
+      await tx.insert(requestHistory).values({ requestId: request.id, actorId: input.actorId, action: "status_change", previousStatus: request.status, nextStatus: "in_review", note: input.note || `وافق المدير المباشر وأُحيل الطلب إلى ${nextRole === "hr" ? "الموارد البشرية" : "العلاقات الحكومية"}.`, visibleToEmployee: true });
+      return;
+    }
     await tx.update(serviceRequests).set({ status: input.decision }).where(eq(serviceRequests.id, request.id));
     await tx.insert(requestHistory).values({ requestId: request.id, actorId: input.actorId, action: "status_change", previousStatus: request.status, nextStatus: input.decision, note: input.note || (input.decision === "approved" ? "تمت الموافقة على الطلب." : "تم رفض الطلب."), visibleToEmployee: true });
     await tx.insert(inAppNotifications).values({ companyId: input.companyId, recipientUserId: request.employeeId, type: "request_decision", title: input.decision === "approved" ? "تمت الموافقة على طلبك" : "تم تحديث قرار طلبك", body: input.note || (input.decision === "approved" ? "تمت الموافقة على طلبك ويمكنك متابعة حالته." : "تم رفض طلبك. راجع الملاحظة أو تواصل مع الفريق."), href: `/requests/${request.id}`, relatedRequestId: request.id });
