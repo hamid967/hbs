@@ -269,6 +269,8 @@ export async function decideApprovalTask(input: { id: number; companyId: number;
     if (task.approverRole === "manager" && input.decision === "approved") {
       const nextRole = request.type === "hr" ? "hr" as const : "government" as const;
       await tx.insert(approvalTasks).values({ companyId: input.companyId, requestId: request.id, approverRole: nextRole });
+      const nextApprovers = await tx.select({ id: users.id }).from(users).where(and(eq(users.companyId, input.companyId), eq(users.role, nextRole), eq(users.accountStatus, "active")));
+      if (nextApprovers.length) await tx.insert(inAppNotifications).values(nextApprovers.map(approver => ({ companyId: input.companyId, recipientUserId: approver.id, type: "approval_required" as const, title: "مرحلة موافقة جديدة بانتظارك", body: `تمت موافقة المدير على الطلب ${request.reference} وهو بانتظار قرار وحدتك.`, href: "/approvals", relatedRequestId: request.id })));
       await tx.update(serviceRequests).set({ status: "in_review" }).where(eq(serviceRequests.id, request.id));
       await tx.insert(requestHistory).values({ requestId: request.id, actorId: input.actorId, action: "status_change", previousStatus: request.status, nextStatus: "in_review", note: input.note || `وافق المدير المباشر وأُحيل الطلب إلى ${nextRole === "hr" ? "الموارد البشرية" : "العلاقات الحكومية"}.`, visibleToEmployee: true });
       return;
