@@ -15,3 +15,7 @@ The MVP analysis uses only aggregate operational data already held by the produc
 ## AI Output Contract
 
 The analysis returns a short executive summary, up to three positive signals, up to three attention signals, and up to three concrete recommendations. The model must explain only what the aggregates support, state when data is insufficient, and avoid personnel, legal, or performance judgments about individuals.
+
+## Monthly Comparison Method
+
+The dashboard compares the count created during the current UTC calendar month with the count created during the immediately preceding UTC calendar month. It applies the same method to service requests, demo requests, and generated HR plans. When the previous month has no records, the percentage change is intentionally shown as unavailable rather than manufacturing an infinite or misleading percentage.

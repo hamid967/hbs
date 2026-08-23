@@ -202,27 +202,45 @@ export type MvpMetrics = {
   requests: { total: number; open: number; urgent: number; completed: number; inReview: number; submitted: number; rejected: number; last30Days: number };
   demos: { total: number; new: number; contacted: number; qualified: number; closed: number; last30Days: number };
   hrPlans: { total: number; last30Days: number };
+  monthly: { currentMonth: string; previousMonth: string; requests: MonthlyMetric; demos: MonthlyMetric; hrPlans: MonthlyMetric };
 };
+
+export type MonthlyMetric = { current: number; previous: number; delta: number; percentChange: number | null };
+type MetricRequestRow = { status: string; priority: string; createdAt: Date };
+type MetricDemoRow = { status: string; createdAt: Date };
+type MetricPlanRow = { createdAt: Date };
+
+export function calculateMonthlyMetric(current: number, previous: number): MonthlyMetric {
+  return { current, previous, delta: current - previous, percentChange: previous === 0 ? null : Math.round(((current - previous) / previous) * 100) };
+}
+
+function monthLabel(date: Date) { return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`; }
+
+export function buildMvpMetrics(source: { requests: MetricRequestRow[]; demos: MetricDemoRow[]; plans: MetricPlanRow[] }, now = new Date()): MvpMetrics {
+  const { requests, demos, plans } = source;
+  const currentStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)); const previousStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  const since = now.getTime() - 30 * 24 * 60 * 60 * 1000;
+  const requestCount = (status: string) => requests.filter(item => item.status === status).length;
+  const demoCount = (status: string) => demos.filter(item => item.status === status).length;
+  const countPeriod = <T extends { createdAt: Date }>(items: T[], start: Date, end: Date) => items.filter(item => item.createdAt >= start && item.createdAt < end).length;
+  const submitted = requestCount("submitted"); const inReview = requestCount("in_review");
+  return {
+    requests: { total: requests.length, open: submitted + inReview, urgent: requests.filter(item => item.priority === "urgent").length, completed: requestCount("completed"), inReview, submitted, rejected: requestCount("rejected"), last30Days: requests.filter(item => item.createdAt.getTime() >= since).length },
+    demos: { total: demos.length, new: demoCount("new"), contacted: demoCount("contacted"), qualified: demoCount("qualified"), closed: demoCount("closed"), last30Days: demos.filter(item => item.createdAt.getTime() >= since).length },
+    hrPlans: { total: plans.length, last30Days: plans.filter(item => item.createdAt.getTime() >= since).length },
+    monthly: { currentMonth: monthLabel(currentStart), previousMonth: monthLabel(previousStart), requests: calculateMonthlyMetric(countPeriod(requests, currentStart, now), countPeriod(requests, previousStart, currentStart)), demos: calculateMonthlyMetric(countPeriod(demos, currentStart, now), countPeriod(demos, previousStart, currentStart)), hrPlans: calculateMonthlyMetric(countPeriod(plans, currentStart, now), countPeriod(plans, previousStart, currentStart)) },
+  };
+}
 
 export async function getMvpMetrics(): Promise<MvpMetrics> {
   const db = await getDb();
-  const empty: MvpMetrics = { requests: { total: 0, open: 0, urgent: 0, completed: 0, inReview: 0, submitted: 0, rejected: 0, last30Days: 0 }, demos: { total: 0, new: 0, contacted: 0, qualified: 0, closed: 0, last30Days: 0 }, hrPlans: { total: 0, last30Days: 0 } };
+  const now = new Date(); const currentStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)); const previousStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  const empty: MvpMetrics = { requests: { total: 0, open: 0, urgent: 0, completed: 0, inReview: 0, submitted: 0, rejected: 0, last30Days: 0 }, demos: { total: 0, new: 0, contacted: 0, qualified: 0, closed: 0, last30Days: 0 }, hrPlans: { total: 0, last30Days: 0 }, monthly: { currentMonth: monthLabel(currentStart), previousMonth: monthLabel(previousStart), requests: calculateMonthlyMetric(0, 0), demos: calculateMonthlyMetric(0, 0), hrPlans: calculateMonthlyMetric(0, 0) } };
   if (!db) return empty;
   const [requests, demos, plans] = await Promise.all([
     db.select({ status: serviceRequests.status, priority: serviceRequests.priority, createdAt: serviceRequests.createdAt }).from(serviceRequests),
     db.select({ status: demoRequests.status, createdAt: demoRequests.createdAt }).from(demoRequests),
     db.select({ createdAt: hrSystemPlans.createdAt }).from(hrSystemPlans),
   ]);
-  const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const requestCount = (status: string) => requests.filter(item => item.status === status).length;
-  const demoCount = (status: string) => demos.filter(item => item.status === status).length;
-  const requestLast30 = requests.filter(item => item.createdAt.getTime() >= since).length;
-  const demoLast30 = demos.filter(item => item.createdAt.getTime() >= since).length;
-  const planLast30 = plans.filter(item => item.createdAt.getTime() >= since).length;
-  const submitted = requestCount("submitted"); const inReview = requestCount("in_review");
-  return {
-    requests: { total: requests.length, open: submitted + inReview, urgent: requests.filter(item => item.priority === "urgent").length, completed: requestCount("completed"), inReview, submitted, rejected: requestCount("rejected"), last30Days: requestLast30 },
-    demos: { total: demos.length, new: demoCount("new"), contacted: demoCount("contacted"), qualified: demoCount("qualified"), closed: demoCount("closed"), last30Days: demoLast30 },
-    hrPlans: { total: plans.length, last30Days: planLast30 },
-  };
+  return buildMvpMetrics({ requests, demos, plans }, now);
 }
