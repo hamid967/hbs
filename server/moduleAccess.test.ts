@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { canManageRequest, permittedRequestTypes } from "./requestPolicy";
-import { normalizeModulePermissions } from "../shared/moduleAccess";
+import { getPermissionTemplate, normalizeModulePermissions, permissionTemplates } from "../shared/moduleAccess";
 
 describe("module-level access", () => {
   it("allows view-only access without granting operational management", () => {
@@ -17,5 +17,10 @@ describe("module-level access", () => {
 
   it("normalizes management permission to include view permission", () => {
     expect(normalizeModulePermissions([{ module: "hr", canView: false, canManage: true }])[0]).toEqual({ module: "hr", canView: true, canManage: true });
+  });
+
+  it("provides named templates for employee, unit specialist, observer, and shared operations roles", () => {
+    expect(permissionTemplates.map(template => template.id)).toEqual(expect.arrayContaining(["employee", "hr-coordinator", "government-officer", "hr-observer", "operations-manager"]));
+    expect(getPermissionTemplate("hr-observer")).toMatchObject({ role: "user", modulePermissions: expect.arrayContaining([{ module: "hr", canView: true, canManage: false }]) });
   });
 });
