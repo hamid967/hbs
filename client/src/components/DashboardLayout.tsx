@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
+import { trpc } from "@/lib/trpc";
 import {
   ClipboardList,
   BotMessageSquare,
@@ -46,7 +47,7 @@ const menuItems = [
   { icon: ClipboardList, label: "طلباتي", path: "/my-requests" },
   { icon: BotMessageSquare, label: "مساعد الطلبات", path: "/assistant" },
   { icon: Sparkles, label: "مصمم نظام HR", path: "/hr-system" },
-  { icon: ShieldCheck, label: "مركز العمليات", path: "/operations" },
+  { icon: ShieldCheck, label: "مركز العمليات", path: "/operations", requiresOperationAccess: true },
   { icon: UsersRound, label: "طلبات العروض", path: "/demo-requests" },
   { icon: Rocket, label: "خارطة التطوير", path: "/roadmap" },
   { icon: LayoutTemplate, label: "مساحة MVP", path: "/mvp" },
@@ -56,6 +57,7 @@ const menuItems = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { loading, user, logout } = useAuth();
+  const { data: modulePermissions } = trpc.accounts.myModulePermissions.useQuery(undefined, { enabled: Boolean(user && (!user.accountStatus || user.accountStatus === "active")) });
 
   if (loading) return <DashboardLayoutSkeleton />;
 
@@ -82,7 +84,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return <div dir="rtl" className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f8f8f5] px-5 text-[#17211c]"><div className="absolute -right-28 -top-32 size-[28rem] rounded-full bg-[#dbe8d7] blur-3xl" /><section className="relative w-full max-w-md rounded-[2rem] border border-white/70 bg-white/90 p-8 text-center shadow-[0_24px_80px_rgba(28,48,38,.12)]"><span className={`mx-auto flex size-16 items-center justify-center rounded-3xl ${isRejected || isSuspended ? "bg-[#fdeceb] text-[#aa514b]" : "bg-[#e6f2e8] text-[#347b53]"}`}><Clock3 className="size-7" /></span><p className="mt-7 text-xs font-bold tracking-[.18em] text-[#658171]">HR HBS</p><h1 className="mt-3 text-2xl font-bold text-[#173e30]">{isRejected ? "تعذر تفعيل الحساب" : isSuspended ? "الحساب موقوف مؤقتاً" : "الحساب بانتظار التفعيل"}</h1><p className="mt-4 text-sm leading-7 text-[#64726a]">{isRejected || isSuspended ? "يرجى التواصل مع مسؤول المنصة لمعرفة الخطوة التالية." : "تم تسجيل طلب الانضمام بعد دخولك الموحد. سيصلك الوصول بعد مراجعة المسؤول وتحديد الدور المناسب."}</p><Button onClick={logout} variant="outline" className="mt-7 rounded-xl border-[#d3e0d5] text-[#396f51]">تسجيل الخروج</Button></section></div>;
   }
 
-  const visibleMenuItems = menuItems.filter(item => !item.adminOnly || user.role === "admin");
+  const hasOperationAccess = user.role === "admin" || Boolean(modulePermissions?.some(permission => permission.canView));
+  const visibleMenuItems = menuItems.filter(item => (!item.adminOnly || user.role === "admin") && (!item.requiresOperationAccess || hasOperationAccess));
 
   return (
     <SidebarProvider dir="rtl" className="bg-[#f8f8f5] text-[#17211c]">

@@ -5,6 +5,7 @@ const dbMocks = vi.hoisted(() => ({
   addRequestNote: vi.fn(),
   createRequestWithHistory: vi.fn(),
   getEmployeeRequests: vi.fn(),
+  getUserModulePermissions: vi.fn(),
   getOperationsRequests: vi.fn(),
   getRequestDetail: vi.fn(),
   updateRequestStatus: vi.fn(),
@@ -23,6 +24,7 @@ function context(role: "user" | "hr" | "government" | "manager" | "admin"): Trpc
       email: "test@example.com",
       loginMethod: "manus",
       role,
+      accountStatus: "active",
       createdAt: new Date(),
       updatedAt: new Date(),
       lastSignedIn: new Date(),
@@ -42,6 +44,12 @@ describe("requests router authorization and review workflow", () => {
     });
     dbMocks.updateRequestStatus.mockResolvedValue({ success: true });
     dbMocks.addRequestNote.mockResolvedValue({ success: true });
+    dbMocks.getUserModulePermissions.mockImplementation((_userId: number, role: string) => {
+      if (role === "hr") return [{ module: "hr", canView: true, canManage: true }, { module: "government", canView: false, canManage: false }];
+      if (role === "government") return [{ module: "hr", canView: false, canManage: false }, { module: "government", canView: true, canManage: true }];
+      if (role === "manager" || role === "admin") return [{ module: "hr", canView: true, canManage: true }, { module: "government", canView: true, canManage: true }];
+      return [{ module: "hr", canView: false, canManage: false }, { module: "government", canView: false, canManage: false }];
+    });
   });
 
   it("prevents an employee account from opening the operations queue", async () => {

@@ -30,6 +30,13 @@ describe("accounts router", () => {
     expect(dbMocks.updateUserAccount).toHaveBeenCalledWith({ userId: 19, actorId: 7, accountStatus: "active", role: "hr", note: "تمت مراجعة الحساب" });
   });
 
+  it("passes a complete HR and government permission matrix to the update helper", async () => {
+    const caller = accountsRouter.createCaller(context());
+    const modulePermissions = [{ module: "hr" as const, canView: true, canManage: false }, { module: "government" as const, canView: true, canManage: true }];
+    await expect(caller.update({ userId: 19, accountStatus: "active", role: "user", modulePermissions })).resolves.toEqual({ success: true });
+    expect(dbMocks.updateUserAccount).toHaveBeenCalledWith({ userId: 19, actorId: 7, accountStatus: "active", role: "user", modulePermissions });
+  });
+
   it("does not allow an administrator to deactivate or downgrade their own account", async () => {
     const caller = accountsRouter.createCaller(context());
     await expect(caller.update({ userId: 7, accountStatus: "suspended", role: "admin" })).rejects.toMatchObject({ code: "BAD_REQUEST" });

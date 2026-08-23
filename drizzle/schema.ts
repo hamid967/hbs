@@ -1,4 +1,4 @@
-import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -34,8 +34,34 @@ export const accountActivationHistory = mysqlTable("accountActivationHistory", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const accessModules = ["hr", "government"] as const;
+
+export const userModulePermissions = mysqlTable("userModulePermissions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  module: mysqlEnum("module", accessModules).notNull(),
+  canView: boolean("canView").default(false).notNull(),
+  canManage: boolean("canManage").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("userModulePermissions_user_module_unique").on(table.userId, table.module)]);
+
+export const userModulePermissionHistory = mysqlTable("userModulePermissionHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  actorId: int("actorId").references(() => users.id, { onDelete: "set null" }),
+  module: mysqlEnum("module", accessModules).notNull(),
+  previousCanView: boolean("previousCanView").default(false).notNull(),
+  previousCanManage: boolean("previousCanManage").default(false).notNull(),
+  nextCanView: boolean("nextCanView").default(false).notNull(),
+  nextCanManage: boolean("nextCanManage").default(false).notNull(),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+export type UserModulePermission = typeof userModulePermissions.$inferSelect;
 
 export const requestTypes = ["hr", "government"] as const;
 export const requestStatuses = ["submitted", "in_review", "approved", "rejected", "completed"] as const;

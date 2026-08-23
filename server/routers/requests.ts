@@ -5,6 +5,7 @@ import {
   getEmployeeRequests,
   getOperationsRequests,
   getRequestDetail,
+  getUserModulePermissions,
   updateRequestStatus,
   addRequestNote,
 } from "../db";
@@ -42,29 +43,33 @@ export const requestsRouter = router({
   ),
 
   detail: protectedProcedure.input(z.object({ id: z.number().int().positive() })).query(async ({ ctx, input }) => {
-    const detail = await getRequestDetail(input.id, ctx.user.id, ctx.user.role);
+    const permissions = await getUserModulePermissions(ctx.user.id, ctx.user.role);
+    const detail = await getRequestDetail(input.id, ctx.user.id, ctx.user.role, permissions);
     if (!detail) throw new TRPCError({ code: "NOT_FOUND", message: "الطلب غير موجود أو لا تملك صلاحية الوصول إليه" });
     return detail;
   }),
 
   operations: protectedProcedure.input(requestFilters).query(async ({ ctx, input }) => {
-    const permittedTypes = permittedRequestTypes(ctx.user.role);
+    const permissions = await getUserModulePermissions(ctx.user.id, ctx.user.role);
+    const permittedTypes = permittedRequestTypes(ctx.user.role, permissions);
     if (!permittedTypes.length) throw new TRPCError({ code: "FORBIDDEN", message: "لا تملك صلاحية الوصول إلى مركز العمليات" });
     if (input.type && !permittedTypes.includes(input.type)) throw new TRPCError({ code: "FORBIDDEN", message: "لا تملك صلاحية هذا النوع من الطلبات" });
     return getOperationsRequests(input, permittedTypes);
   }),
 
   changeStatus: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: requestStatus, note: z.string().trim().max(2500).optional() })).mutation(async ({ ctx, input }) => {
-    const detail = await getRequestDetail(input.id, ctx.user.id, ctx.user.role);
+    const permissions = await getUserModulePermissions(ctx.user.id, ctx.user.role);
+    const detail = await getRequestDetail(input.id, ctx.user.id, ctx.user.role, permissions);
     if (!detail) throw new TRPCError({ code: "NOT_FOUND", message: "الطلب غير موجود" });
-    if (!canManageRequest(ctx.user.role, detail.request.type)) throw new TRPCError({ code: "FORBIDDEN", message: "لا تملك صلاحية مراجعة هذا الطلب" });
+    if (!canManageRequest(ctx.user.role, detail.request.type, permissions)) throw new TRPCError({ code: "FORBIDDEN", message: "لا تملك صلاحية مراجعة هذا الطلب" });
     return updateRequestStatus(input.id, ctx.user.id, detail.request.status, input.status, input.note);
   }),
 
   addNote: protectedProcedure.input(z.object({ id: z.number().int().positive(), note: z.string().trim().min(2).max(2500), visibleToEmployee: z.boolean().default(true) })).mutation(async ({ ctx, input }) => {
-    const detail = await getRequestDetail(input.id, ctx.user.id, ctx.user.role);
+    const permissions = await getUserModulePermissions(ctx.user.id, ctx.user.role);
+    const detail = await getRequestDetail(input.id, ctx.user.id, ctx.user.role, permissions);
     if (!detail) throw new TRPCError({ code: "NOT_FOUND", message: "الطلب غير موجود" });
-    if (!canManageRequest(ctx.user.role, detail.request.type)) throw new TRPCError({ code: "FORBIDDEN", message: "لا تملك صلاحية إضافة ملاحظة لهذا الطلب" });
+    if (!canManageRequest(ctx.user.role, detail.request.type, permissions)) throw new TRPCError({ code: "FORBIDDEN", message: "لا تملك صلاحية إضافة ملاحظة لهذا الطلب" });
     return addRequestNote(input.id, ctx.user.id, input.note, input.visibleToEmployee);
   }),
 });

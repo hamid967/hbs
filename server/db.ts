@@ -1,9 +1,10 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, chatMessages, chatSessions, demoRequests, hrSystemPlans, requestHistory, serviceRequests, type InsertUser, users } from "../drizzle/schema";
+import { accountActivationHistory, chatMessages, chatSessions, demoRequests, hrSystemPlans, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
-import { canManageRequest, type RequestType, type UserRole } from "./requestPolicy";
+import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
+import { defaultModulePermissionsForRole, normalizeModulePermissions, type ModulePermission } from "../shared/moduleAccess";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -43,20 +44,39 @@ export async function getUserByOpenId(openId: string) {
   return (await db.select().from(users).where(eq(users.openId, openId)).limit(1))[0];
 }
 
+export async function getUserModulePermissions(userId: number, role: UserRole): Promise<ModulePermission[]> {
+  const db = await getDb();
+  if (!db) return defaultModulePermissionsForRole(role);
+  const rows = await db.select().from(userModulePermissions).where(eq(userModulePermissions.userId, userId));
+  return rows.length ? normalizeModulePermissions(rows) : defaultModulePermissionsForRole(role);
+}
+
 export async function listUserAccounts(status?: "pending" | "active" | "suspended" | "rejected") {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(users).where(status ? eq(users.accountStatus, status) : undefined).orderBy(desc(users.createdAt));
+  const accounts = await db.select().from(users).where(status ? eq(users.accountStatus, status) : undefined).orderBy(desc(users.createdAt));
+  if (!accounts.length) return [];
+  const rows = await db.select().from(userModulePermissions).where(inArray(userModulePermissions.userId, accounts.map(account => account.id)));
+  return accounts.map(account => ({ ...account, modulePermissions: rows.filter(row => row.userId === account.id).length ? normalizeModulePermissions(rows.filter(row => row.userId === account.id)) : defaultModulePermissionsForRole(account.role) }));
 }
 
-export async function updateUserAccount(input: { userId: number; actorId: number; accountStatus: "pending" | "active" | "suspended" | "rejected"; role: "user" | "hr" | "government" | "manager" | "admin"; note?: string }) {
+export async function updateUserAccount(input: { userId: number; actorId: number; accountStatus: "pending" | "active" | "suspended" | "rejected"; role: UserRole; modulePermissions?: ModulePermission[]; note?: string }) {
   const db = await getDb();
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
   await db.transaction(async tx => {
     const user = (await tx.select().from(users).where(eq(users.id, input.userId)).limit(1))[0];
     if (!user) throw new Error("الحساب غير موجود");
     await tx.update(users).set({ accountStatus: input.accountStatus, role: input.role }).where(eq(users.id, input.userId));
-    await tx.insert(accountActivationHistory).values(createActivationHistoryRecord({ userId: input.userId, actorId: input.actorId, previousStatus: user.accountStatus, nextStatus: input.accountStatus, assignedRole: input.role, note: input.note }));
+    if (user.accountStatus !== input.accountStatus || user.role !== input.role) await tx.insert(accountActivationHistory).values(createActivationHistoryRecord({ userId: input.userId, actorId: input.actorId, previousStatus: user.accountStatus, nextStatus: input.accountStatus, assignedRole: input.role, note: input.note }));
+    if (input.modulePermissions) {
+      const existing = await tx.select().from(userModulePermissions).where(eq(userModulePermissions.userId, input.userId));
+      for (const permission of normalizeModulePermissions(input.modulePermissions)) {
+        const previous = existing.find(item => item.module === permission.module);
+        if (previous?.canView === permission.canView && previous?.canManage === permission.canManage) continue;
+        await tx.insert(userModulePermissions).values({ userId: input.userId, ...permission }).onDuplicateKeyUpdate({ set: { canView: permission.canView, canManage: permission.canManage } });
+        await tx.insert(userModulePermissionHistory).values({ userId: input.userId, actorId: input.actorId, module: permission.module, previousCanView: previous?.canView ?? false, previousCanManage: previous?.canManage ?? false, nextCanView: permission.canView, nextCanManage: permission.canManage, note: input.note ?? null });
+      }
+    }
   });
   return { success: true } as const;
 }
@@ -92,15 +112,16 @@ export async function getEmployeeRequests(employeeId: number, filters: { type?: 
   return db.select().from(serviceRequests).where(and(...conditions)).orderBy(desc(serviceRequests.updatedAt));
 }
 
-export async function getRequestDetail(id: number, userId: number, role: UserRole) {
+export async function getRequestDetail(id: number, userId: number, role: UserRole, permissions = defaultModulePermissionsForRole(role)) {
   const db = await getDb();
   if (!db) return undefined;
   const request = (await db.select().from(serviceRequests).where(eq(serviceRequests.id, id)).limit(1))[0];
   if (!request) return undefined;
-  const isManager = canManageRequest(role, request.type);
-  if (!isManager && request.employeeId !== userId) return undefined;
-  const history = await db.select().from(requestHistory).where(and(eq(requestHistory.requestId, id), ...(isManager ? [] : [eq(requestHistory.visibleToEmployee, true)]) )).orderBy(desc(requestHistory.createdAt));
-  return { request, history, canManage: isManager };
+  const canManage = canManageRequest(role, request.type, permissions);
+  const canView = permittedRequestTypes(role, permissions).includes(request.type);
+  if (!canView && request.employeeId !== userId) return undefined;
+  const history = await db.select().from(requestHistory).where(and(eq(requestHistory.requestId, id), ...(canManage ? [] : [eq(requestHistory.visibleToEmployee, true)]) )).orderBy(desc(requestHistory.createdAt));
+  return { request, history, canManage };
 }
 
 export async function getOperationsRequests(filters: { type?: RequestType; status?: "submitted" | "in_review" | "approved" | "rejected" | "completed" }, permittedTypes: RequestType[]) {

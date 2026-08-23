@@ -1,15 +1,13 @@
 export type UserRole = "user" | "hr" | "government" | "manager" | "admin";
 export type RequestType = "hr" | "government";
+import { canManageModule, defaultModulePermissionsForRole, type ModulePermission, permittedModules } from "../shared/moduleAccess";
 
-export function canManageRequest(role: UserRole, type: RequestType) {
-  return role === "admin" || role === "manager" || (role === "hr" && type === "hr") || (role === "government" && type === "government");
+export function canManageRequest(role: UserRole, type: RequestType, permissions = defaultModulePermissionsForRole(role)) {
+  return canManageModule(role, permissions, type);
 }
 
-export function permittedRequestTypes(role: UserRole): RequestType[] {
-  if (role === "admin" || role === "manager") return ["hr", "government"];
-  if (role === "hr") return ["hr"];
-  if (role === "government") return ["government"];
-  return [];
+export function permittedRequestTypes(role: UserRole, permissions = defaultModulePermissionsForRole(role)): RequestType[] {
+  return permittedModules(role, permissions);
 }
 
 export function createRequestReference(type: RequestType, timestamp = Date.now()) {
