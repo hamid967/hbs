@@ -15,7 +15,7 @@ describe("approvals router", () => {
   it("returns only the HR approval inbox within the current company", async () => {
     const caller = approvalsRouter.createCaller(context("hr"));
     await expect(caller.inbox()).resolves.toEqual([]);
-    expect(dbMocks.getApprovalInbox).toHaveBeenCalledWith(1, ["hr"]);
+    expect(dbMocks.getApprovalInbox).toHaveBeenCalledWith(1, 9, ["hr"]);
   });
   it("blocks users without an approval role", async () => {
     const caller = approvalsRouter.createCaller(context("user"));

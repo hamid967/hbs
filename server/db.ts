@@ -193,8 +193,11 @@ export async function createRequestWithHistory(input: {
     if (!request) throw new Error("تعذر إنشاء الطلب");
     await tx.insert(requestHistory).values({ requestId: request.id, actorId: input.employeeId, action: "created", nextStatus: "submitted", note: "تم إنشاء الطلب وإرساله للمراجعة.", visibleToEmployee: true });
     const profile = (await tx.select().from(employeeProfiles).where(eq(employeeProfiles.userId, input.employeeId)).limit(1))[0];
-    const approverRole = profile?.managerUserId ? "manager" as const : request.type === "hr" ? "hr" as const : "government" as const;
-    await tx.insert(approvalTasks).values({ companyId, requestId: request.id, approverRole, assigneeUserId: profile?.managerUserId ?? null });
+    const fallbackManager = profile?.managerUserId ? undefined : (await tx.select({ id: users.id }).from(users).where(and(eq(users.companyId, companyId), eq(users.role, "admin"), eq(users.accountStatus, "active"))).limit(1))[0];
+    const managerUserId = profile?.managerUserId ?? fallbackManager?.id;
+    const approverRole = managerUserId ? "manager" as const : request.type === "hr" ? "hr" as const : "government" as const;
+    await tx.insert(approvalTasks).values({ companyId, requestId: request.id, approverRole, assigneeUserId: managerUserId ?? null });
+    if (fallbackManager) await tx.insert(requestHistory).values({ requestId: request.id, actorId: input.employeeId, action: "note", note: "تم تعيين مدير افتراضي من مسؤولي الشركة لأن ملف الموظف لا يحتوي مديراً مباشراً.", visibleToEmployee: true });
     const approvers = await tx.select({ id: users.id }).from(users).where(and(eq(users.companyId, companyId), eq(users.role, approverRole), eq(users.accountStatus, "active")));
     if (approvers.length) await tx.insert(inAppNotifications).values(approvers.map(approver => ({ companyId, recipientUserId: approver.id, type: "approval_required" as const, title: "موافقة جديدة بانتظارك", body: `طلب ${request.reference} يحتاج إلى قرارك.`, href: "/approvals", relatedRequestId: request.id })));
   });
