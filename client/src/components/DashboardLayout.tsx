@@ -33,6 +33,8 @@ import {
   Rocket,
   LayoutTemplate,
   Wrench,
+  UserCog,
+  Clock3,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -49,6 +51,7 @@ const menuItems = [
   { icon: Rocket, label: "خارطة التطوير", path: "/roadmap" },
   { icon: LayoutTemplate, label: "مساحة MVP", path: "/mvp" },
   { icon: Wrench, label: "أدوات HR", path: "/hr-tools" },
+  { icon: UserCog, label: "إدارة الحسابات", path: "/accounts", adminOnly: true },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -67,11 +70,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <h1 className="text-3xl font-bold tracking-tight text-[#173e30]">حلول الغد</h1>
           <p className="mt-4 text-sm leading-7 text-[#64726a]">منصة داخلية منظمة لتقديم ومتابعة طلبات الموارد البشرية والعلاقات الحكومية.</p>
           <Button onClick={() => startLogin()} size="lg" className="mt-8 h-12 w-full rounded-2xl bg-[#1f5b45] text-base hover:bg-[#174735]">تسجيل الدخول للمنصة</Button>
-          <p className="mt-5 text-xs text-[#89938d]">هذه المنصة مخصصة للموظفين والفرق المخولة فقط.</p>
+          <p className="mt-5 text-xs leading-6 text-[#89938d]">هذه المنصة مخصصة للموظفين والفرق المخولة فقط. بعد أول دخول موحد، يراجع المسؤول طلب التفعيل قبل إتاحة الخدمات.</p>
         </section>
       </div>
     );
   }
+
+  if (user.accountStatus && user.accountStatus !== "active") {
+    const isRejected = user.accountStatus === "rejected";
+    const isSuspended = user.accountStatus === "suspended";
+    return <div dir="rtl" className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f8f8f5] px-5 text-[#17211c]"><div className="absolute -right-28 -top-32 size-[28rem] rounded-full bg-[#dbe8d7] blur-3xl" /><section className="relative w-full max-w-md rounded-[2rem] border border-white/70 bg-white/90 p-8 text-center shadow-[0_24px_80px_rgba(28,48,38,.12)]"><span className={`mx-auto flex size-16 items-center justify-center rounded-3xl ${isRejected || isSuspended ? "bg-[#fdeceb] text-[#aa514b]" : "bg-[#e6f2e8] text-[#347b53]"}`}><Clock3 className="size-7" /></span><p className="mt-7 text-xs font-bold tracking-[.18em] text-[#658171]">HR HBS</p><h1 className="mt-3 text-2xl font-bold text-[#173e30]">{isRejected ? "تعذر تفعيل الحساب" : isSuspended ? "الحساب موقوف مؤقتاً" : "الحساب بانتظار التفعيل"}</h1><p className="mt-4 text-sm leading-7 text-[#64726a]">{isRejected || isSuspended ? "يرجى التواصل مع مسؤول المنصة لمعرفة الخطوة التالية." : "تم تسجيل طلب الانضمام بعد دخولك الموحد. سيصلك الوصول بعد مراجعة المسؤول وتحديد الدور المناسب."}</p><Button onClick={logout} variant="outline" className="mt-7 rounded-xl border-[#d3e0d5] text-[#396f51]">تسجيل الخروج</Button></section></div>;
+  }
+
+  const visibleMenuItems = menuItems.filter(item => !item.adminOnly || user.role === "admin");
 
   return (
     <SidebarProvider dir="rtl" className="bg-[#f8f8f5] text-[#17211c]">
@@ -89,7 +100,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <SidebarContent className="px-3 pt-6">
           <p className="px-3 pb-3 text-[10px] font-semibold tracking-[0.16em] text-[#9ab4a5] group-data-[collapsible=icon]:hidden">مساحة العمل</p>
           <SidebarMenu className="gap-2">
-            {menuItems.map(item => <NavigationItem key={item.path} {...item} />)}
+            {visibleMenuItems.map(item => <NavigationItem key={item.path} {...item} />)}
           </SidebarMenu>
         </SidebarContent>
 

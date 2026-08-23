@@ -1,8 +1,9 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { chatMessages, chatSessions, demoRequests, hrSystemPlans, requestHistory, serviceRequests, type InsertUser, users } from "../drizzle/schema";
+import { accountActivationHistory, chatMessages, chatSessions, demoRequests, hrSystemPlans, requestHistory, serviceRequests, type InsertUser, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, type RequestType, type UserRole } from "./requestPolicy";
+import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -24,8 +25,15 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   }
   values.lastSignedIn = user.lastSignedIn ?? new Date();
   updateSet.lastSignedIn = values.lastSignedIn;
-  values.role = user.role ?? (user.openId === ENV.ownerOpenId ? "admin" : "user");
-  updateSet.role = values.role;
+  const bootstrap = getBootstrapAccountSettings({ openId: user.openId, email: user.email, ownerOpenId: ENV.ownerOpenId });
+  values.role = user.role ?? bootstrap.role;
+  values.accountStatus = user.accountStatus ?? bootstrap.accountStatus;
+  if (user.role !== undefined) updateSet.role = user.role;
+  if (user.accountStatus !== undefined) updateSet.accountStatus = user.accountStatus;
+  if (bootstrap.role === "admin") {
+    updateSet.role = "admin";
+    updateSet.accountStatus = "active";
+  }
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
 }
 
@@ -33,6 +41,24 @@ export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) return undefined;
   return (await db.select().from(users).where(eq(users.openId, openId)).limit(1))[0];
+}
+
+export async function listUserAccounts(status?: "pending" | "active" | "suspended" | "rejected") {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(users).where(status ? eq(users.accountStatus, status) : undefined).orderBy(desc(users.createdAt));
+}
+
+export async function updateUserAccount(input: { userId: number; actorId: number; accountStatus: "pending" | "active" | "suspended" | "rejected"; role: "user" | "hr" | "government" | "manager" | "admin"; note?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await db.transaction(async tx => {
+    const user = (await tx.select().from(users).where(eq(users.id, input.userId)).limit(1))[0];
+    if (!user) throw new Error("الحساب غير موجود");
+    await tx.update(users).set({ accountStatus: input.accountStatus, role: input.role }).where(eq(users.id, input.userId));
+    await tx.insert(accountActivationHistory).values(createActivationHistoryRecord({ userId: input.userId, actorId: input.actorId, previousStatus: user.accountStatus, nextStatus: input.accountStatus, assignedRole: input.role, note: input.note }));
+  });
+  return { success: true } as const;
 }
 
 export async function createRequestWithHistory(input: {

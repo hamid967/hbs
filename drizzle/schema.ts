@@ -17,9 +17,21 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "hr", "government", "manager", "admin"]).default("user").notNull(),
+  accountStatus: mysqlEnum("accountStatus", ["pending", "active", "suspended", "rejected"]).default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+});
+
+export const accountActivationHistory = mysqlTable("accountActivationHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  actorId: int("actorId").references(() => users.id, { onDelete: "set null" }),
+  previousStatus: varchar("previousStatus", { length: 32 }),
+  nextStatus: mysqlEnum("nextStatus", ["pending", "active", "suspended", "rejected"]).notNull(),
+  assignedRole: mysqlEnum("assignedRole", ["user", "hr", "government", "manager", "admin"]),
+  note: text("note"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;
