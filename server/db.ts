@@ -197,3 +197,32 @@ export async function updateDemoRequest(input: { id: number; status: "new" | "co
   await db.update(demoRequests).set({ status: input.status, ...(input.ownerId ? { ownerId: input.ownerId } : {}), ...(input.internalNote !== undefined ? { internalNote: input.internalNote } : {}) }).where(eq(demoRequests.id, input.id));
   return { success: true } as const;
 }
+
+export type MvpMetrics = {
+  requests: { total: number; open: number; urgent: number; completed: number; inReview: number; submitted: number; rejected: number; last30Days: number };
+  demos: { total: number; new: number; contacted: number; qualified: number; closed: number; last30Days: number };
+  hrPlans: { total: number; last30Days: number };
+};
+
+export async function getMvpMetrics(): Promise<MvpMetrics> {
+  const db = await getDb();
+  const empty: MvpMetrics = { requests: { total: 0, open: 0, urgent: 0, completed: 0, inReview: 0, submitted: 0, rejected: 0, last30Days: 0 }, demos: { total: 0, new: 0, contacted: 0, qualified: 0, closed: 0, last30Days: 0 }, hrPlans: { total: 0, last30Days: 0 } };
+  if (!db) return empty;
+  const [requests, demos, plans] = await Promise.all([
+    db.select({ status: serviceRequests.status, priority: serviceRequests.priority, createdAt: serviceRequests.createdAt }).from(serviceRequests),
+    db.select({ status: demoRequests.status, createdAt: demoRequests.createdAt }).from(demoRequests),
+    db.select({ createdAt: hrSystemPlans.createdAt }).from(hrSystemPlans),
+  ]);
+  const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const requestCount = (status: string) => requests.filter(item => item.status === status).length;
+  const demoCount = (status: string) => demos.filter(item => item.status === status).length;
+  const requestLast30 = requests.filter(item => item.createdAt.getTime() >= since).length;
+  const demoLast30 = demos.filter(item => item.createdAt.getTime() >= since).length;
+  const planLast30 = plans.filter(item => item.createdAt.getTime() >= since).length;
+  const submitted = requestCount("submitted"); const inReview = requestCount("in_review");
+  return {
+    requests: { total: requests.length, open: submitted + inReview, urgent: requests.filter(item => item.priority === "urgent").length, completed: requestCount("completed"), inReview, submitted, rejected: requestCount("rejected"), last30Days: requestLast30 },
+    demos: { total: demos.length, new: demoCount("new"), contacted: demoCount("contacted"), qualified: demoCount("qualified"), closed: demoCount("closed"), last30Days: demoLast30 },
+    hrPlans: { total: plans.length, last30Days: planLast30 },
+  };
+}
