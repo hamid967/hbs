@@ -1,4 +1,4 @@
-import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 export const companies = mysqlTable("companies", {
   id: int("id").autoincrement().primaryKey(),
@@ -118,6 +118,19 @@ export const approvalTasks = mysqlTable("approvalTasks", {
   decidedAt: timestamp("decidedAt"),
 }, table => [uniqueIndex("approvalTasks_request_role_unique").on(table.requestId, table.approverRole)]);
 
+export const inAppNotifications = mysqlTable("inAppNotifications", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  recipientUserId: int("recipientUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: mysqlEnum("type", ["approval_required", "request_decision"]).notNull(),
+  title: varchar("title", { length: 180 }).notNull(),
+  body: text("body").notNull(),
+  href: varchar("href", { length: 320 }),
+  relatedRequestId: int("relatedRequestId").references(() => serviceRequests.id, { onDelete: "set null" }),
+  readAt: timestamp("readAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("inAppNotifications_recipient_created_idx").on(table.recipientUserId, table.createdAt)]);
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type UserModulePermission = typeof userModulePermissions.$inferSelect;
@@ -125,6 +138,7 @@ export type CompanyPermissionTemplate = typeof companyPermissionTemplates.$infer
 export type Department = typeof departments.$inferSelect;
 export type EmployeeProfile = typeof employeeProfiles.$inferSelect;
 export type ApprovalTask = typeof approvalTasks.$inferSelect;
+export type InAppNotification = typeof inAppNotifications.$inferSelect;
 
 export const requestTypes = ["hr", "government"] as const;
 export const requestStatuses = ["submitted", "in_review", "approved", "rejected", "completed"] as const;

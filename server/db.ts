@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeProfiles, hrSystemPlans, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeProfiles, hrSystemPlans, inAppNotifications, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -192,7 +192,10 @@ export async function createRequestWithHistory(input: {
     const request = (await tx.select().from(serviceRequests).where(eq(serviceRequests.reference, input.reference)).limit(1))[0];
     if (!request) throw new Error("تعذر إنشاء الطلب");
     await tx.insert(requestHistory).values({ requestId: request.id, actorId: input.employeeId, action: "created", nextStatus: "submitted", note: "تم إنشاء الطلب وإرساله للمراجعة.", visibleToEmployee: true });
-    await tx.insert(approvalTasks).values({ companyId, requestId: request.id, approverRole: request.type === "hr" ? "hr" : "government" });
+    const approverRole = request.type === "hr" ? "hr" as const : "government" as const;
+    await tx.insert(approvalTasks).values({ companyId, requestId: request.id, approverRole });
+    const approvers = await tx.select({ id: users.id }).from(users).where(and(eq(users.companyId, companyId), eq(users.role, approverRole), eq(users.accountStatus, "active")));
+    if (approvers.length) await tx.insert(inAppNotifications).values(approvers.map(approver => ({ companyId, recipientUserId: approver.id, type: "approval_required" as const, title: "موافقة جديدة بانتظارك", body: `طلب ${request.reference} يحتاج إلى قرارك.`, href: "/approvals", relatedRequestId: request.id })));
   });
   const request = (await db.select().from(serviceRequests).where(eq(serviceRequests.reference, input.reference)).limit(1))[0];
   if (!request) throw new Error("تعذر قراءة الطلب المنشأ");
@@ -245,6 +248,9 @@ export async function getApprovalInbox(companyId: number, roles: Array<"hr" | "g
   return db.select({ task: approvalTasks, request: serviceRequests, employee: { id: users.id, name: users.name, email: users.email } }).from(approvalTasks).innerJoin(serviceRequests, eq(approvalTasks.requestId, serviceRequests.id)).innerJoin(users, eq(serviceRequests.employeeId, users.id)).where(and(eq(approvalTasks.companyId, companyId), eq(approvalTasks.status, "pending"), inArray(approvalTasks.approverRole, roles))).orderBy(desc(approvalTasks.createdAt));
 }
 
+export async function listNotifications(companyId: number, recipientUserId: number) { const db = await getDb(); if (!db) return []; return db.select().from(inAppNotifications).where(and(eq(inAppNotifications.companyId, companyId), eq(inAppNotifications.recipientUserId, recipientUserId))).orderBy(desc(inAppNotifications.createdAt)).limit(50); }
+export async function markNotificationRead(id: number, companyId: number, recipientUserId: number) { const db = await getDb(); if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً"); await db.update(inAppNotifications).set({ readAt: new Date() }).where(and(eq(inAppNotifications.id, id), eq(inAppNotifications.companyId, companyId), eq(inAppNotifications.recipientUserId, recipientUserId))); return { success: true } as const; }
+
 export async function decideApprovalTask(input: { id: number; companyId: number; actorId: number; allowedRoles: Array<"hr" | "government" | "manager" | "admin">; decision: "approved" | "rejected"; note?: string }) {
   const db = await getDb();
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
@@ -256,6 +262,7 @@ export async function decideApprovalTask(input: { id: number; companyId: number;
     await tx.update(approvalTasks).set({ status: input.decision, decidedByUserId: input.actorId, decisionNote: input.note ?? null, decidedAt: new Date() }).where(eq(approvalTasks.id, input.id));
     await tx.update(serviceRequests).set({ status: input.decision }).where(eq(serviceRequests.id, request.id));
     await tx.insert(requestHistory).values({ requestId: request.id, actorId: input.actorId, action: "status_change", previousStatus: request.status, nextStatus: input.decision, note: input.note || (input.decision === "approved" ? "تمت الموافقة على الطلب." : "تم رفض الطلب."), visibleToEmployee: true });
+    await tx.insert(inAppNotifications).values({ companyId: input.companyId, recipientUserId: request.employeeId, type: "request_decision", title: input.decision === "approved" ? "تمت الموافقة على طلبك" : "تم تحديث قرار طلبك", body: input.note || (input.decision === "approved" ? "تمت الموافقة على طلبك ويمكنك متابعة حالته." : "تم رفض طلبك. راجع الملاحظة أو تواصل مع الفريق."), href: `/requests/${request.id}`, relatedRequestId: request.id });
   });
   return { success: true } as const;
 }

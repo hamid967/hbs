@@ -1,0 +1,12 @@
+import DashboardLayout from "@/components/DashboardLayout";
+import { Button } from "@/components/ui/button";
+import { trpc } from "@/lib/trpc";
+import { BellRing, Check, ShieldAlert } from "lucide-react";
+import { useLocation } from "wouter";
+
+export default function NotificationsCenter() {
+  const [, setLocation] = useLocation(); const utils = trpc.useUtils();
+  const { data, isLoading, isError, error } = trpc.notifications.list.useQuery();
+  const markRead = trpc.notifications.markRead.useMutation({ onSuccess: () => utils.notifications.list.invalidate() });
+  return <DashboardLayout><div dir="rtl" className="mx-auto max-w-4xl"><p className="text-xs font-bold text-[#5d8d70]">التنبيهات</p><h1 className="mt-2 text-3xl font-bold text-[#1d4532]">مركز الإشعارات</h1><p className="mt-3 text-sm leading-7 text-[#748178]">تابع قرارات طلباتك والتحديثات التي تتطلب إجراءً منك داخل الشركة.</p>{isLoading ? <p className="mt-10 text-sm text-[#728077]">جارٍ تحميل الإشعارات…</p> : isError ? <div className="mt-8 rounded-3xl border border-[#f1d5d2] bg-white p-8 text-center text-[#9a4e49]"><ShieldAlert className="mx-auto size-6" /><p className="mt-3">{error.message}</p></div> : data?.length ? <div className="mt-8 space-y-3">{data.map(item => <article key={item.id} className={`rounded-2xl border p-5 ${item.readAt ? "border-[#e3ebe4] bg-white" : "border-[#cfe4d4] bg-[#f7fcf8]"}`}><div className="flex items-start justify-between gap-4"><div><div className="flex items-center gap-2"><BellRing className="size-4 text-[#397657]" /><h2 className="font-bold text-[#294535]">{item.title}</h2></div><p className="mt-2 text-sm leading-6 text-[#66776d]">{item.body}</p><p className="mt-3 text-xs text-[#87938b]">{new Date(item.createdAt).toLocaleString("ar-SA")}</p></div><div className="flex gap-2">{item.href && <Button variant="outline" onClick={() => { if (!item.readAt) markRead.mutate({ id: item.id }); setLocation(item.href!); }} className="rounded-xl text-[#386f50]">عرض</Button>}{!item.readAt && <Button variant="ghost" onClick={() => markRead.mutate({ id: item.id })} className="rounded-xl text-[#386f50]"><Check className="ml-1 size-4" />قرأت</Button>}</div></div></article>)}</div> : <div className="mt-8 rounded-3xl border border-[#dfe9e1] bg-white p-12 text-center"><BellRing className="mx-auto size-7 text-[#387856]" /><h2 className="mt-4 font-bold text-[#294535]">لا توجد إشعارات جديدة</h2><p className="mt-2 text-sm text-[#748178]">ستظهر هنا تحديثات الموافقات وقرارات الطلبات الخاصة بك.</p></div>}</div></DashboardLayout>;
+}

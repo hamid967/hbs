@@ -38,6 +38,7 @@ import {
   Building2,
   UserRoundSearch,
   ClipboardCheck,
+  BellRing,
   Clock3,
 } from "lucide-react";
 import { useLocation } from "wouter";
@@ -59,6 +60,7 @@ const menuItems = [
   { icon: Building2, label: "قوالب الشركة", path: "/company-templates", adminOnly: true },
   { icon: UserRoundSearch, label: "دليل الموظفين", path: "/employees", requiresDirectoryAccess: true },
   { icon: ClipboardCheck, label: "صندوق الموافقات", path: "/approvals", requiresApprovalAccess: true },
+  { icon: BellRing, label: "الإشعارات", path: "/notifications" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
