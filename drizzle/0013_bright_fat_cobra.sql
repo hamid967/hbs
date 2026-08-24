@@ -1,0 +1,1 @@
+ALTER TABLE `employeeProfiles` ADD `region` varchar(120);

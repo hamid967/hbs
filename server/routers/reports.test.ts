@@ -20,6 +20,10 @@ describe("reports router", () => {
     await reportsRouter.createCaller(context("manager")).monthly({ month: "2026-07" });
     expect(dbMocks.getHrOperationsReport).toHaveBeenCalledWith(3, "manager", 9, "2026-07");
   });
+  it("passes category and region filters without changing the signed-in company scope", async () => {
+    await reportsRouter.createCaller(context("hr")).monthly({ month: "2026-08", category: "annual", region: "الرياض" });
+    expect(dbMocks.getHrOperationsReport).toHaveBeenCalledWith(3, "hr", 9, "2026-08", { category: "annual", region: "الرياض" });
+  });
   it("blocks users without report access", async () => {
     await expect(reportsRouter.createCaller(context("user")).monthly({ month: "2026-08" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });

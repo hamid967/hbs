@@ -156,7 +156,7 @@ export async function listCompanyEmployees(companyId: number) {
   return rows.map(row => ({ ...row.user, profile: row.profile, department: row.department ? { id: row.department.id, name: row.department.name, code: row.department.code } : null }));
 }
 
-export async function saveEmployeeProfile(input: { companyId: number; userId: number; employeeNumber?: string; jobTitle?: string; departmentId?: number; managerUserId?: number; employmentStatus: "active" | "on_leave" | "inactive"; joinedAt?: Date }) {
+export async function saveEmployeeProfile(input: { companyId: number; userId: number; employeeNumber?: string; jobTitle?: string; departmentId?: number; region?: string; managerUserId?: number; employmentStatus: "active" | "on_leave" | "inactive"; joinedAt?: Date }) {
   const db = await getDb();
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
   const user = (await db.select().from(users).where(and(eq(users.id, input.userId), eq(users.companyId, input.companyId))).limit(1))[0];
@@ -169,8 +169,8 @@ export async function saveEmployeeProfile(input: { companyId: number; userId: nu
     const manager = (await db.select().from(users).where(and(eq(users.id, input.managerUserId), eq(users.companyId, input.companyId))).limit(1))[0];
     if (!manager) throw new Error("المدير غير موجود ضمن الشركة الحالية");
   }
-  const values = { companyId: input.companyId, userId: input.userId, employeeNumber: input.employeeNumber ?? null, jobTitle: input.jobTitle ?? null, departmentId: input.departmentId ?? null, managerUserId: input.managerUserId ?? null, employmentStatus: input.employmentStatus, joinedAt: input.joinedAt ?? null };
-  await db.insert(employeeProfiles).values(values).onDuplicateKeyUpdate({ set: { employeeNumber: values.employeeNumber, jobTitle: values.jobTitle, departmentId: values.departmentId, managerUserId: values.managerUserId, employmentStatus: values.employmentStatus, joinedAt: values.joinedAt } });
+  const values = { companyId: input.companyId, userId: input.userId, employeeNumber: input.employeeNumber ?? null, jobTitle: input.jobTitle ?? null, departmentId: input.departmentId ?? null, region: input.region ?? null, managerUserId: input.managerUserId ?? null, employmentStatus: input.employmentStatus, joinedAt: input.joinedAt ?? null };
+  await db.insert(employeeProfiles).values(values).onDuplicateKeyUpdate({ set: { employeeNumber: values.employeeNumber, jobTitle: values.jobTitle, departmentId: values.departmentId, region: values.region, managerUserId: values.managerUserId, employmentStatus: values.employmentStatus, joinedAt: values.joinedAt } });
   return (await db.select().from(employeeProfiles).where(eq(employeeProfiles.userId, input.userId)).limit(1))[0];
 }
 
@@ -516,6 +516,7 @@ export function buildHrOperationsReport(source: { leaves: { leaveType: string; s
 }
 
 export type HrReportScope = "company" | "team";
+export type HrReportFilters = { category?: "annual" | "sick" | "emergency" | "travel" | "operating"; region?: string };
 
 export function assertReportsAccess(role: UserRole): HrReportScope {
   if (role === "admin" || role === "hr") return "company";
@@ -543,21 +544,26 @@ export function buildHrOperationsTrend(source: { leaves: Array<{ startDate: stri
   });
 }
 
-export async function getHrOperationsReport(companyId: number, role: UserRole, userId: number, month?: string) {
+export async function getHrOperationsReport(companyId: number, role: UserRole, userId: number, month?: string, filters: HrReportFilters = {}) {
   const scope = assertReportsAccess(role);
   const now = reportDateFromMonth(month);
   const db = await getDb();
-  if (!db) return { scope, selectedMonth: now.toISOString().slice(0, 7), ...buildHrOperationsReport({ leaves: [], expenses: [] }, now), trend: buildHrOperationsTrend({ leaves: [], expenses: [] }, now) };
+  if (!db) return { scope, selectedMonth: now.toISOString().slice(0, 7), availableRegions: [], appliedFilters: filters, ...buildHrOperationsReport({ leaves: [], expenses: [] }, now), trend: buildHrOperationsTrend({ leaves: [], expenses: [] }, now) };
 
   const teamMemberIds = scope === "team" ? (await db.select({ userId: employeeProfiles.userId }).from(employeeProfiles).where(and(eq(employeeProfiles.companyId, companyId), eq(employeeProfiles.managerUserId, userId)))).map(row => row.userId) : undefined;
-  if (scope === "team" && !teamMemberIds?.length) return { scope, selectedMonth: now.toISOString().slice(0, 7), ...buildHrOperationsReport({ leaves: [], expenses: [] }, now), trend: buildHrOperationsTrend({ leaves: [], expenses: [] }, now) };
+  if (scope === "team" && !teamMemberIds?.length) return { scope, selectedMonth: now.toISOString().slice(0, 7), availableRegions: [], appliedFilters: filters, ...buildHrOperationsReport({ leaves: [], expenses: [] }, now), trend: buildHrOperationsTrend({ leaves: [], expenses: [] }, now) };
 
   const employeeScope = scope === "team" ? inArray(serviceRequests.employeeId, teamMemberIds!) : undefined;
   const [leaves, expenses] = await Promise.all([
-    db.select({ leaveType: leaveRequests.leaveType, startDate: leaveRequests.startDate, endDate: leaveRequests.endDate }).from(leaveRequests).innerJoin(serviceRequests, eq(leaveRequests.requestId, serviceRequests.id)).where(and(eq(leaveRequests.companyId, companyId), employeeScope)),
-    db.select({ expenseType: expenseRequests.expenseType, amountSar: expenseRequests.amountSar, createdAt: expenseRequests.createdAt }).from(expenseRequests).innerJoin(serviceRequests, eq(expenseRequests.requestId, serviceRequests.id)).where(and(eq(expenseRequests.companyId, companyId), employeeScope)),
+    db.select({ leaveType: leaveRequests.leaveType, startDate: leaveRequests.startDate, endDate: leaveRequests.endDate, region: employeeProfiles.region }).from(leaveRequests).innerJoin(serviceRequests, eq(leaveRequests.requestId, serviceRequests.id)).innerJoin(employeeProfiles, eq(serviceRequests.employeeId, employeeProfiles.userId)).where(and(eq(leaveRequests.companyId, companyId), eq(employeeProfiles.companyId, companyId), employeeScope)),
+    db.select({ expenseType: expenseRequests.expenseType, amountSar: expenseRequests.amountSar, createdAt: expenseRequests.createdAt, region: employeeProfiles.region }).from(expenseRequests).innerJoin(serviceRequests, eq(expenseRequests.requestId, serviceRequests.id)).innerJoin(employeeProfiles, eq(serviceRequests.employeeId, employeeProfiles.userId)).where(and(eq(expenseRequests.companyId, companyId), eq(employeeProfiles.companyId, companyId), employeeScope)),
   ]);
-  return { scope, selectedMonth: now.toISOString().slice(0, 7), ...buildHrOperationsReport({ leaves, expenses }, now), trend: buildHrOperationsTrend({ leaves, expenses }, now) };
+  const allowedLeaveTypes = ["annual", "sick", "emergency"];
+  const allowedExpenseTypes = ["travel", "operating"];
+  const visibleLeaves = leaves.filter(item => (!filters.region || item.region === filters.region) && (!filters.category || !allowedLeaveTypes.includes(filters.category) || item.leaveType === filters.category));
+  const visibleExpenses = expenses.filter(item => (!filters.region || item.region === filters.region) && (!filters.category || !allowedExpenseTypes.includes(filters.category) || item.expenseType === filters.category));
+  const availableRegions = Array.from(new Set([...leaves, ...expenses].map(item => item.region).filter((region): region is string => !!region))).sort();
+  return { scope, selectedMonth: now.toISOString().slice(0, 7), availableRegions, appliedFilters: filters, ...buildHrOperationsReport({ leaves: visibleLeaves, expenses: visibleExpenses }, now), trend: buildHrOperationsTrend({ leaves: visibleLeaves, expenses: visibleExpenses }, now) };
 }
 
 export async function getCompanyHrOperationsReport(companyId: number, now = new Date()): Promise<HrOperationsReport> {

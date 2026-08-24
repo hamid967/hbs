@@ -99,6 +99,7 @@ export const employeeProfiles = mysqlTable("employeeProfiles", {
   employeeNumber: varchar("employeeNumber", { length: 40 }),
   jobTitle: varchar("jobTitle", { length: 160 }),
   departmentId: int("departmentId").references(() => departments.id, { onDelete: "set null" }),
+  region: varchar("region", { length: 120 }),
   managerUserId: int("managerUserId").references(() => users.id, { onDelete: "set null" }),
   employmentStatus: mysqlEnum("employmentStatus", ["active", "on_leave", "inactive"]).default("active").notNull(),
   joinedAt: timestamp("joinedAt"),
