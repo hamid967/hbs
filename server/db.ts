@@ -252,6 +252,19 @@ export function nextApprovalRoleForRequest(type: RequestType): "hr" | "governmen
   return type === "hr" ? "hr" : "government";
 }
 
+export function approvalNotificationAudience(input: { stageRole: "manager" | "hr" | "government" | "admin"; decision: "approved" | "rejected"; requestType: RequestType }) {
+  if (input.stageRole === "manager" && input.decision === "approved") {
+    return { recipient: "unit" as const, role: nextApprovalRoleForRequest(input.requestType), type: "approval_required" as const };
+  }
+  return { recipient: "employee" as const, type: "request_decision" as const };
+}
+
+export function approvalTransitionPlan(input: { stageRole: "manager" | "hr" | "government" | "admin"; decision: "approved" | "rejected"; requestType: RequestType; companyId: number; requestId: number; employeeId: number }) {
+  const notification = approvalNotificationAudience(input);
+  if (notification.recipient === "unit") return { nextTask: { companyId: input.companyId, requestId: input.requestId, approverRole: notification.role }, requestStatus: "in_review" as const, historyStatus: "in_review" as const, notification };
+  return { nextTask: null, requestStatus: input.decision, historyStatus: input.decision, notification: { recipient: "employee" as const, employeeId: input.employeeId, type: notification.type } };
+}
+
 export async function getRequestDetail(id: number, userId: number, role: UserRole, permissions = defaultModulePermissionsForRole(role), companyId?: number) {
   const db = await getDb();
   if (!db) return undefined;
@@ -312,16 +325,19 @@ export async function decideApprovalTask(input: { id: number; companyId: number;
     await tx.update(approvalTasks).set({ status: input.decision, decidedByUserId: input.actorId, decisionNote: input.note ?? null, decidedAt: new Date() }).where(eq(approvalTasks.id, input.id));
     if (task.approverRole === "manager" && input.decision === "approved") {
       const nextRole = nextApprovalRoleForRequest(request.type);
-      await tx.insert(approvalTasks).values({ companyId: input.companyId, requestId: request.id, approverRole: nextRole });
+      const notification = approvalNotificationAudience({ stageRole: task.approverRole, decision: input.decision, requestType: request.type });
+      const transition = approvalTransitionPlan({ stageRole: task.approverRole, decision: input.decision, requestType: request.type, companyId: input.companyId, requestId: request.id, employeeId: request.employeeId });
+      await tx.insert(approvalTasks).values(transition.nextTask!);
       const nextApprovers = await tx.select({ id: users.id }).from(users).where(and(eq(users.companyId, input.companyId), eq(users.role, nextRole), eq(users.accountStatus, "active")));
-      if (nextApprovers.length) await tx.insert(inAppNotifications).values(nextApprovers.map(approver => ({ companyId: input.companyId, recipientUserId: approver.id, type: "approval_required" as const, title: "مرحلة موافقة جديدة بانتظارك", body: `تمت موافقة المدير على الطلب ${request.reference} وهو بانتظار قرار وحدتك.`, href: "/approvals", relatedRequestId: request.id })));
-      await tx.update(serviceRequests).set({ status: "in_review" }).where(eq(serviceRequests.id, request.id));
-      await tx.insert(requestHistory).values({ requestId: request.id, actorId: input.actorId, action: "status_change", previousStatus: request.status, nextStatus: "in_review", note: input.note || `وافق المدير المباشر وأُحيل الطلب إلى ${nextRole === "hr" ? "الموارد البشرية" : "العلاقات الحكومية"}.`, visibleToEmployee: true });
+      if (nextApprovers.length) await tx.insert(inAppNotifications).values(nextApprovers.map(approver => ({ companyId: input.companyId, recipientUserId: approver.id, type: notification.type, title: "مرحلة موافقة جديدة بانتظارك", body: `تمت موافقة المدير على الطلب ${request.reference} وهو بانتظار قرار وحدتك.`, href: "/approvals", relatedRequestId: request.id })));
+      await tx.update(serviceRequests).set({ status: transition.requestStatus }).where(eq(serviceRequests.id, request.id));
+      await tx.insert(requestHistory).values({ requestId: request.id, actorId: input.actorId, action: "status_change", previousStatus: request.status, nextStatus: transition.historyStatus, note: input.note || `وافق المدير المباشر وأُحيل الطلب إلى ${nextRole === "hr" ? "الموارد البشرية" : "العلاقات الحكومية"}.`, visibleToEmployee: true });
       return;
     }
     await tx.update(serviceRequests).set({ status: input.decision }).where(eq(serviceRequests.id, request.id));
     await tx.insert(requestHistory).values({ requestId: request.id, actorId: input.actorId, action: "status_change", previousStatus: request.status, nextStatus: input.decision, note: input.note || (input.decision === "approved" ? "تمت الموافقة على الطلب." : "تم رفض الطلب."), visibleToEmployee: true });
-    await tx.insert(inAppNotifications).values({ companyId: input.companyId, recipientUserId: request.employeeId, type: "request_decision", title: input.decision === "approved" ? "تمت الموافقة على طلبك" : "تم تحديث قرار طلبك", body: input.note || (input.decision === "approved" ? "تمت الموافقة على طلبك ويمكنك متابعة حالته." : "تم رفض طلبك. راجع الملاحظة أو تواصل مع الفريق."), href: `/requests/${request.id}`, relatedRequestId: request.id });
+    const notification = approvalNotificationAudience({ stageRole: task.approverRole, decision: input.decision, requestType: request.type });
+    await tx.insert(inAppNotifications).values({ companyId: input.companyId, recipientUserId: request.employeeId, type: notification.type, title: input.decision === "approved" ? "تمت الموافقة على طلبك" : "تم تحديث قرار طلبك", body: input.note || (input.decision === "approved" ? "تمت الموافقة على طلبك ويمكنك متابعة حالته." : "تم رفض طلبك. راجع الملاحظة أو تواصل مع الفريق."), href: `/requests/${request.id}`, relatedRequestId: request.id });
   });
   return { success: true } as const;
 }
