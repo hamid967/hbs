@@ -1,5 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import { trpc } from "@/lib/trpc";
 import { ArrowLeft, BotMessageSquare, Building2, ChevronLeft, Clock3, FilePlus2, Landmark, Orbit, Sparkles, WandSparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
@@ -12,6 +13,8 @@ const serviceCards = [
 export default function Home() {
   const [, setLocation] = useLocation();
   const [introVisible, setIntroVisible] = useState(true);
+  const reportMonth = new Date().toISOString().slice(0, 7);
+  const { data: report, isLoading: reportLoading, isError: reportError } = trpc.reports.monthly.useQuery({ month: reportMonth });
   useEffect(() => { const timer = window.setTimeout(() => setIntroVisible(false), 1750); return () => window.clearTimeout(timer); }, []);
   return (
     <DashboardLayout>
@@ -21,6 +24,11 @@ export default function Home() {
           <div className="absolute -left-16 -top-14 size-56 rounded-full border-[24px] border-[#e5c59a]/20" /><div className="absolute right-[42%] top-[-7rem] size-60 rounded-full bg-[#5ea077]/15 blur-3xl" />
           <div className="hero-orbit absolute bottom-[-6rem] left-[8%] size-52 rounded-full border border-[#e5c59a]/25" /><div className="hero-orbit-reverse absolute right-[-5rem] top-[14%] size-36 rounded-full border-[12px] border-[#6dad82]/20" />
           <div className="relative grid items-center gap-8 lg:grid-cols-[1.1fr_.9fr]"><div className="max-w-2xl"><div className="mb-5 flex items-center gap-2 text-xs font-semibold tracking-wide text-[#e5c59a]"><Sparkles className="size-4" /> بوابة الخدمات الداخلية</div><h1 className="text-3xl font-bold leading-tight tracking-tight md:text-5xl">كل طلباتك الإدارية،<br /><span className="text-[#e5c59a]">في مساحة عمل ذكية.</span></h1><p className="mt-5 max-w-xl text-sm leading-7 text-[#d9e9dc] md:text-base">قدّم طلبك، تابع مساره، واحتفظ بسجل واضح لكل المراسلات والتحديثات ضمن تجربة عربية منظمة.</p><Button onClick={() => setLocation("/requests/new")} className="mt-7 h-11 rounded-xl bg-[#e5c59a] px-5 font-bold text-[#173e30] shadow-[0_10px_0_rgba(105,67,30,.28)] transition hover:-translate-y-0.5 hover:bg-[#f0d5af]"><FilePlus2 className="ml-2 size-4" />ابدأ طلباً جديداً</Button></div><div className="hero-console relative mx-auto w-full max-w-sm rounded-[2rem] border border-white/20 bg-white/10 p-4 shadow-[0_25px_40px_rgba(0,0,0,.24)] backdrop-blur-md"><div className="flex items-center justify-between text-xs text-[#d9e9dc]"><span>مساحة العمليات</span><span className="rounded-full bg-[#e5c59a] px-2 py-1 font-bold text-[#173e30]">متصل الآن</span></div><div className="mt-4 grid grid-cols-3 gap-2"><div className="rounded-2xl bg-white/10 p-3"><b className="text-xl text-[#e5c59a]">12</b><p className="mt-1 text-[10px] text-[#d9e9dc]">طلبات جديدة</p></div><div className="rounded-2xl bg-white/10 p-3"><b className="text-xl text-[#e5c59a]">04</b><p className="mt-1 text-[10px] text-[#d9e9dc]">قيد المراجعة</p></div><div className="rounded-2xl bg-white/10 p-3"><b className="text-xl text-[#e5c59a]">08</b><p className="mt-1 text-[10px] text-[#d9e9dc]">مكتملة</p></div></div><div className="mt-3 rounded-2xl bg-[#0e2e22]/80 p-4"><p className="text-xs font-bold text-[#e5c59a]">مسار ذكي للموافقة</p><div className="mt-3 flex items-center gap-2"><i className="size-2 rounded-full bg-[#e5c59a]" /><span className="h-px flex-1 bg-white/20" /><i className="size-2 rounded-full bg-[#75bd8b]" /><span className="h-px flex-1 bg-white/20" /><i className="size-2 rounded-full bg-white" /></div></div></div></div>
+        </section>
+
+        <section className="relative z-10 -mt-4 mx-3 grid gap-3 rounded-[1.75rem] border border-[#d8e6d9] bg-white/95 p-4 shadow-[0_18px_36px_rgba(26,72,51,.12)] backdrop-blur md:mx-8 md:grid-cols-3 md:p-5">
+          <div className="md:col-span-3 flex items-center justify-between gap-3 border-b border-[#edf1ed] pb-3"><div><p className="text-sm font-bold text-[#214a38]">نبض العمليات</p><p className="mt-1 text-xs text-[#748178]">مؤشرات شهرية محدثة من مركز التقارير ضمن نطاقك المصرح.</p></div><button onClick={() => setLocation("/reports")} className="shrink-0 rounded-xl bg-[#eaf4ec] px-3 py-2 text-xs font-bold text-[#2c704d] transition hover:bg-[#dcefe0]">عرض التقرير</button></div>
+          {reportLoading ? [1, 2, 3].map(item => <div key={item} className="h-20 animate-pulse rounded-2xl bg-[#f1f6f1]" />) : reportError || !report ? <div className="md:col-span-3 rounded-2xl bg-[#f7faf7] p-4 text-center text-xs leading-6 text-[#738077]">لا تتوفر مؤشرات التقارير لهذا الحساب حالياً.</div> : <><QuickMetric label="أيام الإجازات" value={String(report.leaveDays.current)} detail={`فرق ${signed(report.leaveDays.delta)} عن الشهر السابق`} /><QuickMetric label="المصروفات" value={`${report.expensesSar.current.toLocaleString("ar-SA")} ر.س`} detail={`فرق ${signed(report.expensesSar.delta)} ر.س عن الشهر السابق`} /><QuickMetric label="نطاق البيانات" value={report.scope === "team" ? "فريقي" : "الشركة"} detail={`محدث لشهر ${report.selectedMonth}`} /></>}
         </section>
 
         <section className="mt-8">
@@ -52,3 +60,6 @@ export default function Home() {
     </DashboardLayout>
   );
 }
+
+function QuickMetric({ label, value, detail }: { label: string; value: string; detail: string }) { return <article className="rounded-2xl bg-[#f7faf7] p-4 transition hover:-translate-y-0.5 hover:bg-[#edf6ee]"><p className="text-xs font-semibold text-[#5e7265]">{label}</p><p className="mt-2 text-xl font-bold text-[#1d5a40]">{value}</p><p className="mt-1 text-[11px] text-[#7b8c80]">{detail}</p></article>; }
+function signed(value: number) { return `${value >= 0 ? "+" : ""}${value}`; }
