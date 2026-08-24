@@ -532,21 +532,32 @@ export function reportDateFromMonth(month?: string) {
   return new Date(Date.UTC(year, monthIndex, 1));
 }
 
+export function buildHrOperationsTrend(source: { leaves: Array<{ startDate: string; endDate: string }>; expenses: Array<{ amountSar: string; createdAt: Date }> }, now = new Date(), periods = 6) {
+  const dayCount = (startDate: string, endDate: string) => Math.max(1, Math.floor((Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / 86400000) + 1);
+  return Array.from({ length: periods }, (_, index) => {
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (periods - 1 - index), 1));
+    const nextMonth = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1));
+    const leaves = source.leaves.filter(item => { const start = new Date(`${item.startDate}T00:00:00Z`); return start >= monthStart && start < nextMonth; });
+    const expenses = source.expenses.filter(item => item.createdAt >= monthStart && item.createdAt < nextMonth);
+    return { month: monthLabel(monthStart), leaveDays: leaves.reduce((total, item) => total + dayCount(item.startDate, item.endDate), 0), expensesSar: expenses.reduce((total, item) => total + (Number(item.amountSar) || 0), 0) };
+  });
+}
+
 export async function getHrOperationsReport(companyId: number, role: UserRole, userId: number, month?: string) {
   const scope = assertReportsAccess(role);
   const now = reportDateFromMonth(month);
   const db = await getDb();
-  if (!db) return { scope, selectedMonth: now.toISOString().slice(0, 7), ...buildHrOperationsReport({ leaves: [], expenses: [] }, now) };
+  if (!db) return { scope, selectedMonth: now.toISOString().slice(0, 7), ...buildHrOperationsReport({ leaves: [], expenses: [] }, now), trend: buildHrOperationsTrend({ leaves: [], expenses: [] }, now) };
 
   const teamMemberIds = scope === "team" ? (await db.select({ userId: employeeProfiles.userId }).from(employeeProfiles).where(and(eq(employeeProfiles.companyId, companyId), eq(employeeProfiles.managerUserId, userId)))).map(row => row.userId) : undefined;
-  if (scope === "team" && !teamMemberIds?.length) return { scope, selectedMonth: now.toISOString().slice(0, 7), ...buildHrOperationsReport({ leaves: [], expenses: [] }, now) };
+  if (scope === "team" && !teamMemberIds?.length) return { scope, selectedMonth: now.toISOString().slice(0, 7), ...buildHrOperationsReport({ leaves: [], expenses: [] }, now), trend: buildHrOperationsTrend({ leaves: [], expenses: [] }, now) };
 
   const employeeScope = scope === "team" ? inArray(serviceRequests.employeeId, teamMemberIds!) : undefined;
   const [leaves, expenses] = await Promise.all([
     db.select({ leaveType: leaveRequests.leaveType, startDate: leaveRequests.startDate, endDate: leaveRequests.endDate }).from(leaveRequests).innerJoin(serviceRequests, eq(leaveRequests.requestId, serviceRequests.id)).where(and(eq(leaveRequests.companyId, companyId), employeeScope)),
     db.select({ expenseType: expenseRequests.expenseType, amountSar: expenseRequests.amountSar, createdAt: expenseRequests.createdAt }).from(expenseRequests).innerJoin(serviceRequests, eq(expenseRequests.requestId, serviceRequests.id)).where(and(eq(expenseRequests.companyId, companyId), employeeScope)),
   ]);
-  return { scope, selectedMonth: now.toISOString().slice(0, 7), ...buildHrOperationsReport({ leaves, expenses }, now) };
+  return { scope, selectedMonth: now.toISOString().slice(0, 7), ...buildHrOperationsReport({ leaves, expenses }, now), trend: buildHrOperationsTrend({ leaves, expenses }, now) };
 }
 
 export async function getCompanyHrOperationsReport(companyId: number, now = new Date()): Promise<HrOperationsReport> {
