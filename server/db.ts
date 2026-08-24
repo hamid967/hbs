@@ -232,17 +232,35 @@ export async function getEmployeeRequests(employeeId: number, filters: { type?: 
     .where(and(...conditions)).orderBy(desc(serviceRequests.updatedAt));
 }
 
-export async function getRequestDetail(id: number, userId: number, role: UserRole, permissions = defaultModulePermissionsForRole(role)) {
+export function redactRequestHistoryForEmployee<T extends { action: string; nextStatus: string | null; note: string }>(history: T[]) {
+  return history.map(entry => entry.action === "status_change" ? { ...entry, note: entry.nextStatus ? `حالة المرحلة: ${entry.nextStatus}` : "تم تحديث مرحلة الموافقة." } : { ...entry, note: "تم تحديث مرحلة الموافقة." });
+}
+
+export function redactApprovalStagesForEmployee<T extends { decisionNote: unknown }>(stages: T[]) {
+  return stages.map(({ decisionNote: _decisionNote, ...stage }) => stage);
+}
+
+export function projectApprovalStages<T extends { decisionNote: unknown }>(stages: T[], canManage: boolean) {
+  return canManage ? stages : redactApprovalStagesForEmployee(stages);
+}
+
+export async function getRequestDetail(id: number, userId: number, role: UserRole, permissions = defaultModulePermissionsForRole(role), companyId?: number) {
   const db = await getDb();
   if (!db) return undefined;
   const request = (await db.select().from(serviceRequests).where(eq(serviceRequests.id, id)).limit(1))[0];
   if (!request) return undefined;
+  if (companyId !== undefined) {
+    const owner = (await db.select({ id: users.id }).from(users).where(and(eq(users.id, request.employeeId), eq(users.companyId, companyId))).limit(1))[0];
+    if (!owner) return undefined;
+  }
   const canManage = canManageRequest(role, request.type, permissions);
   const canView = permittedRequestTypes(role, permissions).includes(request.type);
   if (!canView && request.employeeId !== userId) return undefined;
   const history = await db.select().from(requestHistory).where(and(eq(requestHistory.requestId, id), ...(canManage ? [] : [eq(requestHistory.visibleToEmployee, true)]) )).orderBy(desc(requestHistory.createdAt));
-  const safeHistory = canManage ? history : history.map(entry => entry.action === "status_change" ? { ...entry, note: entry.nextStatus ? `حالة المرحلة: ${entry.nextStatus}` : "تم تحديث مرحلة الموافقة." } : { ...entry, note: "تم تحديث مرحلة الموافقة." });
-  return { request, history: safeHistory, canManage };
+  const safeHistory = canManage ? history : redactRequestHistoryForEmployee(history);
+  const tasks = await db.select({ id: approvalTasks.id, approverRole: approvalTasks.approverRole, status: approvalTasks.status, createdAt: approvalTasks.createdAt, decidedAt: approvalTasks.decidedAt, decisionNote: approvalTasks.decisionNote }).from(approvalTasks).where(and(eq(approvalTasks.requestId, id), ...(companyId === undefined ? [] : [eq(approvalTasks.companyId, companyId)]))).orderBy(approvalTasks.createdAt);
+  const approvalStages = projectApprovalStages(tasks, canManage);
+  return { request, history: safeHistory, approvalStages, canManage };
 }
 
 export async function getOperationsRequests(filters: { type?: RequestType; status?: "submitted" | "in_review" | "approved" | "rejected" | "completed" }, permittedTypes: RequestType[]) {
