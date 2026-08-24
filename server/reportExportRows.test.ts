@@ -1,0 +1,9 @@
+import { describe, expect, it } from "vitest";
+import { reportExportRows } from "../client/src/lib/reportExport";
+
+describe("report export rows", () => {
+  it("contains only the selected authorized report scope, comparison, and breakdowns", () => {
+    const rows = reportExportRows({ scope: "team", selectedMonth: "2026-08", leaveDays: { current: 3, previous: 0, delta: 3, percentChange: null, byType: { annual: 3 } }, expensesSar: { current: 1250, previous: 1000, delta: 250, percentChange: 25, byType: { travel: 1250 } } });
+    expect(rows).toEqual(expect.arrayContaining([["نطاق البيانات", "فريقي المباشر"], ["أيام الإجازات", 3, 0, 3, "غير متاح"], ["المصروفات (ر.س)", 1250, 1000, 250, "25%"], ["annual", 3], ["travel", 1250]]));
+  });
+});
