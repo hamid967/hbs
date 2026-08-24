@@ -244,6 +244,14 @@ export function projectApprovalStages<T extends { decisionNote: unknown }>(stage
   return canManage ? stages : redactApprovalStagesForEmployee(stages);
 }
 
+export function hasDefaultManagerAssignment(history: Array<{ note: string }>) {
+  return history.some(entry => entry.note.includes("مدير افتراضي"));
+}
+
+export function nextApprovalRoleForRequest(type: RequestType): "hr" | "government" {
+  return type === "hr" ? "hr" : "government";
+}
+
 export async function getRequestDetail(id: number, userId: number, role: UserRole, permissions = defaultModulePermissionsForRole(role), companyId?: number) {
   const db = await getDb();
   if (!db) return undefined;
@@ -257,10 +265,11 @@ export async function getRequestDetail(id: number, userId: number, role: UserRol
   const canView = permittedRequestTypes(role, permissions).includes(request.type);
   if (!canView && request.employeeId !== userId) return undefined;
   const history = await db.select().from(requestHistory).where(and(eq(requestHistory.requestId, id), ...(canManage ? [] : [eq(requestHistory.visibleToEmployee, true)]) )).orderBy(desc(requestHistory.createdAt));
+  const usesDefaultManager = hasDefaultManagerAssignment(history);
   const safeHistory = canManage ? history : redactRequestHistoryForEmployee(history);
   const tasks = await db.select({ id: approvalTasks.id, approverRole: approvalTasks.approverRole, status: approvalTasks.status, createdAt: approvalTasks.createdAt, decidedAt: approvalTasks.decidedAt, decisionNote: approvalTasks.decisionNote }).from(approvalTasks).where(and(eq(approvalTasks.requestId, id), ...(companyId === undefined ? [] : [eq(approvalTasks.companyId, companyId)]))).orderBy(approvalTasks.createdAt);
   const approvalStages = projectApprovalStages(tasks, canManage);
-  return { request, history: safeHistory, approvalStages, canManage };
+  return { request, history: safeHistory, approvalStages, usesDefaultManager, canManage };
 }
 
 export async function getOperationsRequests(filters: { type?: RequestType; status?: "submitted" | "in_review" | "approved" | "rejected" | "completed" }, permittedTypes: RequestType[]) {
@@ -302,7 +311,7 @@ export async function decideApprovalTask(input: { id: number; companyId: number;
     if (!request) throw new Error("الطلب المرتبط بالمهمة غير موجود");
     await tx.update(approvalTasks).set({ status: input.decision, decidedByUserId: input.actorId, decisionNote: input.note ?? null, decidedAt: new Date() }).where(eq(approvalTasks.id, input.id));
     if (task.approverRole === "manager" && input.decision === "approved") {
-      const nextRole = request.type === "hr" ? "hr" as const : "government" as const;
+      const nextRole = nextApprovalRoleForRequest(request.type);
       await tx.insert(approvalTasks).values({ companyId: input.companyId, requestId: request.id, approverRole: nextRole });
       const nextApprovers = await tx.select({ id: users.id }).from(users).where(and(eq(users.companyId, input.companyId), eq(users.role, nextRole), eq(users.accountStatus, "active")));
       if (nextApprovers.length) await tx.insert(inAppNotifications).values(nextApprovers.map(approver => ({ companyId: input.companyId, recipientUserId: approver.id, type: "approval_required" as const, title: "مرحلة موافقة جديدة بانتظارك", body: `تمت موافقة المدير على الطلب ${request.reference} وهو بانتظار قرار وحدتك.`, href: "/approvals", relatedRequestId: request.id })));
