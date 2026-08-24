@@ -17,6 +17,11 @@ describe("approvals router", () => {
     await expect(caller.inbox()).resolves.toEqual([]);
     expect(dbMocks.getApprovalInbox).toHaveBeenCalledWith(1, 9, ["hr"]);
   });
+  it("scopes the manager inbox to the signed-in manager identity", async () => {
+    const caller = approvalsRouter.createCaller(context("manager"));
+    await expect(caller.inbox()).resolves.toEqual([]);
+    expect(dbMocks.getApprovalInbox).toHaveBeenCalledWith(1, 9, ["manager"]);
+  });
   it("blocks users without an approval role", async () => {
     const caller = approvalsRouter.createCaller(context("user"));
     await expect(caller.inbox()).rejects.toMatchObject({ code: "FORBIDDEN" });
