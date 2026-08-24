@@ -226,7 +226,10 @@ export async function getEmployeeRequests(employeeId: number, filters: { type?: 
   const conditions = [eq(serviceRequests.employeeId, employeeId)];
   if (filters.type) conditions.push(eq(serviceRequests.type, filters.type));
   if (filters.status) conditions.push(eq(serviceRequests.status, filters.status));
-  return db.select().from(serviceRequests).where(and(...conditions)).orderBy(desc(serviceRequests.updatedAt));
+  return db.select({ request: serviceRequests, leave: leaveRequests, expense: expenseRequests }).from(serviceRequests)
+    .leftJoin(leaveRequests, eq(leaveRequests.requestId, serviceRequests.id))
+    .leftJoin(expenseRequests, eq(expenseRequests.requestId, serviceRequests.id))
+    .where(and(...conditions)).orderBy(desc(serviceRequests.updatedAt));
 }
 
 export async function getRequestDetail(id: number, userId: number, role: UserRole, permissions = defaultModulePermissionsForRole(role)) {
