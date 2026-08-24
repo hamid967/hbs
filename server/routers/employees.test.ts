@@ -35,4 +35,10 @@ describe("employees router", () => {
     await expect(caller.saveProfile({ userId: 20, jobTitle: "منسق عمليات", employmentStatus: "active" })).resolves.toMatchObject({ userId: 20 });
     expect(dbMocks.saveEmployeeProfile).toHaveBeenCalledWith({ companyId: 1, userId: 20, jobTitle: "منسق عمليات", employmentStatus: "active" });
   });
+
+  it("saves an employee region within the active company context", async () => {
+    const caller = employeesRouter.createCaller(context("hr"));
+    await caller.saveProfile({ userId: 20, region: "الرياض", employmentStatus: "active" });
+    expect(dbMocks.saveEmployeeProfile).toHaveBeenCalledWith({ companyId: 1, userId: 20, region: "الرياض", employmentStatus: "active" });
+  });
 });
