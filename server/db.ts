@@ -447,3 +447,27 @@ export async function getMvpMetrics(): Promise<MvpMetrics> {
   ]);
   return buildMvpMetrics({ requests, demos, plans }, now);
 }
+
+export type HrOperationsReport = {
+  leaveDays: { current: number; previous: number; delta: number; percentChange: number | null; byType: Record<string, number> };
+  expensesSar: { current: number; previous: number; delta: number; percentChange: number | null; byType: Record<string, number> };
+};
+
+export function buildHrOperationsReport(source: { leaves: { leaveType: string; startDate: string; endDate: string }[]; expenses: { expenseType: string; amountSar: string; createdAt: Date }[] }, now = new Date()): HrOperationsReport {
+  const currentStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const previousStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  const dayCount = (startDate: string, endDate: string) => Math.max(1, Math.floor((Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / 86400000) + 1);
+  const leaveMonth = (item: { startDate: string }) => new Date(`${item.startDate}T00:00:00Z`);
+  const currentLeaves = source.leaves.filter(item => leaveMonth(item) >= currentStart && leaveMonth(item) <= now);
+  const previousLeaves = source.leaves.filter(item => leaveMonth(item) >= previousStart && leaveMonth(item) < currentStart);
+  const currentExpenses = source.expenses.filter(item => item.createdAt >= currentStart && item.createdAt <= now);
+  const previousExpenses = source.expenses.filter(item => item.createdAt >= previousStart && item.createdAt < currentStart);
+  const sumLeaveDays = (items: typeof source.leaves) => items.reduce((total, item) => total + dayCount(item.startDate, item.endDate), 0);
+  const sumExpenses = (items: typeof source.expenses) => items.reduce((total, item) => total + (Number(item.amountSar) || 0), 0);
+  const leaveCurrent = sumLeaveDays(currentLeaves); const leavePrevious = sumLeaveDays(previousLeaves);
+  const expenseCurrent = sumExpenses(currentExpenses); const expensePrevious = sumExpenses(previousExpenses);
+  return {
+    leaveDays: { ...calculateMonthlyMetric(leaveCurrent, leavePrevious), byType: Object.fromEntries(currentLeaves.reduce((map, item) => map.set(item.leaveType, (map.get(item.leaveType) ?? 0) + dayCount(item.startDate, item.endDate)), new Map<string, number>())) },
+    expensesSar: { ...calculateMonthlyMetric(expenseCurrent, expensePrevious), byType: Object.fromEntries(currentExpenses.reduce((map, item) => map.set(item.expenseType, (map.get(item.expenseType) ?? 0) + (Number(item.amountSar) || 0)), new Map<string, number>())) },
+  };
+}
