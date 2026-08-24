@@ -471,3 +471,43 @@ export function buildHrOperationsReport(source: { leaves: { leaveType: string; s
     expensesSar: { ...calculateMonthlyMetric(expenseCurrent, expensePrevious), byType: Object.fromEntries(currentExpenses.reduce((map, item) => map.set(item.expenseType, (map.get(item.expenseType) ?? 0) + (Number(item.amountSar) || 0)), new Map<string, number>())) },
   };
 }
+
+export type HrReportScope = "company" | "team";
+
+export function assertReportsAccess(role: UserRole): HrReportScope {
+  if (role === "admin" || role === "hr") return "company";
+  if (role === "manager") return "team";
+  throw new Error("لا تملك صلاحية عرض تقارير الموارد البشرية");
+}
+
+export function reportDateFromMonth(month?: string) {
+  if (!month) return new Date();
+  const match = /^(\d{4})-(\d{2})$/.exec(month);
+  const year = Number(match?.[1]);
+  const monthIndex = Number(match?.[2]) - 1;
+  if (!match || monthIndex < 0 || monthIndex > 11) throw new Error("صيغة الشهر غير صالحة");
+  return new Date(Date.UTC(year, monthIndex, 1));
+}
+
+export async function getHrOperationsReport(companyId: number, role: UserRole, userId: number, month?: string) {
+  const scope = assertReportsAccess(role);
+  const now = reportDateFromMonth(month);
+  const db = await getDb();
+  if (!db) return { scope, selectedMonth: now.toISOString().slice(0, 7), ...buildHrOperationsReport({ leaves: [], expenses: [] }, now) };
+
+  const teamMemberIds = scope === "team" ? (await db.select({ userId: employeeProfiles.userId }).from(employeeProfiles).where(and(eq(employeeProfiles.companyId, companyId), eq(employeeProfiles.managerUserId, userId)))).map(row => row.userId) : undefined;
+  if (scope === "team" && !teamMemberIds?.length) return { scope, selectedMonth: now.toISOString().slice(0, 7), ...buildHrOperationsReport({ leaves: [], expenses: [] }, now) };
+
+  const employeeScope = scope === "team" ? inArray(serviceRequests.employeeId, teamMemberIds!) : undefined;
+  const [leaves, expenses] = await Promise.all([
+    db.select({ leaveType: leaveRequests.leaveType, startDate: leaveRequests.startDate, endDate: leaveRequests.endDate }).from(leaveRequests).innerJoin(serviceRequests, eq(leaveRequests.requestId, serviceRequests.id)).where(and(eq(leaveRequests.companyId, companyId), employeeScope)),
+    db.select({ expenseType: expenseRequests.expenseType, amountSar: expenseRequests.amountSar, createdAt: expenseRequests.createdAt }).from(expenseRequests).innerJoin(serviceRequests, eq(expenseRequests.requestId, serviceRequests.id)).where(and(eq(expenseRequests.companyId, companyId), employeeScope)),
+  ]);
+  return { scope, selectedMonth: now.toISOString().slice(0, 7), ...buildHrOperationsReport({ leaves, expenses }, now) };
+}
+
+export async function getCompanyHrOperationsReport(companyId: number, now = new Date()): Promise<HrOperationsReport> {
+  const month = now.toISOString().slice(0, 7);
+  const report = await getHrOperationsReport(companyId, "admin", 0, month);
+  return { leaveDays: report.leaveDays, expensesSar: report.expensesSar };
+}
