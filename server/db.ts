@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeProfiles, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobOpenings, leaveRequests, onboardingTasks, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeProfiles, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobOpenings, leaveRequests, onboardingTasks, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -257,6 +257,52 @@ export async function completeCompanyOnboardingTask(companyId: number, taskId: n
   if (!task) throw new Error("مهمة التهيئة غير موجودة ضمن الشركة الحالية");
   await db.update(onboardingTasks).set({ status: "completed", completedAt: new Date() }).where(and(eq(onboardingTasks.id, taskId), eq(onboardingTasks.companyId, companyId)));
   return (await db.select().from(onboardingTasks).where(and(eq(onboardingTasks.id, taskId), eq(onboardingTasks.companyId, companyId))).limit(1))[0];
+}
+
+export function getSaudiWorkDate(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Riyadh", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find(part => part.type === type)?.value;
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
+export async function getMyAttendanceEntry(companyId: number, userId: number, workDate = getSaudiWorkDate()) {
+  const db = await getDb();
+  if (!db) return undefined;
+  return (await db.select().from(attendanceEntries).where(and(eq(attendanceEntries.companyId, companyId), eq(attendanceEntries.userId, userId), eq(attendanceEntries.workDate, workDate))).limit(1))[0];
+}
+
+export async function checkInAttendance(input: { companyId: number; userId: number; workMode: "onsite" | "remote"; note?: string; now?: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const now = input.now ?? new Date();
+  const workDate = getSaudiWorkDate(now);
+  const existing = await getMyAttendanceEntry(input.companyId, input.userId, workDate);
+  if (existing) throw new Error("تم تسجيل دوامك لهذا اليوم بالفعل");
+  await db.insert(attendanceEntries).values({ companyId: input.companyId, userId: input.userId, workDate, workMode: input.workMode, status: "open", checkInAt: now, note: input.note ?? null });
+  return (await db.select().from(attendanceEntries).where(and(eq(attendanceEntries.companyId, input.companyId), eq(attendanceEntries.userId, input.userId), eq(attendanceEntries.workDate, workDate))).limit(1))[0];
+}
+
+export async function checkOutAttendance(input: { companyId: number; userId: number; now?: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const now = input.now ?? new Date();
+  const workDate = getSaudiWorkDate(now);
+  const existing = await getMyAttendanceEntry(input.companyId, input.userId, workDate);
+  if (!existing) throw new Error("لا يوجد تسجيل حضور مفتوح لهذا اليوم");
+  if (existing.status === "completed") throw new Error("تم تسجيل الانصراف لهذا اليوم بالفعل");
+  await db.update(attendanceEntries).set({ status: "completed", checkOutAt: now }).where(and(eq(attendanceEntries.id, existing.id), eq(attendanceEntries.companyId, input.companyId), eq(attendanceEntries.userId, input.userId)));
+  return (await db.select().from(attendanceEntries).where(eq(attendanceEntries.id, existing.id)).limit(1))[0];
+}
+
+export async function listAttendanceForScope(input: { companyId: number; actorId: number; role: UserRole; workDate?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  const workDate = input.workDate ?? getSaudiWorkDate();
+  const base = db.select({ entry: attendanceEntries, user: users, profile: employeeProfiles }).from(attendanceEntries).innerJoin(users, eq(attendanceEntries.userId, users.id)).leftJoin(employeeProfiles, eq(employeeProfiles.userId, users.id));
+  const companyAndDate = and(eq(attendanceEntries.companyId, input.companyId), eq(attendanceEntries.workDate, workDate), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"));
+  if (["admin", "hr"].includes(input.role)) return base.where(companyAndDate).orderBy(desc(attendanceEntries.checkInAt));
+  if (input.role === "manager") return base.where(and(companyAndDate, eq(employeeProfiles.managerUserId, input.actorId))).orderBy(desc(attendanceEntries.checkInAt));
+  return base.where(and(companyAndDate, eq(attendanceEntries.userId, input.actorId))).orderBy(desc(attendanceEntries.checkInAt));
 }
 
 export async function createRequestWithHistory(input: {

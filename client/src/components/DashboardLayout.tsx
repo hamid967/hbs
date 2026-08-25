@@ -62,6 +62,7 @@ const menuItems = [
   { icon: Building2, label: "قوالب الشركة", path: "/company-templates", adminOnly: true },
   { icon: UserRoundSearch, label: "دليل الموظفين", path: "/employees", requiresDirectoryAccess: true },
   { icon: BriefcaseBusiness, label: "التوظيف والتهيئة", path: "/recruitment", requiresRecruitmentAccess: true },
+  { icon: Clock3, label: "الدوام", path: "/attendance" },
   { icon: ClipboardCheck, label: "صندوق الموافقات", path: "/approvals", requiresApprovalAccess: true },
   { icon: BellRing, label: "الإشعارات", path: "/notifications" },
   { icon: BarChart3, label: "التقارير", path: "/reports", requiresDirectoryAccess: true },

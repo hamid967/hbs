@@ -24,7 +24,7 @@ export const roadmapStages: RoadmapStage[] = [
   { number: 12, title: "الهيكل والموظفون", detail: "هيكل تنظيمي وملفات الموظفين.", track: "HR Core", status: "completed" },
   { number: 13, title: "التوظيف والتهيئة", detail: "شواغر ومرشحون ومهام تهيئة منظمة داخل الشركة.", track: "HR Core", status: "partial", dependency: "تتبعها أتمتة تحويل المرشح المقبول إلى موظف بعد اعتماد نطاقها." },
   { number: 14, title: "الخدمة الذاتية", detail: "كتالوج خدمات وطلبات موظفين متكامل.", track: "HR Core", status: "completed" },
-  { number: 15, title: "الإجازات والدوامات", detail: "سياسات وقت وحضور مرنة.", track: "HR Core", status: "partial", dependency: "الإجازات مكتملة؛ الدوام يحتاج نطاقاً وتكاملاً مع مصدر حضور." },
+  { number: 15, title: "الإجازات والدوامات", detail: "إجازات ودوام داخلي مرن بحضور وانصراف ونمط عمل.", track: "HR Core", status: "partial", dependency: "يتبقى اعتماد سياسات ساعات العمل والتكامل الخارجي للحضور إن لزم." },
   { number: 16, title: "التعويضات والرواتب", detail: "بيانات استحقاقات وتجهيز للتكامل المالي.", track: "HR Core", status: "planned", dependency: "يتطلب قرار مزود الرواتب والنطاق المحاسبي." },
   { number: 17, title: "العلاقات الحكومية", detail: "معاملات ووثائق ومسارات متابعة.", track: "العمليات", status: "completed" },
   { number: 18, title: "الموافقات والتصعيد", detail: "محرك موافقات ومهام مشتركة.", track: "العمليات", status: "validation", dependency: "يلزم قبول حي بثلاث جلسات: موظف ومدير ووحدة مختصة." },
