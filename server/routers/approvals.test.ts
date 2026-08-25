@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const dbMocks = vi.hoisted(() => ({ decideApprovalTask: vi.fn(), getApprovalInbox: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ buildApprovalWorkload: vi.fn(), decideApprovalTask: vi.fn(), getApprovalInbox: vi.fn() }));
 vi.mock("../db", () => dbMocks);
 
 import { approvalsRouter } from "./approvals";
@@ -11,7 +11,7 @@ function context(role: "user" | "hr" | "government" | "manager" | "admin" = "hr"
 }
 
 describe("approvals router", () => {
-  beforeEach(() => { vi.clearAllMocks(); dbMocks.getApprovalInbox.mockResolvedValue([]); dbMocks.decideApprovalTask.mockResolvedValue({ success: true }); });
+  beforeEach(() => { vi.clearAllMocks(); dbMocks.getApprovalInbox.mockResolvedValue([]); dbMocks.buildApprovalWorkload.mockReturnValue({ pending: 0, overdue: 0, oldestHours: 0, byRole: { manager: 0, hr: 0, government: 0, admin: 0 } }); dbMocks.decideApprovalTask.mockResolvedValue({ success: true }); });
   it("returns only the HR approval inbox within the current company", async () => {
     const caller = approvalsRouter.createCaller(context("hr"));
     await expect(caller.inbox()).resolves.toEqual([]);
@@ -30,6 +30,13 @@ describe("approvals router", () => {
     const caller = approvalsRouter.createCaller(context("user"));
     await expect(caller.workload()).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(dbMocks.getApprovalInbox).not.toHaveBeenCalled();
+  });
+  it("builds workload from the authorized manager inbox only", async () => {
+    dbMocks.getApprovalInbox.mockResolvedValue([{ task: { id: 22, status: "pending", approverRole: "manager", createdAt: new Date() } }]);
+    const caller = approvalsRouter.createCaller(context("manager"));
+    await expect(caller.workload()).resolves.toMatchObject({ pending: 0 });
+    expect(dbMocks.getApprovalInbox).toHaveBeenCalledWith(1, 9, ["manager"]);
+    expect(dbMocks.buildApprovalWorkload).toHaveBeenCalledWith({ tasks: [{ id: 22, status: "pending", approverRole: "manager", createdAt: expect.any(Date) }] });
   });
   it("passes an approval decision with company and actor context", async () => {
     const caller = approvalsRouter.createCaller(context("government"));
