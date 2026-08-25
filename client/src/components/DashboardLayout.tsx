@@ -59,6 +59,7 @@ const menuItems = [
   { icon: LayoutTemplate, label: "مساحة MVP", path: "/mvp" },
   { icon: Wrench, label: "أدوات HR", path: "/hr-tools" },
   { icon: UserCog, label: "إدارة الحسابات", path: "/accounts", adminOnly: true },
+  { icon: ShieldCheck, label: "سجل التدقيق", path: "/audit", adminOnly: true },
   { icon: Building2, label: "قوالب الشركة", path: "/company-templates", adminOnly: true },
   { icon: UserRoundSearch, label: "دليل الموظفين", path: "/employees", requiresDirectoryAccess: true },
   { icon: BriefcaseBusiness, label: "التوظيف والتهيئة", path: "/recruitment", requiresRecruitmentAccess: true },

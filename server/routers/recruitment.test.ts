@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const dbMocks = vi.hoisted(() => ({ completeCompanyOnboardingTask: vi.fn(), createCompanyJobCandidate: vi.fn(), createCompanyJobOpening: vi.fn(), createCompanyOnboardingTask: vi.fn(), listCompanyJobCandidates: vi.fn(), listCompanyJobOpenings: vi.fn(), listCompanyOnboardingTasks: vi.fn(), updateCompanyJobCandidate: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ completeCompanyOnboardingTask: vi.fn(), createCompanyJobCandidate: vi.fn(), createCompanyJobOpening: vi.fn(), createCompanyOnboardingTask: vi.fn(), listCompanyJobCandidates: vi.fn(), listCompanyJobOpenings: vi.fn(), listCompanyOnboardingTasks: vi.fn(), recordAuditEvent: vi.fn(), updateCompanyJobCandidate: vi.fn() }));
 vi.mock("../db", () => dbMocks);
 
 import { recruitmentRouter } from "./recruitment";
@@ -24,6 +24,7 @@ describe("recruitment router", () => {
   it("creates openings with the authenticated company and actor", async () => {
     await recruitmentRouter.createCaller(context("admin")).createOpening({ title: "أخصائي موارد بشرية", employmentType: "full_time", headcount: 1, status: "open" });
     expect(dbMocks.createCompanyJobOpening).toHaveBeenCalledWith(expect.objectContaining({ companyId: 9, createdByUserId: 8, title: "أخصائي موارد بشرية", status: "open" }));
+    expect(dbMocks.recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ companyId: 9, actorUserId: 8, action: "opening_created", summary: "إنشاء شاغر وظيفي" }));
   });
 
   it("prevents users and managers from accessing recruitment records", async () => {

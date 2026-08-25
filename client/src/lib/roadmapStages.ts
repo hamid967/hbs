@@ -20,7 +20,7 @@ export const roadmapStages: RoadmapStage[] = [
   { number: 8, title: "مسارات التحويل", detail: "طلب عرض والتقاط العملاء وإدارة المحتوى.", track: "التجربة", status: "completed" },
   { number: 9, title: "إدارة المؤسسة", detail: "الإعدادات الأساسية وهوية الإدارة الداخلية.", track: "المنصة", status: "completed" },
   { number: 10, title: "المصادقة والمؤسسات", detail: "تسجيل دخول آمن وعزل للمؤسسات.", track: "المنصة", status: "completed" },
-  { number: 11, title: "الصلاحيات والتدقيق", detail: "أدوار دقيقة وسجل للعمليات الحساسة.", track: "المنصة", status: "partial", dependency: "استكمال سجل تدقيق موحد قبل الإطلاق النهائي." },
+  { number: 11, title: "الصلاحيات والتدقيق", detail: "أدوار دقيقة وسجل موحد لأحداث التوظيف والدوام الجديدة.", track: "المنصة", status: "partial", dependency: "يتبقى توسيع السجل إلى الأحداث التاريخية ووحدات الإدارة الأخرى قبل الإطلاق النهائي." },
   { number: 12, title: "الهيكل والموظفون", detail: "هيكل تنظيمي وملفات الموظفين.", track: "HR Core", status: "completed" },
   { number: 13, title: "التوظيف والتهيئة", detail: "شواغر ومرشحون ومهام تهيئة منظمة داخل الشركة.", track: "HR Core", status: "partial", dependency: "تتبعها أتمتة تحويل المرشح المقبول إلى موظف بعد اعتماد نطاقها." },
   { number: 14, title: "الخدمة الذاتية", detail: "كتالوج خدمات وطلبات موظفين متكامل.", track: "HR Core", status: "completed" },

@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeProfiles, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobOpenings, leaveRequests, onboardingTasks, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeProfiles, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobOpenings, leaveRequests, onboardingTasks, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -303,6 +303,20 @@ export async function listAttendanceForScope(input: { companyId: number; actorId
   if (["admin", "hr"].includes(input.role)) return base.where(companyAndDate).orderBy(desc(attendanceEntries.checkInAt));
   if (input.role === "manager") return base.where(and(companyAndDate, eq(employeeProfiles.managerUserId, input.actorId))).orderBy(desc(attendanceEntries.checkInAt));
   return base.where(and(companyAndDate, eq(attendanceEntries.userId, input.actorId))).orderBy(desc(attendanceEntries.checkInAt));
+}
+
+type AuditCategory = "recruitment" | "attendance" | "approval" | "account" | "permission";
+
+export async function recordAuditEvent(input: { companyId: number; actorUserId?: number; category: AuditCategory; action: string; entityType: string; entityId?: number; summary: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await db.insert(auditEvents).values({ companyId: input.companyId, actorUserId: input.actorUserId ?? null, category: input.category, action: input.action, entityType: input.entityType, entityId: input.entityId ?? null, summary: input.summary });
+}
+
+export async function listCompanyAuditEvents(companyId: number, limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ event: auditEvents, actor: users }).from(auditEvents).leftJoin(users, eq(auditEvents.actorUserId, users.id)).where(eq(auditEvents.companyId, companyId)).orderBy(desc(auditEvents.createdAt)).limit(Math.min(Math.max(limit, 1), 200));
 }
 
 export async function createRequestWithHistory(input: {

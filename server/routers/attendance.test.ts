@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const dbMocks = vi.hoisted(() => ({ checkInAttendance: vi.fn(), checkOutAttendance: vi.fn(), getMyAttendanceEntry: vi.fn(), listAttendanceForScope: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ checkInAttendance: vi.fn(), checkOutAttendance: vi.fn(), getMyAttendanceEntry: vi.fn(), listAttendanceForScope: vi.fn(), recordAuditEvent: vi.fn() }));
 vi.mock("../db", () => dbMocks);
 
 import { attendanceRouter } from "./attendance";
@@ -21,6 +21,7 @@ describe("attendance router", () => {
   it("records check-in only for the authenticated employee and company", async () => {
     await attendanceRouter.createCaller(context()).checkIn({ workMode: "remote", note: "عمل عن بُعد" });
     expect(dbMocks.checkInAttendance).toHaveBeenCalledWith({ companyId: 5, userId: 14, workMode: "remote", note: "عمل عن بُعد" });
+    expect(dbMocks.recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ companyId: 5, actorUserId: 14, action: "check_in", summary: "تسجيل حضور" }));
   });
 
   it("passes manager scope to the server for direct-team attendance", async () => {

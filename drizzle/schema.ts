@@ -162,6 +162,18 @@ export const attendanceEntries = mysqlTable("attendanceEntries", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("attendanceEntries_company_user_date_unique").on(table.companyId, table.userId, table.workDate), index("attendanceEntries_company_date_idx").on(table.companyId, table.workDate)]);
 
+export const auditEvents = mysqlTable("auditEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  actorUserId: int("actorUserId").references(() => users.id, { onDelete: "set null" }),
+  category: mysqlEnum("category", ["recruitment", "attendance", "approval", "account", "permission"]).notNull(),
+  action: varchar("action", { length: 120 }).notNull(),
+  entityType: varchar("entityType", { length: 80 }).notNull(),
+  entityId: int("entityId"),
+  summary: varchar("summary", { length: 360 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("auditEvents_company_created_idx").on(table.companyId, table.createdAt), index("auditEvents_company_category_idx").on(table.companyId, table.category)]);
+
 export const approvalTasks = mysqlTable("approvalTasks", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -198,6 +210,7 @@ export type JobOpening = typeof jobOpenings.$inferSelect;
 export type JobCandidate = typeof jobCandidates.$inferSelect;
 export type OnboardingTask = typeof onboardingTasks.$inferSelect;
 export type AttendanceEntry = typeof attendanceEntries.$inferSelect;
+export type AuditEvent = typeof auditEvents.$inferSelect;
 export type ApprovalTask = typeof approvalTasks.$inferSelect;
 export type InAppNotification = typeof inAppNotifications.$inferSelect;
 
