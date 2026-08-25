@@ -40,6 +40,7 @@ import {
   ClipboardCheck,
   BellRing,
   BarChart3,
+  BriefcaseBusiness,
   Clock3,
 } from "lucide-react";
 import { useLocation } from "wouter";
@@ -60,6 +61,7 @@ const menuItems = [
   { icon: UserCog, label: "إدارة الحسابات", path: "/accounts", adminOnly: true },
   { icon: Building2, label: "قوالب الشركة", path: "/company-templates", adminOnly: true },
   { icon: UserRoundSearch, label: "دليل الموظفين", path: "/employees", requiresDirectoryAccess: true },
+  { icon: BriefcaseBusiness, label: "التوظيف والتهيئة", path: "/recruitment", requiresRecruitmentAccess: true },
   { icon: ClipboardCheck, label: "صندوق الموافقات", path: "/approvals", requiresApprovalAccess: true },
   { icon: BellRing, label: "الإشعارات", path: "/notifications" },
   { icon: BarChart3, label: "التقارير", path: "/reports", requiresDirectoryAccess: true },
@@ -97,7 +99,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const hasOperationAccess = user.role === "admin" || Boolean(modulePermissions?.some(permission => permission.canView));
   const canManageDirectory = ["admin", "manager", "hr"].includes(user.role);
   const canApprove = ["admin", "manager", "hr", "government"].includes(user.role);
-  const visibleMenuItems = menuItems.filter(item => (!item.adminOnly || user.role === "admin") && (!item.requiresOperationAccess || hasOperationAccess) && (!item.requiresDirectoryAccess || canManageDirectory) && (!item.requiresApprovalAccess || canApprove));
+  const canManageRecruitment = ["admin", "hr"].includes(user.role);
+  const visibleMenuItems = menuItems.filter(item => (!item.adminOnly || user.role === "admin") && (!item.requiresOperationAccess || hasOperationAccess) && (!item.requiresDirectoryAccess || canManageDirectory) && (!item.requiresRecruitmentAccess || canManageRecruitment) && (!item.requiresApprovalAccess || canApprove));
 
   return (
     <SidebarProvider dir="rtl" className="bg-[#f8f8f5] text-[#17211c]">

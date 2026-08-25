@@ -107,6 +107,47 @@ export const employeeProfiles = mysqlTable("employeeProfiles", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("employeeProfiles_user_unique").on(table.userId), uniqueIndex("employeeProfiles_company_number_unique").on(table.companyId, table.employeeNumber)]);
 
+export const jobOpenings = mysqlTable("jobOpenings", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 160 }).notNull(),
+  departmentId: int("departmentId").references(() => departments.id, { onDelete: "set null" }),
+  hiringManagerUserId: int("hiringManagerUserId").references(() => users.id, { onDelete: "set null" }),
+  employmentType: mysqlEnum("employmentType", ["full_time", "part_time", "contract"]).default("full_time").notNull(),
+  headcount: int("headcount").default(1).notNull(),
+  description: text("description"),
+  status: mysqlEnum("status", ["draft", "open", "closed"]).default("draft").notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("jobOpenings_company_status_idx").on(table.companyId, table.status)]);
+
+export const jobCandidates = mysqlTable("jobCandidates", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  openingId: int("openingId").notNull().references(() => jobOpenings.id, { onDelete: "cascade" }),
+  fullName: varchar("fullName", { length: 160 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  status: mysqlEnum("status", ["applied", "screening", "interview", "offer", "accepted", "rejected", "withdrawn"]).default("applied").notNull(),
+  internalNote: text("internalNote"),
+  expectedStartAt: timestamp("expectedStartAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("jobCandidates_company_opening_status_idx").on(table.companyId, table.openingId, table.status)]);
+
+export const onboardingTasks = mysqlTable("onboardingTasks", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  candidateId: int("candidateId").notNull().references(() => jobCandidates.id, { onDelete: "cascade" }),
+  ownerUserId: int("ownerUserId").references(() => users.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 180 }).notNull(),
+  status: mysqlEnum("status", ["pending", "completed"]).default("pending").notNull(),
+  dueAt: timestamp("dueAt"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("onboardingTasks_company_candidate_status_idx").on(table.companyId, table.candidateId, table.status)]);
+
 export const approvalTasks = mysqlTable("approvalTasks", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -139,6 +180,9 @@ export type UserModulePermission = typeof userModulePermissions.$inferSelect;
 export type CompanyPermissionTemplate = typeof companyPermissionTemplates.$inferSelect;
 export type Department = typeof departments.$inferSelect;
 export type EmployeeProfile = typeof employeeProfiles.$inferSelect;
+export type JobOpening = typeof jobOpenings.$inferSelect;
+export type JobCandidate = typeof jobCandidates.$inferSelect;
+export type OnboardingTask = typeof onboardingTasks.$inferSelect;
 export type ApprovalTask = typeof approvalTasks.$inferSelect;
 export type InAppNotification = typeof inAppNotifications.$inferSelect;
 
