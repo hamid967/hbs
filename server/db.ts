@@ -1,10 +1,11 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeProfiles, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobOpenings, leaveRequests, onboardingTasks, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeProfiles, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTasks, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
 import { defaultModulePermissionsForRole, normalizeModulePermissions, type ModulePermission } from "../shared/moduleAccess";
+import { isCandidateStatusTransitionAllowed, isInterviewStatusTransitionAllowed, isOfferStatusTransitionAllowed, type CandidateStatus, type InterviewStatus, type OfferStatus } from "./recruitmentRules";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -175,7 +176,6 @@ export async function saveEmployeeProfile(input: { companyId: number; userId: nu
 }
 
 type OpeningStatus = "draft" | "open" | "closed";
-type CandidateStatus = "applied" | "screening" | "interview" | "offer" | "accepted" | "rejected" | "withdrawn";
 type EmploymentType = "full_time" | "part_time" | "contract";
 
 async function ensureRecruitmentCompanyUser(companyId: number, userId: number, label: string) {
@@ -228,8 +228,70 @@ export async function updateCompanyJobCandidate(input: { companyId: number; cand
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
   const candidate = (await db.select().from(jobCandidates).where(and(eq(jobCandidates.id, input.candidateId), eq(jobCandidates.companyId, input.companyId))).limit(1))[0];
   if (!candidate) throw new Error("المرشح غير موجود ضمن الشركة الحالية");
+  if (!isCandidateStatusTransitionAllowed(candidate.status, input.status)) throw new Error("لا يسمح بالانتقال بين مراحل المرشح المحددة");
   await db.update(jobCandidates).set({ status: input.status, internalNote: input.internalNote ?? candidate.internalNote, expectedStartAt: input.expectedStartAt ?? candidate.expectedStartAt }).where(and(eq(jobCandidates.id, input.candidateId), eq(jobCandidates.companyId, input.companyId)));
   return (await db.select().from(jobCandidates).where(and(eq(jobCandidates.id, input.candidateId), eq(jobCandidates.companyId, input.companyId))).limit(1))[0];
+}
+
+export async function listCompanyJobInterviews(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ interview: jobInterviews, candidate: jobCandidates, opening: jobOpenings, interviewer: users }).from(jobInterviews).innerJoin(jobCandidates, eq(jobInterviews.candidateId, jobCandidates.id)).innerJoin(jobOpenings, eq(jobCandidates.openingId, jobOpenings.id)).innerJoin(users, eq(jobInterviews.interviewerUserId, users.id)).where(and(eq(jobInterviews.companyId, companyId), eq(jobCandidates.companyId, companyId), eq(jobOpenings.companyId, companyId), eq(users.companyId, companyId))).orderBy(desc(jobInterviews.scheduledAt));
+}
+
+export async function createCompanyJobInterview(input: { companyId: number; candidateId: number; interviewerUserId: number; scheduledAt: Date; channel: "in_person" | "video" | "phone"; internalSummary?: string; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const candidate = (await db.select().from(jobCandidates).where(and(eq(jobCandidates.id, input.candidateId), eq(jobCandidates.companyId, input.companyId))).limit(1))[0];
+  if (!candidate) throw new Error("المرشح غير موجود ضمن الشركة الحالية");
+  if (!isCandidateStatusTransitionAllowed(candidate.status, "interview")) throw new Error("لا يمكن جدولة مقابلة لمرشح في هذه المرحلة");
+  await ensureRecruitmentCompanyUser(input.companyId, input.interviewerUserId, "محاور المقابلة");
+  if (candidate.status !== "interview") await db.update(jobCandidates).set({ status: "interview" }).where(and(eq(jobCandidates.id, candidate.id), eq(jobCandidates.companyId, input.companyId)));
+  await db.insert(jobInterviews).values({ companyId: input.companyId, candidateId: input.candidateId, interviewerUserId: input.interviewerUserId, scheduledAt: input.scheduledAt, channel: input.channel, internalSummary: input.internalSummary ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(jobInterviews).where(and(eq(jobInterviews.companyId, input.companyId), eq(jobInterviews.candidateId, input.candidateId), eq(jobInterviews.interviewerUserId, input.interviewerUserId), eq(jobInterviews.scheduledAt, input.scheduledAt))).orderBy(desc(jobInterviews.id)).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ المقابلة");
+  return created;
+}
+
+export async function updateCompanyJobInterview(input: { companyId: number; interviewId: number; status: InterviewStatus; internalSummary?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const interview = (await db.select().from(jobInterviews).where(and(eq(jobInterviews.id, input.interviewId), eq(jobInterviews.companyId, input.companyId))).limit(1))[0];
+  if (!interview) throw new Error("المقابلة غير موجودة ضمن الشركة الحالية");
+  if (!isInterviewStatusTransitionAllowed(interview.status, input.status)) throw new Error("لا يسمح بالانتقال بين حالات المقابلة المحددة");
+  await db.update(jobInterviews).set({ status: input.status, internalSummary: input.internalSummary ?? interview.internalSummary }).where(and(eq(jobInterviews.id, input.interviewId), eq(jobInterviews.companyId, input.companyId)));
+  return (await db.select().from(jobInterviews).where(and(eq(jobInterviews.id, input.interviewId), eq(jobInterviews.companyId, input.companyId))).limit(1))[0];
+}
+
+export async function listCompanyJobOffers(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ offer: jobOffers, candidate: jobCandidates, opening: jobOpenings }).from(jobOffers).innerJoin(jobCandidates, eq(jobOffers.candidateId, jobCandidates.id)).innerJoin(jobOpenings, eq(jobCandidates.openingId, jobOpenings.id)).where(and(eq(jobOffers.companyId, companyId), eq(jobCandidates.companyId, companyId), eq(jobOpenings.companyId, companyId))).orderBy(desc(jobOffers.updatedAt));
+}
+
+export async function createCompanyJobOffer(input: { companyId: number; candidateId: number; proposedStartAt?: Date; responseDueAt?: Date; internalNote?: string; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const candidate = (await db.select().from(jobCandidates).where(and(eq(jobCandidates.id, input.candidateId), eq(jobCandidates.companyId, input.companyId))).limit(1))[0];
+  if (!candidate) throw new Error("المرشح غير موجود ضمن الشركة الحالية");
+  if (!isCandidateStatusTransitionAllowed(candidate.status, "offer")) throw new Error("لا يمكن إنشاء عرض لمرشح في هذه المرحلة");
+  if (candidate.status !== "offer") await db.update(jobCandidates).set({ status: "offer" }).where(and(eq(jobCandidates.id, candidate.id), eq(jobCandidates.companyId, input.companyId)));
+  await db.insert(jobOffers).values({ companyId: input.companyId, candidateId: input.candidateId, proposedStartAt: input.proposedStartAt ?? null, responseDueAt: input.responseDueAt ?? null, internalNote: input.internalNote ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(jobOffers).where(and(eq(jobOffers.companyId, input.companyId), eq(jobOffers.candidateId, input.candidateId))).orderBy(desc(jobOffers.id)).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ العرض الداخلي");
+  return created;
+}
+
+export async function updateCompanyJobOffer(input: { companyId: number; offerId: number; status: OfferStatus; internalNote?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const offer = (await db.select().from(jobOffers).where(and(eq(jobOffers.id, input.offerId), eq(jobOffers.companyId, input.companyId))).limit(1))[0];
+  if (!offer) throw new Error("العرض الداخلي غير موجود ضمن الشركة الحالية");
+  if (!isOfferStatusTransitionAllowed(offer.status, input.status)) throw new Error("لا يسمح بالانتقال بين حالات العرض المحددة");
+  const now = new Date();
+  await db.update(jobOffers).set({ status: input.status, internalNote: input.internalNote ?? offer.internalNote, issuedAt: input.status === "issued" ? now : offer.issuedAt, decidedAt: ["accepted", "declined", "withdrawn"].includes(input.status) ? now : offer.decidedAt }).where(and(eq(jobOffers.id, input.offerId), eq(jobOffers.companyId, input.companyId)));
+  if (input.status === "accepted") await updateCompanyJobCandidate({ companyId: input.companyId, candidateId: offer.candidateId, status: "accepted" });
+  return (await db.select().from(jobOffers).where(and(eq(jobOffers.id, input.offerId), eq(jobOffers.companyId, input.companyId))).limit(1))[0];
 }
 
 export async function listCompanyOnboardingTasks(companyId: number) {

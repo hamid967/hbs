@@ -148,6 +148,35 @@ export const onboardingTasks = mysqlTable("onboardingTasks", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("onboardingTasks_company_candidate_status_idx").on(table.companyId, table.candidateId, table.status)]);
 
+export const jobInterviews = mysqlTable("jobInterviews", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  candidateId: int("candidateId").notNull().references(() => jobCandidates.id, { onDelete: "cascade" }),
+  interviewerUserId: int("interviewerUserId").notNull().references(() => users.id, { onDelete: "restrict" }),
+  scheduledAt: timestamp("scheduledAt").notNull(),
+  channel: mysqlEnum("channel", ["in_person", "video", "phone"]).default("video").notNull(),
+  status: mysqlEnum("status", ["scheduled", "completed", "cancelled"]).default("scheduled").notNull(),
+  internalSummary: text("internalSummary"),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("jobInterviews_company_candidate_scheduled_idx").on(table.companyId, table.candidateId, table.scheduledAt), index("jobInterviews_company_interviewer_idx").on(table.companyId, table.interviewerUserId)]);
+
+export const jobOffers = mysqlTable("jobOffers", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  candidateId: int("candidateId").notNull().references(() => jobCandidates.id, { onDelete: "cascade" }),
+  status: mysqlEnum("status", ["draft", "issued", "accepted", "declined", "withdrawn"]).default("draft").notNull(),
+  proposedStartAt: timestamp("proposedStartAt"),
+  responseDueAt: timestamp("responseDueAt"),
+  internalNote: text("internalNote"),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  issuedAt: timestamp("issuedAt"),
+  decidedAt: timestamp("decidedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("jobOffers_company_candidate_status_idx").on(table.companyId, table.candidateId, table.status)]);
+
 export const attendanceEntries = mysqlTable("attendanceEntries", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -209,6 +238,8 @@ export type EmployeeProfile = typeof employeeProfiles.$inferSelect;
 export type JobOpening = typeof jobOpenings.$inferSelect;
 export type JobCandidate = typeof jobCandidates.$inferSelect;
 export type OnboardingTask = typeof onboardingTasks.$inferSelect;
+export type JobInterview = typeof jobInterviews.$inferSelect;
+export type JobOffer = typeof jobOffers.$inferSelect;
 export type AttendanceEntry = typeof attendanceEntries.$inferSelect;
 export type AuditEvent = typeof auditEvents.$inferSelect;
 export type ApprovalTask = typeof approvalTasks.$inferSelect;

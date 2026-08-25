@@ -22,7 +22,7 @@ export const roadmapStages: RoadmapStage[] = [
   { number: 10, title: "المصادقة والمؤسسات", detail: "تسجيل دخول آمن وعزل للمؤسسات.", track: "المنصة", status: "completed" },
   { number: 11, title: "الصلاحيات والتدقيق", detail: "أدوار دقيقة وسجل موحد لأحداث التوظيف والدوام الجديدة.", track: "المنصة", status: "partial", dependency: "يتبقى توسيع السجل إلى الأحداث التاريخية ووحدات الإدارة الأخرى قبل الإطلاق النهائي." },
   { number: 12, title: "الهيكل والموظفون", detail: "هيكل تنظيمي وملفات الموظفين.", track: "HR Core", status: "completed" },
-  { number: 13, title: "التوظيف والتهيئة", detail: "شواغر ومرشحون ومهام تهيئة منظمة داخل الشركة.", track: "HR Core", status: "partial", dependency: "تتبعها أتمتة تحويل المرشح المقبول إلى موظف بعد اعتماد نطاقها." },
+  { number: 13, title: "التوظيف والتهيئة", detail: "شواغر ومرشحون ومقابلات وعروض داخلية غير مالية ومهام تهيئة منظمة داخل الشركة.", track: "HR Core", status: "partial", dependency: "تتبعها أتمتة تحويل المرشح المقبول إلى موظف بعد اعتماد نطاقها وسياسة المستندات." },
   { number: 14, title: "الخدمة الذاتية", detail: "كتالوج خدمات وطلبات موظفين متكامل.", track: "HR Core", status: "completed" },
   { number: 15, title: "الإجازات والدوامات", detail: "إجازات ودوام داخلي مرن بحضور وانصراف ونمط عمل.", track: "HR Core", status: "partial", dependency: "يتبقى اعتماد سياسات ساعات العمل والتكامل الخارجي للحضور إن لزم." },
   { number: 16, title: "التعويضات والرواتب", detail: "بيانات استحقاقات وتجهيز للتكامل المالي.", track: "HR Core", status: "planned", dependency: "يتطلب قرار مزود الرواتب والنطاق المحاسبي." },
