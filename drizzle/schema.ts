@@ -148,6 +148,17 @@ export const onboardingTasks = mysqlTable("onboardingTasks", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("onboardingTasks_company_candidate_status_idx").on(table.companyId, table.candidateId, table.status)]);
 
+export const onboardingTaskTemplates = mysqlTable("onboardingTaskTemplates", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 180 }).notNull(),
+  defaultOwnerUserId: int("defaultOwnerUserId").references(() => users.id, { onDelete: "set null" }),
+  dueOffsetDays: int("dueOffsetDays").default(0).notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("onboardingTaskTemplates_company_title_unique").on(table.companyId, table.title), index("onboardingTaskTemplates_company_owner_idx").on(table.companyId, table.defaultOwnerUserId)]);
+
 export const jobInterviews = mysqlTable("jobInterviews", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -238,6 +249,7 @@ export type EmployeeProfile = typeof employeeProfiles.$inferSelect;
 export type JobOpening = typeof jobOpenings.$inferSelect;
 export type JobCandidate = typeof jobCandidates.$inferSelect;
 export type OnboardingTask = typeof onboardingTasks.$inferSelect;
+export type OnboardingTaskTemplate = typeof onboardingTaskTemplates.$inferSelect;
 export type JobInterview = typeof jobInterviews.$inferSelect;
 export type JobOffer = typeof jobOffers.$inferSelect;
 export type AttendanceEntry = typeof attendanceEntries.$inferSelect;

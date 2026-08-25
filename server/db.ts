@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeProfiles, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTasks, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeProfiles, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -298,6 +298,42 @@ export async function listCompanyOnboardingTasks(companyId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select({ task: onboardingTasks, candidate: jobCandidates, opening: jobOpenings, owner: users }).from(onboardingTasks).innerJoin(jobCandidates, eq(onboardingTasks.candidateId, jobCandidates.id)).innerJoin(jobOpenings, eq(jobCandidates.openingId, jobOpenings.id)).leftJoin(users, eq(onboardingTasks.ownerUserId, users.id)).where(and(eq(onboardingTasks.companyId, companyId), eq(jobCandidates.companyId, companyId), eq(jobOpenings.companyId, companyId))).orderBy(desc(onboardingTasks.updatedAt));
+}
+
+export async function listCompanyOnboardingTaskTemplates(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ template: onboardingTaskTemplates, owner: users }).from(onboardingTaskTemplates).leftJoin(users, and(eq(onboardingTaskTemplates.defaultOwnerUserId, users.id), eq(users.companyId, companyId))).where(eq(onboardingTaskTemplates.companyId, companyId)).orderBy(desc(onboardingTaskTemplates.updatedAt));
+}
+
+export async function createCompanyOnboardingTaskTemplate(input: { companyId: number; title: string; defaultOwnerUserId?: number; dueOffsetDays: number; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  if (input.defaultOwnerUserId) await ensureRecruitmentCompanyUser(input.companyId, input.defaultOwnerUserId, "مالك القالب");
+  await db.insert(onboardingTaskTemplates).values({ companyId: input.companyId, title: input.title, defaultOwnerUserId: input.defaultOwnerUserId ?? null, dueOffsetDays: input.dueOffsetDays, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(onboardingTaskTemplates).where(and(eq(onboardingTaskTemplates.companyId, input.companyId), eq(onboardingTaskTemplates.title, input.title))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ قالب التهيئة");
+  return created;
+}
+
+export async function applyCompanyOnboardingTaskTemplate(input: { companyId: number; templateId: number; candidateId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const template = (await db.select().from(onboardingTaskTemplates).where(and(eq(onboardingTaskTemplates.id, input.templateId), eq(onboardingTaskTemplates.companyId, input.companyId))).limit(1))[0];
+  if (!template) throw new Error("قالب التهيئة غير موجود ضمن الشركة الحالية");
+  const candidate = (await db.select().from(jobCandidates).where(and(eq(jobCandidates.id, input.candidateId), eq(jobCandidates.companyId, input.companyId))).limit(1))[0];
+  if (!candidate) throw new Error("المرشح غير موجود ضمن الشركة الحالية");
+  if (candidate.status !== "accepted") throw new Error("لا يمكن تطبيق قالب التهيئة إلا على مرشح مقبول");
+  if (template.defaultOwnerUserId) await ensureRecruitmentCompanyUser(input.companyId, template.defaultOwnerUserId, "مالك القالب");
+  const existing = (await db.select().from(onboardingTasks).where(and(eq(onboardingTasks.companyId, input.companyId), eq(onboardingTasks.candidateId, input.candidateId), eq(onboardingTasks.title, template.title))).limit(1))[0];
+  if (existing) throw new Error("طُبّق هذا القالب على المرشح مسبقاً");
+  const anchor = candidate.expectedStartAt ?? new Date();
+  const dueAt = new Date(anchor);
+  dueAt.setUTCDate(dueAt.getUTCDate() + template.dueOffsetDays);
+  await db.insert(onboardingTasks).values({ companyId: input.companyId, candidateId: input.candidateId, ownerUserId: template.defaultOwnerUserId, title: template.title, dueAt });
+  const created = (await db.select().from(onboardingTasks).where(and(eq(onboardingTasks.companyId, input.companyId), eq(onboardingTasks.candidateId, input.candidateId), eq(onboardingTasks.title, template.title))).orderBy(desc(onboardingTasks.id)).limit(1))[0];
+  if (!created) throw new Error("تعذر تطبيق قالب التهيئة");
+  return created;
 }
 
 export async function createCompanyOnboardingTask(input: { companyId: number; candidateId: number; ownerUserId?: number; title: string; dueAt?: Date }) {

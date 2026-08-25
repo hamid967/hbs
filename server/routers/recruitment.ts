@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { completeCompanyOnboardingTask, createCompanyJobCandidate, createCompanyJobInterview, createCompanyJobOffer, createCompanyJobOpening, createCompanyOnboardingTask, listCompanyJobCandidates, listCompanyJobInterviews, listCompanyJobOffers, listCompanyJobOpenings, listCompanyOnboardingTasks, recordAuditEvent, updateCompanyJobCandidate, updateCompanyJobInterview, updateCompanyJobOffer } from "../db";
+import { applyCompanyOnboardingTaskTemplate, completeCompanyOnboardingTask, createCompanyJobCandidate, createCompanyJobInterview, createCompanyJobOffer, createCompanyJobOpening, createCompanyOnboardingTask, createCompanyOnboardingTaskTemplate, listCompanyJobCandidates, listCompanyJobInterviews, listCompanyJobOffers, listCompanyJobOpenings, listCompanyOnboardingTaskTemplates, listCompanyOnboardingTasks, recordAuditEvent, updateCompanyJobCandidate, updateCompanyJobInterview, updateCompanyJobOffer } from "../db";
 import { protectedProcedure, router } from "../_core/trpc";
 
 const recruitmentRoles = ["admin", "hr"] as const;
@@ -22,8 +22,8 @@ async function audit(input: Parameters<typeof recordAuditEvent>[0]) {
 export const recruitmentRouter = router({
   overview: protectedProcedure.query(async ({ ctx }) => {
     ensureRecruitmentAccess(ctx.user.role);
-    const [openings, candidates, interviews, offers, onboardingTasks] = await Promise.all([listCompanyJobOpenings(ctx.user.companyId), listCompanyJobCandidates(ctx.user.companyId), listCompanyJobInterviews(ctx.user.companyId), listCompanyJobOffers(ctx.user.companyId), listCompanyOnboardingTasks(ctx.user.companyId)]);
-    return { openings, candidates, interviews, offers, onboardingTasks };
+    const [openings, candidates, interviews, offers, onboardingTasks, onboardingTemplates] = await Promise.all([listCompanyJobOpenings(ctx.user.companyId), listCompanyJobCandidates(ctx.user.companyId), listCompanyJobInterviews(ctx.user.companyId), listCompanyJobOffers(ctx.user.companyId), listCompanyOnboardingTasks(ctx.user.companyId), listCompanyOnboardingTaskTemplates(ctx.user.companyId)]);
+    return { openings, candidates, interviews, offers, onboardingTasks, onboardingTemplates };
   }),
   createOpening: protectedProcedure.input(z.object({ title: z.string().trim().min(2).max(160), departmentId: z.number().int().positive().optional(), hiringManagerUserId: z.number().int().positive().optional(), employmentType, headcount: z.number().int().min(1).max(100), description: z.string().trim().max(4000).optional(), status: openingStatus })).mutation(async ({ ctx, input }) => {
     ensureRecruitmentAccess(ctx.user.role);
@@ -66,6 +66,18 @@ export const recruitmentRouter = router({
     const offer = await updateCompanyJobOffer({ companyId: ctx.user.companyId, ...input });
     await audit({ companyId: ctx.user.companyId, actorUserId: ctx.user.id, category: "recruitment", action: "offer_status_changed", entityType: "job_offer", entityId: offer.id, summary: "تحديث حالة عرض داخلي" });
     return offer;
+  }),
+  createOnboardingTemplate: protectedProcedure.input(z.object({ title: z.string().trim().min(2).max(180), defaultOwnerUserId: z.number().int().positive().optional(), dueOffsetDays: z.number().int().min(0).max(365) })).mutation(async ({ ctx, input }) => {
+    ensureRecruitmentAccess(ctx.user.role);
+    const template = await createCompanyOnboardingTaskTemplate({ companyId: ctx.user.companyId, createdByUserId: ctx.user.id, ...input });
+    await audit({ companyId: ctx.user.companyId, actorUserId: ctx.user.id, category: "recruitment", action: "onboarding_template_created", entityType: "onboarding_task_template", entityId: template.id, summary: "إنشاء قالب تهيئة" });
+    return template;
+  }),
+  applyOnboardingTemplate: protectedProcedure.input(z.object({ templateId: z.number().int().positive(), candidateId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    ensureRecruitmentAccess(ctx.user.role);
+    const task = await applyCompanyOnboardingTaskTemplate({ companyId: ctx.user.companyId, ...input });
+    await audit({ companyId: ctx.user.companyId, actorUserId: ctx.user.id, category: "recruitment", action: "onboarding_template_applied", entityType: "onboarding_task", entityId: task.id, summary: "تطبيق قالب تهيئة" });
+    return task;
   }),
   createOnboardingTask: protectedProcedure.input(z.object({ candidateId: z.number().int().positive(), ownerUserId: z.number().int().positive().optional(), title: z.string().trim().min(2).max(180), dueAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
     ensureRecruitmentAccess(ctx.user.role);
