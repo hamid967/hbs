@@ -518,6 +518,18 @@ export function buildHrOperationsReport(source: { leaves: { leaveType: string; s
 export type HrReportScope = "company" | "team";
 export type HrReportFilters = { category?: "annual" | "sick" | "emergency" | "travel" | "operating"; region?: string };
 
+export function buildOperationsPulse(source: {
+  requests: Array<{ status: "submitted" | "in_review" | "approved" | "rejected" | "completed" }>;
+  tasks: Array<{ status: "pending" | "approved" | "rejected" | "cancelled" }>;
+}) {
+  const requestCount = (status: "submitted" | "in_review" | "approved" | "rejected" | "completed") => source.requests.filter(item => item.status === status).length;
+  const taskCount = (status: "pending" | "approved" | "rejected" | "cancelled") => source.tasks.filter(item => item.status === status).length;
+  return {
+    requests: { submitted: requestCount("submitted"), inReview: requestCount("in_review"), completed: requestCount("completed") + requestCount("approved") },
+    approvals: { pending: taskCount("pending"), approved: taskCount("approved"), rejected: taskCount("rejected") },
+  };
+}
+
 export function assertReportsAccess(role: UserRole): HrReportScope {
   if (role === "admin" || role === "hr") return "company";
   if (role === "manager") return "team";
@@ -548,22 +560,25 @@ export async function getHrOperationsReport(companyId: number, role: UserRole, u
   const scope = assertReportsAccess(role);
   const now = reportDateFromMonth(month);
   const db = await getDb();
-  if (!db) return { scope, selectedMonth: now.toISOString().slice(0, 7), availableRegions: [], appliedFilters: filters, ...buildHrOperationsReport({ leaves: [], expenses: [] }, now), trend: buildHrOperationsTrend({ leaves: [], expenses: [] }, now) };
+  const emptyPulse = buildOperationsPulse({ requests: [], tasks: [] });
+  if (!db) return { scope, selectedMonth: now.toISOString().slice(0, 7), availableRegions: [], appliedFilters: filters, operationPulse: emptyPulse, ...buildHrOperationsReport({ leaves: [], expenses: [] }, now), trend: buildHrOperationsTrend({ leaves: [], expenses: [] }, now) };
 
   const teamMemberIds = scope === "team" ? (await db.select({ userId: employeeProfiles.userId }).from(employeeProfiles).where(and(eq(employeeProfiles.companyId, companyId), eq(employeeProfiles.managerUserId, userId)))).map(row => row.userId) : undefined;
-  if (scope === "team" && !teamMemberIds?.length) return { scope, selectedMonth: now.toISOString().slice(0, 7), availableRegions: [], appliedFilters: filters, ...buildHrOperationsReport({ leaves: [], expenses: [] }, now), trend: buildHrOperationsTrend({ leaves: [], expenses: [] }, now) };
+  if (scope === "team" && !teamMemberIds?.length) return { scope, selectedMonth: now.toISOString().slice(0, 7), availableRegions: [], appliedFilters: filters, operationPulse: emptyPulse, ...buildHrOperationsReport({ leaves: [], expenses: [] }, now), trend: buildHrOperationsTrend({ leaves: [], expenses: [] }, now) };
 
   const employeeScope = scope === "team" ? inArray(serviceRequests.employeeId, teamMemberIds!) : undefined;
-  const [leaves, expenses] = await Promise.all([
+  const [leaves, expenses, requests, tasks] = await Promise.all([
     db.select({ leaveType: leaveRequests.leaveType, startDate: leaveRequests.startDate, endDate: leaveRequests.endDate, region: employeeProfiles.region }).from(leaveRequests).innerJoin(serviceRequests, eq(leaveRequests.requestId, serviceRequests.id)).innerJoin(employeeProfiles, eq(serviceRequests.employeeId, employeeProfiles.userId)).where(and(eq(leaveRequests.companyId, companyId), eq(employeeProfiles.companyId, companyId), employeeScope)),
     db.select({ expenseType: expenseRequests.expenseType, amountSar: expenseRequests.amountSar, createdAt: expenseRequests.createdAt, region: employeeProfiles.region }).from(expenseRequests).innerJoin(serviceRequests, eq(expenseRequests.requestId, serviceRequests.id)).innerJoin(employeeProfiles, eq(serviceRequests.employeeId, employeeProfiles.userId)).where(and(eq(expenseRequests.companyId, companyId), eq(employeeProfiles.companyId, companyId), employeeScope)),
+    db.select({ status: serviceRequests.status }).from(serviceRequests).innerJoin(employeeProfiles, eq(serviceRequests.employeeId, employeeProfiles.userId)).where(and(eq(employeeProfiles.companyId, companyId), employeeScope)),
+    db.select({ status: approvalTasks.status }).from(approvalTasks).innerJoin(serviceRequests, eq(approvalTasks.requestId, serviceRequests.id)).innerJoin(employeeProfiles, eq(serviceRequests.employeeId, employeeProfiles.userId)).where(and(eq(approvalTasks.companyId, companyId), eq(employeeProfiles.companyId, companyId), employeeScope)),
   ]);
   const allowedLeaveTypes = ["annual", "sick", "emergency"];
   const allowedExpenseTypes = ["travel", "operating"];
   const visibleLeaves = leaves.filter(item => (!filters.region || item.region === filters.region) && (!filters.category || !allowedLeaveTypes.includes(filters.category) || item.leaveType === filters.category));
   const visibleExpenses = expenses.filter(item => (!filters.region || item.region === filters.region) && (!filters.category || !allowedExpenseTypes.includes(filters.category) || item.expenseType === filters.category));
   const availableRegions = Array.from(new Set([...leaves, ...expenses].map(item => item.region).filter((region): region is string => !!region))).sort();
-  return { scope, selectedMonth: now.toISOString().slice(0, 7), availableRegions, appliedFilters: filters, ...buildHrOperationsReport({ leaves: visibleLeaves, expenses: visibleExpenses }, now), trend: buildHrOperationsTrend({ leaves: visibleLeaves, expenses: visibleExpenses }, now) };
+  return { scope, selectedMonth: now.toISOString().slice(0, 7), availableRegions, appliedFilters: filters, operationPulse: buildOperationsPulse({ requests, tasks }), ...buildHrOperationsReport({ leaves: visibleLeaves, expenses: visibleExpenses }, now), trend: buildHrOperationsTrend({ leaves: visibleLeaves, expenses: visibleExpenses }, now) };
 }
 
 export async function getCompanyHrOperationsReport(companyId: number, now = new Date()): Promise<HrOperationsReport> {

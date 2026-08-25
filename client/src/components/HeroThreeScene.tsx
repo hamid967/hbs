@@ -1,8 +1,13 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
+export type OperationsPulse = {
+  requests: { submitted: number; inReview: number; completed: number };
+  approvals: { pending: number; approved: number; rejected: number };
+};
+
 /** مشهد زخرفي خفيف لتدفقات الطلبات والموافقات، لا يحمل أي بيانات عمل حساسة. */
-export function HeroThreeScene() {
+export function HeroThreeScene({ pulse }: { pulse?: OperationsPulse }) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -26,9 +31,12 @@ export function HeroThreeScene() {
 
     const group = new THREE.Group();
     scene.add(group);
+    const pendingApprovals = pulse?.approvals.pending ?? 0;
+    const totalRequests = (pulse?.requests.submitted ?? 0) + (pulse?.requests.inReview ?? 0) + (pulse?.requests.completed ?? 0);
     const geometry = new THREE.IcosahedronGeometry(0.72, 2);
-    const core = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0x1d5a40, metalness: 0.2, roughness: 0.28 }));
+    const core = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: pendingApprovals > 0 ? 0x1d5a40 : 0x347957, metalness: 0.2, roughness: 0.28 }));
     core.position.set(0, 0.12, 0);
+    core.scale.setScalar(0.86 + Math.min(totalRequests, 18) * 0.018);
     group.add(core);
 
     const ring = new THREE.Mesh(new THREE.TorusGeometry(1.34, 0.025, 12, 80), new THREE.MeshBasicMaterial({ color: 0x9ccfa7, transparent: true, opacity: 0.76 }));
@@ -36,10 +44,10 @@ export function HeroThreeScene() {
     group.add(ring);
 
     const satellites = [
-      { position: new THREE.Vector3(-1.82, 0.78, 0.15), color: 0xe5c99d, size: 0.24 },
-      { position: new THREE.Vector3(1.73, 0.56, -0.22), color: 0x4f9e70, size: 0.18 },
-      { position: new THREE.Vector3(-1.28, -1.22, 0.18), color: 0x97c9a3, size: 0.15 },
-      { position: new THREE.Vector3(1.2, -1.34, 0.12), color: 0xe5c99d, size: 0.13 },
+      { position: new THREE.Vector3(-1.82, 0.78, 0.15), color: pendingApprovals > 0 ? 0xe5c99d : 0x97c9a3, size: 0.13 + Math.min(pendingApprovals, 10) * 0.018 },
+      { position: new THREE.Vector3(1.73, 0.56, -0.22), color: 0x4f9e70, size: 0.12 + Math.min(pulse?.requests.inReview ?? 0, 10) * 0.016 },
+      { position: new THREE.Vector3(-1.28, -1.22, 0.18), color: 0x97c9a3, size: 0.12 + Math.min(pulse?.requests.submitted ?? 0, 10) * 0.016 },
+      { position: new THREE.Vector3(1.2, -1.34, 0.12), color: 0xe5c99d, size: 0.11 + Math.min(pulse?.requests.completed ?? 0, 10) * 0.014 },
     ];
     const satelliteMeshes = satellites.map((item) => {
       const mesh = new THREE.Mesh(new THREE.SphereGeometry(item.size, 24, 24), new THREE.MeshStandardMaterial({ color: item.color, roughness: 0.35, metalness: 0.08 }));
@@ -101,7 +109,7 @@ export function HeroThreeScene() {
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, []);
+  }, [pulse]);
 
   return <div ref={hostRef} aria-hidden="true" className="absolute inset-0 z-0 cursor-crosshair opacity-90" />;
 }
