@@ -213,6 +213,32 @@ export const attendanceEntries = mysqlTable("attendanceEntries", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("attendanceEntries_company_user_date_unique").on(table.companyId, table.userId, table.workDate), index("attendanceEntries_company_date_idx").on(table.companyId, table.workDate)]);
 
+export const attendancePolicies = mysqlTable("attendancePolicies", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 160 }).notNull(),
+  startTime: varchar("startTime", { length: 5 }).notNull(),
+  endTime: varchar("endTime", { length: 5 }).notNull(),
+  workDays: varchar("workDays", { length: 32 }).notNull(),
+  graceMinutes: int("graceMinutes").default(0).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("attendancePolicies_company_title_unique").on(table.companyId, table.title), index("attendancePolicies_company_active_idx").on(table.companyId, table.isActive)]);
+
+export const employeeShiftAssignments = mysqlTable("employeeShiftAssignments", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  employeeUserId: int("employeeUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  attendancePolicyId: int("attendancePolicyId").notNull().references(() => attendancePolicies.id, { onDelete: "cascade" }),
+  effectiveFrom: varchar("effectiveFrom", { length: 10 }).notNull(),
+  effectiveTo: varchar("effectiveTo", { length: 10 }),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("employeeShiftAssignments_company_employee_from_idx").on(table.companyId, table.employeeUserId, table.effectiveFrom), index("employeeShiftAssignments_company_policy_idx").on(table.companyId, table.attendancePolicyId)]);
+
 export const auditEvents = mysqlTable("auditEvents", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -265,6 +291,8 @@ export type OnboardingTaskTemplate = typeof onboardingTaskTemplates.$inferSelect
 export type JobInterview = typeof jobInterviews.$inferSelect;
 export type JobOffer = typeof jobOffers.$inferSelect;
 export type AttendanceEntry = typeof attendanceEntries.$inferSelect;
+export type AttendancePolicy = typeof attendancePolicies.$inferSelect;
+export type EmployeeShiftAssignment = typeof employeeShiftAssignments.$inferSelect;
 export type AuditEvent = typeof auditEvents.$inferSelect;
 export type ApprovalTask = typeof approvalTasks.$inferSelect;
 export type InAppNotification = typeof inAppNotifications.$inferSelect;

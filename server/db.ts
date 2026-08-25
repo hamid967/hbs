@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeLifecycleEvents, employeeProfiles, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeLifecycleEvents, employeeProfiles, employeeShiftAssignments, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -420,6 +420,43 @@ export async function listAttendanceForScope(input: { companyId: number; actorId
   if (["admin", "hr"].includes(input.role)) return base.where(companyAndDate).orderBy(desc(attendanceEntries.checkInAt));
   if (input.role === "manager") return base.where(and(companyAndDate, eq(employeeProfiles.managerUserId, input.actorId))).orderBy(desc(attendanceEntries.checkInAt));
   return base.where(and(companyAndDate, eq(attendanceEntries.userId, input.actorId))).orderBy(desc(attendanceEntries.checkInAt));
+}
+
+export async function listCompanyAttendancePolicies(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(attendancePolicies).where(eq(attendancePolicies.companyId, companyId)).orderBy(desc(attendancePolicies.isActive), desc(attendancePolicies.updatedAt));
+}
+
+export async function listCompanyShiftAssignments(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ assignment: employeeShiftAssignments, policy: attendancePolicies, employee: users }).from(employeeShiftAssignments).innerJoin(attendancePolicies, eq(employeeShiftAssignments.attendancePolicyId, attendancePolicies.id)).innerJoin(users, eq(employeeShiftAssignments.employeeUserId, users.id)).where(and(eq(employeeShiftAssignments.companyId, companyId), eq(attendancePolicies.companyId, companyId), eq(users.companyId, companyId))).orderBy(desc(employeeShiftAssignments.effectiveFrom), desc(employeeShiftAssignments.createdAt));
+}
+
+export async function createCompanyAttendancePolicy(input: { companyId: number; title: string; startTime: string; endTime: string; workDays: string; graceMinutes: number; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await db.insert(attendancePolicies).values({ companyId: input.companyId, title: input.title, startTime: input.startTime, endTime: input.endTime, workDays: input.workDays, graceMinutes: input.graceMinutes, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(attendancePolicies).where(and(eq(attendancePolicies.companyId, input.companyId), eq(attendancePolicies.title, input.title))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ سياسة الدوام");
+  return created;
+}
+
+export async function assignCompanyAttendancePolicy(input: { companyId: number; employeeUserId: number; attendancePolicyId: number; effectiveFrom: string; effectiveTo?: string; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية أو غير مفعّل");
+  const policy = (await db.select().from(attendancePolicies).where(and(eq(attendancePolicies.id, input.attendancePolicyId), eq(attendancePolicies.companyId, input.companyId), eq(attendancePolicies.isActive, true))).limit(1))[0];
+  if (!policy) throw new Error("سياسة الدوام غير موجودة ضمن الشركة الحالية أو غير مفعّلة");
+  if (input.effectiveTo && input.effectiveTo < input.effectiveFrom) throw new Error("تاريخ نهاية الوردية يجب أن يأتي بعد تاريخ البداية");
+  const existing = (await db.select().from(employeeShiftAssignments).where(and(eq(employeeShiftAssignments.companyId, input.companyId), eq(employeeShiftAssignments.employeeUserId, input.employeeUserId), eq(employeeShiftAssignments.attendancePolicyId, input.attendancePolicyId), eq(employeeShiftAssignments.effectiveFrom, input.effectiveFrom))).limit(1))[0];
+  if (existing) throw new Error("هذه الوردية مضافة للموظف بالتاريخ نفسه بالفعل");
+  await db.insert(employeeShiftAssignments).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, attendancePolicyId: input.attendancePolicyId, effectiveFrom: input.effectiveFrom, effectiveTo: input.effectiveTo ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(employeeShiftAssignments).where(and(eq(employeeShiftAssignments.companyId, input.companyId), eq(employeeShiftAssignments.employeeUserId, input.employeeUserId), eq(employeeShiftAssignments.attendancePolicyId, input.attendancePolicyId), eq(employeeShiftAssignments.effectiveFrom, input.effectiveFrom))).orderBy(desc(employeeShiftAssignments.id)).limit(1))[0];
+  if (!created) throw new Error("تعذر تعيين وردية الموظف");
+  return created;
 }
 
 type AuditCategory = "recruitment" | "attendance" | "approval" | "account" | "permission";

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const dbMocks = vi.hoisted(() => ({ checkInAttendance: vi.fn(), checkOutAttendance: vi.fn(), getMyAttendanceEntry: vi.fn(), listAttendanceForScope: vi.fn(), recordAuditEvent: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ assignCompanyAttendancePolicy: vi.fn(), checkInAttendance: vi.fn(), checkOutAttendance: vi.fn(), createCompanyAttendancePolicy: vi.fn(), getMyAttendanceEntry: vi.fn(), listAttendanceForScope: vi.fn(), listCompanyAttendancePolicies: vi.fn(), listCompanyEmployees: vi.fn(), listCompanyShiftAssignments: vi.fn(), recordAuditEvent: vi.fn() }));
 vi.mock("../db", () => dbMocks);
 
 import { attendanceRouter } from "./attendance";
@@ -11,7 +11,7 @@ function context(role: "user" | "hr" | "manager" | "admin" = "user"): TrpcContex
 }
 
 describe("attendance router", () => {
-  beforeEach(() => { vi.clearAllMocks(); dbMocks.getMyAttendanceEntry.mockResolvedValue(undefined); dbMocks.listAttendanceForScope.mockResolvedValue([]); dbMocks.checkInAttendance.mockResolvedValue({ id: 1 }); dbMocks.checkOutAttendance.mockResolvedValue({ id: 1, status: "completed" }); });
+  beforeEach(() => { vi.clearAllMocks(); dbMocks.getMyAttendanceEntry.mockResolvedValue(undefined); dbMocks.listAttendanceForScope.mockResolvedValue([]); dbMocks.listCompanyAttendancePolicies.mockResolvedValue([]); dbMocks.listCompanyShiftAssignments.mockResolvedValue([]); dbMocks.listCompanyEmployees.mockResolvedValue([]); dbMocks.checkInAttendance.mockResolvedValue({ id: 1 }); dbMocks.checkOutAttendance.mockResolvedValue({ id: 1, status: "completed" }); dbMocks.createCompanyAttendancePolicy.mockResolvedValue({ id: 2, companyId: 5 }); dbMocks.assignCompanyAttendancePolicy.mockResolvedValue({ id: 3, companyId: 5 }); });
 
   it("loads the employee own entry from the authenticated company", async () => {
     await attendanceRouter.createCaller(context()).mine();
@@ -32,5 +32,21 @@ describe("attendance router", () => {
   it("records check-out only for the authenticated employee and company", async () => {
     await attendanceRouter.createCaller(context("hr")).checkOut();
     expect(dbMocks.checkOutAttendance).toHaveBeenCalledWith({ companyId: 5, userId: 14 });
+  });
+
+  it("creates policies and shift assignments in the authenticated company for HR", async () => {
+    const caller = attendanceRouter.createCaller(context("hr"));
+    await expect(caller.schedules()).resolves.toEqual({ policies: [], assignments: [], employees: [] });
+    await caller.createPolicy({ title: "وردية المكتب", startTime: "09:00", endTime: "17:00", workDays: ["sun", "mon", "tue", "wed", "thu"], graceMinutes: 10 });
+    await caller.assignShift({ employeeUserId: 22, attendancePolicyId: 2, effectiveFrom: "2026-09-01" });
+    expect(dbMocks.listCompanyAttendancePolicies).toHaveBeenCalledWith(5);
+    expect(dbMocks.listCompanyShiftAssignments).toHaveBeenCalledWith(5);
+    expect(dbMocks.createCompanyAttendancePolicy).toHaveBeenCalledWith(expect.objectContaining({ companyId: 5, createdByUserId: 14, workDays: "sun,mon,tue,wed,thu" }));
+    expect(dbMocks.assignCompanyAttendancePolicy).toHaveBeenCalledWith({ companyId: 5, createdByUserId: 14, employeeUserId: 22, attendancePolicyId: 2, effectiveFrom: "2026-09-01" });
+  });
+
+  it("prevents employees and managers from managing schedules", async () => {
+    await expect(attendanceRouter.createCaller(context("user")).schedules()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(attendanceRouter.createCaller(context("manager")).createPolicy({ title: "وردية", startTime: "09:00", endTime: "17:00", workDays: ["sun"], graceMinutes: 0 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

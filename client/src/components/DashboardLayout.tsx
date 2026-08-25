@@ -42,6 +42,7 @@ import {
   BarChart3,
   BriefcaseBusiness,
   Clock3,
+  CalendarDays,
   Inbox,
 } from "lucide-react";
 import { useLocation } from "wouter";
@@ -66,6 +67,7 @@ const menuItems = [
   { icon: ClipboardCheck, label: "دورة حياة الموظف", path: "/employee-lifecycle", requiresLifecycleAccess: true },
   { icon: BriefcaseBusiness, label: "التوظيف والتهيئة", path: "/recruitment", requiresRecruitmentAccess: true },
   { icon: Clock3, label: "الدوام", path: "/attendance" },
+  { icon: CalendarDays, label: "سياسات الدوام", path: "/attendance-schedules", requiresSchedulingAccess: true },
   { icon: ClipboardCheck, label: "صندوق الموافقات", path: "/approvals", requiresApprovalAccess: true },
   { icon: Inbox, label: "صندوق العمل", path: "/workboard" },
   { icon: BellRing, label: "الإشعارات", path: "/notifications" },
@@ -106,7 +108,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const canManageLifecycle = ["admin", "hr"].includes(user.role);
   const canApprove = ["admin", "manager", "hr", "government"].includes(user.role);
   const canManageRecruitment = ["admin", "hr"].includes(user.role);
-  const visibleMenuItems = menuItems.filter(item => (!item.adminOnly || user.role === "admin") && (!item.requiresOperationAccess || hasOperationAccess) && (!item.requiresDirectoryAccess || canManageDirectory) && (!item.requiresLifecycleAccess || canManageLifecycle) && (!item.requiresRecruitmentAccess || canManageRecruitment) && (!item.requiresApprovalAccess || canApprove));
+  const canManageSchedules = ["admin", "hr"].includes(user.role);
+  const visibleMenuItems = menuItems.filter(item => (!item.adminOnly || user.role === "admin") && (!item.requiresOperationAccess || hasOperationAccess) && (!item.requiresDirectoryAccess || canManageDirectory) && (!item.requiresLifecycleAccess || canManageLifecycle) && (!item.requiresRecruitmentAccess || canManageRecruitment) && (!item.requiresSchedulingAccess || canManageSchedules) && (!item.requiresApprovalAccess || canApprove));
 
   return (
     <SidebarProvider dir="rtl" className="bg-[#f8f8f5] text-[#17211c]">
