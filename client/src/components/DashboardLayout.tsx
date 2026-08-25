@@ -63,6 +63,7 @@ const menuItems = [
   { icon: ShieldCheck, label: "سجل التدقيق", path: "/audit", adminOnly: true },
   { icon: Building2, label: "قوالب الشركة", path: "/company-templates", adminOnly: true },
   { icon: UserRoundSearch, label: "دليل الموظفين", path: "/employees", requiresDirectoryAccess: true },
+  { icon: ClipboardCheck, label: "دورة حياة الموظف", path: "/employee-lifecycle", requiresLifecycleAccess: true },
   { icon: BriefcaseBusiness, label: "التوظيف والتهيئة", path: "/recruitment", requiresRecruitmentAccess: true },
   { icon: Clock3, label: "الدوام", path: "/attendance" },
   { icon: ClipboardCheck, label: "صندوق الموافقات", path: "/approvals", requiresApprovalAccess: true },
@@ -102,9 +103,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const hasOperationAccess = user.role === "admin" || Boolean(modulePermissions?.some(permission => permission.canView));
   const canManageDirectory = ["admin", "manager", "hr"].includes(user.role);
+  const canManageLifecycle = ["admin", "hr"].includes(user.role);
   const canApprove = ["admin", "manager", "hr", "government"].includes(user.role);
   const canManageRecruitment = ["admin", "hr"].includes(user.role);
-  const visibleMenuItems = menuItems.filter(item => (!item.adminOnly || user.role === "admin") && (!item.requiresOperationAccess || hasOperationAccess) && (!item.requiresDirectoryAccess || canManageDirectory) && (!item.requiresRecruitmentAccess || canManageRecruitment) && (!item.requiresApprovalAccess || canApprove));
+  const visibleMenuItems = menuItems.filter(item => (!item.adminOnly || user.role === "admin") && (!item.requiresOperationAccess || hasOperationAccess) && (!item.requiresDirectoryAccess || canManageDirectory) && (!item.requiresLifecycleAccess || canManageLifecycle) && (!item.requiresRecruitmentAccess || canManageRecruitment) && (!item.requiresApprovalAccess || canApprove));
 
   return (
     <SidebarProvider dir="rtl" className="bg-[#f8f8f5] text-[#17211c]">

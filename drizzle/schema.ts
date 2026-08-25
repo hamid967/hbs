@@ -107,6 +107,17 @@ export const employeeProfiles = mysqlTable("employeeProfiles", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("employeeProfiles_user_unique").on(table.userId), uniqueIndex("employeeProfiles_company_number_unique").on(table.companyId, table.employeeNumber)]);
 
+export const employeeLifecycleEvents = mysqlTable("employeeLifecycleEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  employeeUserId: int("employeeUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventType: mysqlEnum("eventType", ["joined", "status_changed", "role_changed", "department_changed", "manager_changed", "offboarding_started", "offboarding_completed"]).notNull(),
+  effectiveAt: timestamp("effectiveAt").notNull(),
+  note: varchar("note", { length: 500 }),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("employeeLifecycleEvents_company_employee_effective_idx").on(table.companyId, table.employeeUserId, table.effectiveAt), index("employeeLifecycleEvents_company_type_idx").on(table.companyId, table.eventType)]);
+
 export const jobOpenings = mysqlTable("jobOpenings", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -246,6 +257,7 @@ export type UserModulePermission = typeof userModulePermissions.$inferSelect;
 export type CompanyPermissionTemplate = typeof companyPermissionTemplates.$inferSelect;
 export type Department = typeof departments.$inferSelect;
 export type EmployeeProfile = typeof employeeProfiles.$inferSelect;
+export type EmployeeLifecycleEvent = typeof employeeLifecycleEvents.$inferSelect;
 export type JobOpening = typeof jobOpenings.$inferSelect;
 export type JobCandidate = typeof jobCandidates.$inferSelect;
 export type OnboardingTask = typeof onboardingTasks.$inferSelect;

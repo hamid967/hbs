@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeProfiles, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeLifecycleEvents, employeeProfiles, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -173,6 +173,25 @@ export async function saveEmployeeProfile(input: { companyId: number; userId: nu
   const values = { companyId: input.companyId, userId: input.userId, employeeNumber: input.employeeNumber ?? null, jobTitle: input.jobTitle ?? null, departmentId: input.departmentId ?? null, region: input.region ?? null, managerUserId: input.managerUserId ?? null, employmentStatus: input.employmentStatus, joinedAt: input.joinedAt ?? null };
   await db.insert(employeeProfiles).values(values).onDuplicateKeyUpdate({ set: { employeeNumber: values.employeeNumber, jobTitle: values.jobTitle, departmentId: values.departmentId, region: values.region, managerUserId: values.managerUserId, employmentStatus: values.employmentStatus, joinedAt: values.joinedAt } });
   return (await db.select().from(employeeProfiles).where(eq(employeeProfiles.userId, input.userId)).limit(1))[0];
+}
+
+type EmployeeLifecycleEventType = "joined" | "status_changed" | "role_changed" | "department_changed" | "manager_changed" | "offboarding_started" | "offboarding_completed";
+
+export async function listCompanyEmployeeLifecycleEvents(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(employeeLifecycleEvents).where(eq(employeeLifecycleEvents.companyId, companyId)).orderBy(desc(employeeLifecycleEvents.effectiveAt), desc(employeeLifecycleEvents.createdAt));
+}
+
+export async function createCompanyEmployeeLifecycleEvent(input: { companyId: number; employeeUserId: number; eventType: EmployeeLifecycleEventType; effectiveAt: Date; note?: string; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية");
+  await db.insert(employeeLifecycleEvents).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, eventType: input.eventType, effectiveAt: input.effectiveAt, note: input.note ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(employeeLifecycleEvents).where(and(eq(employeeLifecycleEvents.companyId, input.companyId), eq(employeeLifecycleEvents.employeeUserId, input.employeeUserId), eq(employeeLifecycleEvents.eventType, input.eventType), eq(employeeLifecycleEvents.effectiveAt, input.effectiveAt))).orderBy(desc(employeeLifecycleEvents.id)).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ حدث دورة الحياة");
+  return created;
 }
 
 type OpeningStatus = "draft" | "open" | "closed";
