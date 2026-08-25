@@ -43,6 +43,7 @@ import {
   BriefcaseBusiness,
   Clock3,
   CalendarDays,
+  BookOpenCheck,
   Inbox,
 } from "lucide-react";
 import { useLocation } from "wouter";
@@ -65,6 +66,7 @@ const menuItems = [
   { icon: Building2, label: "قوالب الشركة", path: "/company-templates", adminOnly: true },
   { icon: UserRoundSearch, label: "دليل الموظفين", path: "/employees", requiresDirectoryAccess: true },
   { icon: ClipboardCheck, label: "دورة حياة الموظف", path: "/employee-lifecycle", requiresLifecycleAccess: true },
+  { icon: BookOpenCheck, label: "التدريب الداخلي", path: "/training", requiresLifecycleAccess: true },
   { icon: BriefcaseBusiness, label: "التوظيف والتهيئة", path: "/recruitment", requiresRecruitmentAccess: true },
   { icon: Clock3, label: "الدوام", path: "/attendance" },
   { icon: CalendarDays, label: "سياسات الدوام", path: "/attendance-schedules", requiresSchedulingAccess: true },

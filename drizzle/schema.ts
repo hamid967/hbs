@@ -239,6 +239,31 @@ export const employeeShiftAssignments = mysqlTable("employeeShiftAssignments", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("employeeShiftAssignments_company_employee_from_idx").on(table.companyId, table.employeeUserId, table.effectiveFrom), index("employeeShiftAssignments_company_policy_idx").on(table.companyId, table.attendancePolicyId)]);
 
+export const trainingPrograms = mysqlTable("trainingPrograms", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 180 }).notNull(),
+  description: varchar("description", { length: 800 }),
+  durationMinutes: int("durationMinutes").default(0).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("trainingPrograms_company_title_unique").on(table.companyId, table.title), index("trainingPrograms_company_active_idx").on(table.companyId, table.isActive)]);
+
+export const employeeTrainingAssignments = mysqlTable("employeeTrainingAssignments", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  employeeUserId: int("employeeUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  trainingProgramId: int("trainingProgramId").notNull().references(() => trainingPrograms.id, { onDelete: "cascade" }),
+  status: mysqlEnum("status", ["assigned", "completed"]).default("assigned").notNull(),
+  dueAt: timestamp("dueAt"),
+  completedAt: timestamp("completedAt"),
+  assignedByUserId: int("assignedByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("employeeTrainingAssignments_company_employee_program_unique").on(table.companyId, table.employeeUserId, table.trainingProgramId), index("employeeTrainingAssignments_company_status_idx").on(table.companyId, table.status)]);
+
 export const auditEvents = mysqlTable("auditEvents", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
