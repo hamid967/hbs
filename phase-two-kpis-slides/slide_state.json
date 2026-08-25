@@ -1,0 +1,133 @@
+{
+  "project_info": {
+    "title": "نتعلم من المرجع دون أن ننسخه",
+    "created": 1787690398.359,
+    "last_updated": 1787690559.073,
+    "total_slides": 11
+  },
+  "slides": [
+    {
+      "id": "cover",
+      "state": "edited",
+      "pageNum": 1
+    },
+    {
+      "id": "decisions",
+      "state": "edited",
+      "pageNum": 2
+    },
+    {
+      "id": "boundaries",
+      "state": "edited",
+      "pageNum": 3
+    },
+    {
+      "id": "week_plan",
+      "state": "edited",
+      "pageNum": 4
+    },
+    {
+      "id": "five_outputs",
+      "state": "edited",
+      "pageNum": 5
+    },
+    {
+      "id": "kpi_framework",
+      "state": "edited",
+      "pageNum": 6
+    },
+    {
+      "id": "kpi_targets",
+      "state": "edited",
+      "pageNum": 7
+    },
+    {
+      "id": "signals",
+      "state": "edited",
+      "pageNum": 8
+    },
+    {
+      "id": "risks",
+      "state": "edited",
+      "pageNum": 9
+    },
+    {
+      "id": "gate",
+      "state": "edited",
+      "pageNum": 10
+    },
+    {
+      "id": "closing",
+      "state": "edited",
+      "pageNum": 11
+    }
+  ],
+  "outline": [
+    {
+      "id": "cover",
+      "title": "نتعلم من المرجع دون أن ننسخه",
+      "summary": "غلاف العرض: المرحلة الثانية، تحليل المرجع والتميّز ومؤشرات جودة القرار.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "decisions",
+      "title": "التحليل يتحول إلى قرارات قابلة للتنفيذ",
+      "summary": "توضيح أن المرحلة الثانية تنتج مبادئ وفرصاً مرتبطة بمالكين ومراحل قبول.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "boundaries",
+      "title": "الحد الواضح: نتعلم ولا نقلد",
+      "summary": "تحديد نطاق التحليل وحدود عدم نسخ الهوية أو المحتوى أو البنية التفصيلية.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "week_plan",
+      "title": "خمسة أيام تنتج أساس التميّز",
+      "summary": "خطة الأسبوع الثاني من أسئلة التحليل إلى اعتماد النتائج.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "five_outputs",
+      "title": "خمسة مخرجات تحوّل الملاحظة إلى أثر",
+      "summary": "مصفوفة المراجع ومبادئ UX وخريطة التميّز وسجل منع النسخ وخطة الإدخال.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "kpi_framework",
+      "title": "جودة التحليل تقاس بعشرة KPIs",
+      "summary": "إطار قياس تغطية الرحلات والتطبيق والتميّز وعدم النسخ والقرارات.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "kpi_targets",
+      "title": "الأهداف الرقمية تمنع التحليل العام",
+      "summary": "الأهداف الكمية الرئيسية لجودة المرحلة الثانية.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "signals",
+      "title": "الإشارات الإدارية تحمي جودة القرار",
+      "summary": "نظام الأخضر والأصفر والأحمر لقرارات تحليل المرجع.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "risks",
+      "title": "أربعة مخاطر نضبطها من البداية",
+      "summary": "نسخ الهوية والتحليل العام وفرص بلا مالك وتأخر القرار.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "gate",
+      "title": "بوابة المرحلة الثالثة تحتاج دليلاً كاملاً",
+      "summary": "شروط الانتقال من التحليل إلى شرائح المستخدمين ورحلاتهم.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "closing",
+      "title": "تميّز أصيل يبدأ بقرار قابل للتتبع",
+      "summary": "إغلاق يثبت بناء تجربة أصلية لحلول الغد ضمن السياق السعودي.",
+      "image_plan": "Use a suitable image if needed"
+    }
+  ]
+}
