@@ -1,0 +1,122 @@
+{
+  "project_info": {
+    "title": "ضمان الجودة قبل الإطلاق",
+    "created": 1787695316.306,
+    "last_updated": 1787695496.879,
+    "total_slides": 10
+  },
+  "slides": [
+    {
+      "id": "cover",
+      "state": "edited",
+      "pageNum": 1
+    },
+    {
+      "id": "quality_goal",
+      "state": "edited",
+      "pageNum": 2
+    },
+    {
+      "id": "release_discipline",
+      "state": "edited",
+      "pageNum": 3
+    },
+    {
+      "id": "p1_journeys",
+      "state": "edited",
+      "pageNum": 4
+    },
+    {
+      "id": "device_matrix",
+      "state": "edited",
+      "pageNum": 5
+    },
+    {
+      "id": "quality_gate",
+      "state": "edited",
+      "pageNum": 6
+    },
+    {
+      "id": "form_integration",
+      "state": "edited",
+      "pageNum": 7
+    },
+    {
+      "id": "defect_management",
+      "state": "edited",
+      "pageNum": 8
+    },
+    {
+      "id": "launch_monitoring",
+      "state": "edited",
+      "pageNum": 9
+    },
+    {
+      "id": "decisions",
+      "state": "edited",
+      "pageNum": 10
+    }
+  ],
+  "outline": [
+    {
+      "id": "cover",
+      "title": "ضمان الجودة قبل الإطلاق",
+      "summary": "غلاف العرض التنفيذي لخطة QA لموقع Webflow.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "quality_goal",
+      "title": "الجودة تحمي التحويل والثقة",
+      "summary": "تحديد حدود QA ودورها في حماية رحلة الزائر دون خلطها بتطبيق HR HBS.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "release_discipline",
+      "title": "staging قبل الإنتاج",
+      "summary": "توضيح مسار النشر المرحلي والمراجعة والموافقات.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "p1_journeys",
+      "title": "رحلات P1 هي خط الدفاع",
+      "summary": "عرض مسارات التنقل وCTA والنموذج والخصوصية ذات الأولوية.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "device_matrix",
+      "title": "اختبار حقيقي عبر الأجهزة",
+      "summary": "مصفوفة المتصفحات والأجهزة ومسارات التحقق الأساسية.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "quality_gate",
+      "title": "الإتاحة وSEO والأداء بوابة واحدة",
+      "summary": "دمج عناصر الإتاحة والبحث والأداء ضمن قرار الجودة.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "form_integration",
+      "title": "النموذج والتكامل بلا تخمين",
+      "summary": "اختبار نموذج العرض وWebhook وSandbox وحماية البيانات.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "defect_management",
+      "title": "العيوب تقاس قبل أن تؤجل",
+      "summary": "تصنيف العيوب ومسار الإصلاح وشروط الإطلاق.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "launch_monitoring",
+      "title": "المراقبة والتراجع بعد النشر",
+      "summary": "خطة مراقبة 24 ساعة وإجراءات التراجع عند كسر التحويل أو الخصوصية.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "decisions",
+      "title": "قرارات مطلوبة اليوم",
+      "summary": "قرارات الإدارة والفريق المطلوبة لتشغيل خطة QA.",
+      "image_plan": "Use a suitable image if needed"
+    }
+  ]
+}
