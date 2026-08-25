@@ -29,7 +29,7 @@ export const roadmapStages: RoadmapStage[] = [
   { number: 17, title: "العلاقات الحكومية", detail: "معاملات ووثائق ومسارات متابعة.", track: "العمليات", status: "completed" },
   { number: 18, title: "الموافقات والتصعيد", detail: "محرك موافقات ومهام مشتركة.", track: "العمليات", status: "validation", dependency: "يلزم قبول حي بثلاث جلسات: موظف ومدير ووحدة مختصة." },
   { number: 19, title: "الوثائق والنماذج", detail: "مستندات ونماذج وتوقيع متدرج.", track: "العمليات", status: "planned", dependency: "يتطلب اعتماد سياسة المرفقات والتوقيع للإصدار التالي." },
-  { number: 20, title: "صندوق العمل الموحد", detail: "إدارة الحالات والالتزامات التشغيلية.", track: "العمليات", status: "partial", dependency: "توجد صناديق متخصصة؛ التوحيد الكامل يحتاج نموذج عمل مشترك." },
+  { number: 20, title: "صندوق العمل الموحد", detail: "صندوق موحد للإشعارات ومهام الموافقة المصرح بها.", track: "العمليات", status: "partial", dependency: "يتبقى توحيد الالتزامات التشغيلية الأخرى ضمن نموذج عمل مشترك." },
   { number: 21, title: "لوحات القياس", detail: "تحليلات تشغيلية وتجارية.", track: "البيانات", status: "completed" },
   { number: 22, title: "مساعد الذكاء", detail: "دعم للموظف وفريق العمليات.", track: "الذكاء", status: "completed" },
   { number: 23, title: "مولّد HR الذكي", detail: "خطط موارد بشرية وتوصيات مخصصة.", track: "الذكاء", status: "completed" },

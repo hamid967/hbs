@@ -42,6 +42,7 @@ import {
   BarChart3,
   BriefcaseBusiness,
   Clock3,
+  Inbox,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -65,6 +66,7 @@ const menuItems = [
   { icon: BriefcaseBusiness, label: "التوظيف والتهيئة", path: "/recruitment", requiresRecruitmentAccess: true },
   { icon: Clock3, label: "الدوام", path: "/attendance" },
   { icon: ClipboardCheck, label: "صندوق الموافقات", path: "/approvals", requiresApprovalAccess: true },
+  { icon: Inbox, label: "صندوق العمل", path: "/workboard" },
   { icon: BellRing, label: "الإشعارات", path: "/notifications" },
   { icon: BarChart3, label: "التقارير", path: "/reports", requiresDirectoryAccess: true },
 ];
