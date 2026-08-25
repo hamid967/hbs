@@ -20,6 +20,13 @@ describe("reports router", () => {
     await reportsRouter.createCaller(context("manager")).monthly({ month: "2026-07" });
     expect(dbMocks.getHrOperationsReport).toHaveBeenCalledWith(3, "manager", 9, "2026-07");
   });
+
+  it("returns only the caller-scoped live pulse supplied by the report helper", async () => {
+    const operationPulse = { requests: { submitted: 2, inReview: 1, completed: 4 }, approvals: { pending: 1, approved: 3, rejected: 0 } };
+    dbMocks.getHrOperationsReport.mockResolvedValue({ scope: "team", selectedMonth: "2026-08", leaveDays: {}, expensesSar: {}, operationPulse });
+    await expect(reportsRouter.createCaller(context("manager")).monthly({ month: "2026-08" })).resolves.toMatchObject({ scope: "team", operationPulse });
+    expect(dbMocks.getHrOperationsReport).toHaveBeenCalledWith(3, "manager", 9, "2026-08");
+  });
   it("passes category and region filters without changing the signed-in company scope", async () => {
     await reportsRouter.createCaller(context("hr")).monthly({ month: "2026-08", category: "annual", region: "الرياض" });
     expect(dbMocks.getHrOperationsReport).toHaveBeenCalledWith(3, "hr", 9, "2026-08", { category: "annual", region: "الرياض" });
