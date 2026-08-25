@@ -531,6 +531,18 @@ export function buildOperationsPulse(source: {
   };
 }
 
+export function buildApprovalWorkload(source: { tasks: Array<{ status: "pending" | "approved" | "rejected" | "cancelled"; approverRole: "manager" | "hr" | "government" | "admin"; createdAt: Date }> }, now = new Date()) {
+  const pending = source.tasks.filter(task => task.status === "pending");
+  const hoursOpen = (task: { createdAt: Date }) => Math.max(0, Math.floor((now.getTime() - task.createdAt.getTime()) / 3600000));
+  const byRole = (role: "manager" | "hr" | "government" | "admin") => pending.filter(task => task.approverRole === role).length;
+  return {
+    pending: pending.length,
+    overdue: pending.filter(task => hoursOpen(task) >= 24).length,
+    oldestHours: pending.length ? Math.max(...pending.map(hoursOpen)) : 0,
+    byRole: { manager: byRole("manager"), hr: byRole("hr"), government: byRole("government"), admin: byRole("admin") },
+  };
+}
+
 export function assertReportsAccess(role: UserRole): HrReportScope {
   if (role === "admin" || role === "hr") return "company";
   if (role === "manager") return "team";
