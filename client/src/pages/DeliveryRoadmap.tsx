@@ -1,5 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { BadgeCheck, Bot, BrainCircuit, CheckCircle2, Code2, Compass, Database, Gauge, Layers3, Palette, Rocket, ShieldCheck, Sparkles, Target, UsersRound } from "lucide-react";
+import { roadmapStages, roadmapStatusMeta, summarizeRoadmap } from "@/lib/roadmapStages";
+import { BadgeCheck, Bot, BrainCircuit, CheckCircle2, CircleDashed, Clock3, Code2, Compass, Database, Gauge, Layers3, Palette, Rocket, ShieldCheck, Sparkles, Target, UsersRound } from "lucide-react";
 
 const team = [
   { icon: Compass, role: "قيادة البرنامج والمنتج", focus: "الاتجاه، الأولويات، المؤشرات، وإدارة المخاطر." },
@@ -12,13 +13,77 @@ const team = [
   { icon: Gauge, role: "النمو ونجاح العميل", focus: "التحويل والتبنّي والتدريب والتحسين المستمر." },
 ];
 
-const stages = [
-  [1, "الحوكمة وفريق البرنامج", "فريق واضح ومؤشرات نجاح وملاك قرار.", "الأساس"], [2, "تحليل المرجع والتميّز", "استخلاص مبادئ التحويل دون نسخ الهوية أو المحتوى.", "الأساس"], [3, "شرائح المستخدمين", "رحلات الموظف والمدير والعمليات.", "الأساس"], [4, "تموضع المنتج", "رسائل قيمة ومقاييس نمو قابلة للقياس.", "الأساس"], [5, "بنية المعلومات", "خريطة موحدة للموقع والمنتج.", "الأساس"], [6, "نظام التصميم", "مكونات عربية موحدة وقابلة لإعادة الاستخدام.", "التجربة"], [7, "الموقع التسويقي", "صفحة رئيسية ومسارات تعريف بالمنصة.", "التجربة"], [8, "مسارات التحويل", "طلب عرض والتقاط العملاء وإدارة المحتوى.", "التجربة"], [9, "إدارة المؤسسة", "الإعدادات الأساسية وهوية الإدارة الداخلية.", "المنصة"], [10, "المصادقة والمؤسسات", "تسجيل دخول آمن وعزل للمؤسسات.", "المنصة"], [11, "الصلاحيات والتدقيق", "أدوار دقيقة وسجل للعمليات الحساسة.", "المنصة"], [12, "الهيكل والموظفون", "هيكل تنظيمي وملفات الموظفين.", "HR Core"], [13, "التوظيف والتهيئة", "توظيف وانضمام منظم للموظف الجديد.", "HR Core"], [14, "الخدمة الذاتية", "كتالوج خدمات وطلبات موظفين متكامل.", "HR Core"], [15, "الإجازات والدوامات", "سياسات وقت وحضور مرنة.", "HR Core"], [16, "التعويضات والرواتب", "بيانات استحقاقات وتجهيز للتكامل المالي.", "HR Core"], [17, "العلاقات الحكومية", "معاملات ووثائق ومسارات متابعة.", "العمليات"], [18, "الموافقات والتصعيد", "محرك موافقات ومهام مشتركة.", "العمليات"], [19, "الوثائق والنماذج", "مستندات ونماذج وتوقيع متدرج.", "العمليات"], [20, "صندوق العمل الموحد", "إدارة الحالات والالتزامات التشغيلية.", "العمليات"], [21, "لوحات القياس", "تحليلات تشغيلية وتجارية.", "البيانات"], [22, "مساعد الذكاء", "دعم للموظف وفريق العمليات.", "الذكاء"], [23, "مولّد HR الذكي", "خطط موارد بشرية وتوصيات مخصصة.", "الذكاء"], [24, "المعرفة الذكية", "بحث مؤسسي موجّه بالسياسات.", "الذكاء"], [25, "الأتمتة", "تذكيرات وملخصات ومهام مقترحة.", "الذكاء"], [26, "التكاملات وAPI", "ربط خدمات مؤسسية وإدارة المفاتيح.", "التوسع"], [27, "الهاتف والإتاحة", "تجربة متجاوبة وويب تقدمي وإمكانية وصول.", "التوسع"], [28, "الأمن والموثوقية", "أداء وخصوصية وأمن واختبارات تحمّل.", "الاستعداد"], [29, "القبول والتدريب", "اختبار قبول وتجهيز تدريب وإطلاق.", "الاستعداد"], [30, "الإطلاق والتحسين", "قياس النتائج والتحسين المستمر.", "الاستعداد"],
-] as const;
+const trackColors: Record<string, string> = {
+  "الأساس": "bg-[#e9f4eb] text-[#347950]", "التجربة": "bg-[#fff1de] text-[#a46723]", "المنصة": "bg-[#e9eef8] text-[#446b98]", "HR Core": "bg-[#eef0fa] text-[#5a5ba4]", "العمليات": "bg-[#edf5f3] text-[#27705e]", "البيانات": "bg-[#f3eefa] text-[#7551a0]", "الذكاء": "bg-[#e8f4ef] text-[#1e7650]", "التوسع": "bg-[#f9eeee] text-[#a24646]", "الاستعداد": "bg-[#f1f2f1] text-[#66736a]",
+};
 
-const trackColors: Record<string, string> = { "الأساس": "bg-[#e9f4eb] text-[#347950]", "التجربة": "bg-[#fff1de] text-[#a46723]", "المنصة": "bg-[#e9eef8] text-[#446b98]", "HR Core": "bg-[#eef0fa] text-[#5a5ba4]", "العمليات": "bg-[#edf5f3] text-[#27705e]", "البيانات": "bg-[#f3eefa] text-[#7551a0]", "الذكاء": "bg-[#e8f4ef] text-[#1e7650]", "التوسع": "bg-[#f9eeee] text-[#a24646]", "الاستعداد": "bg-[#f1f2f1] text-[#66736a]" };
+function StatusIcon({ status }: { status: keyof typeof roadmapStatusMeta }) {
+  if (status === "completed") return <CheckCircle2 className="size-4" />;
+  if (status === "validation") return <Clock3 className="size-4" />;
+  return <CircleDashed className="size-4" />;
+}
 
 export default function DeliveryRoadmap() {
-  return <DashboardLayout><div dir="rtl" className="mx-auto max-w-7xl"><section className="relative overflow-hidden rounded-[2rem] bg-[#183f31] px-6 py-8 text-white md:px-9"><div className="absolute -left-12 -top-14 size-52 rounded-full border-[24px] border-[#e7c89c]/15" /><div className="relative max-w-4xl"><p className="flex items-center gap-2 text-xs font-bold text-[#e7c89c]"><Bot className="size-4" />برنامج حلول الغد الشامل</p><h1 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">خارطة تنفيذ كاملة عبر 30 مرحلة.</h1><p className="mt-4 max-w-3xl text-sm leading-7 text-[#d4e4d7]">من الموقع التسويقي وتجربة التحويل، إلى قلب الموارد البشرية والعلاقات الحكومية والذكاء الاصطناعي والتكاملات والإطلاق. كل مرحلة لها مخرج واضح يمكن مراجعته قبل الانتقال لما بعدها.</p></div></section><section className="mt-8"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold text-[#5d8d70]">فريق افتراضي متعدد التخصصات</p><h2 className="mt-2 text-2xl font-bold text-[#1d4532]">8 أدوار تعمل ضمن برنامج واحد</h2></div><span className="rounded-full bg-[#e7f2e8] px-3 py-1.5 text-xs font-bold text-[#327950]">جاهز للتنفيذ المتدرج</span></div><div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{team.map(member => <article key={member.role} className="rounded-3xl border border-[#e1e9e2] bg-white p-5 shadow-[0_8px_22px_rgba(21,50,35,.035)]"><div className="flex size-10 items-center justify-center rounded-2xl bg-[#e8f3e9] text-[#367d55]"><member.icon className="size-5" /></div><h3 className="mt-5 text-sm font-bold text-[#294535]">{member.role}</h3><p className="mt-2 text-xs leading-6 text-[#728077]">{member.focus}</p></article>)}</div></section><section className="mt-10"><div><p className="text-xs font-bold text-[#5d8d70]">خارطة الإصدار الشاملة</p><h2 className="mt-2 text-2xl font-bold text-[#1d4532]">المراحل الثلاثون</h2><p className="mt-2 text-sm text-[#758278]">المراحل 1–5 تثبّت الأساس، 6–20 تبني التجربة والعمليات، 21–27 تضيف البيانات والذكاء والتوسع، و28–30 تجهّز للإطلاق والتحسين.</p></div><div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{stages.map(([n, title, detail, track]) => { const active = n === 2; const completed = n === 1; return <article key={n} className={`relative overflow-hidden rounded-3xl border p-5 ${active ? "border-[#8eb79a] bg-[#edf6ee]" : completed ? "border-[#dce9df] bg-white" : "border-[#e2e9e2] bg-white"}`}><div className="flex items-start justify-between gap-4"><span className={`flex size-10 shrink-0 items-center justify-center rounded-2xl text-sm font-bold ${active ? "bg-[#1f5b45] text-white" : "bg-[#edf4ee] text-[#397d56]"}`}>{n}</span><span className={`rounded-full px-3 py-1 text-[10px] font-bold ${trackColors[track]}`}>{track}</span></div><div className="mt-5 flex items-center gap-2"><Layers3 className="size-4 text-[#58866b]" /><h3 className="font-bold text-[#294535]">{title}</h3></div><p className="mt-2 text-xs leading-6 text-[#6f7e74]">{detail}</p><p className={`mt-4 text-[11px] font-bold ${active ? "text-[#27714d]" : completed ? "text-[#3e8059]" : "text-[#89958d]"}`}>{active ? "قيد التحليل" : completed ? "مكتملة" : "مخططة"}</p>{completed && <CheckCircle2 className="absolute -bottom-3 -left-3 size-16 text-[#dcefe0]" />}</article>; })}</div></section><section className="mt-8 rounded-3xl border border-[#ead9bd] bg-[#fff9f0] p-6"><div className="flex items-start gap-3"><BadgeCheck className="mt-0.5 size-5 text-[#a26a25]" /><div><h2 className="font-bold text-[#684920]">كيف نقيس أن المنصة أصبحت أكثر تقدماً؟</h2><p className="mt-2 text-sm leading-7 text-[#806647]">لا نقيس النجاح بتشابهها مع أي منصة أخرى؛ بل بوضوح التحويل، سرعة إتمام الخدمة، سلامة الصلاحيات، انخفاض العمل اليدوي، جودة التوصيات الذكية، وتبنّي المستخدمين للعمليات الموحدة.</p></div></div></section><section className="mt-6 grid gap-4 md:grid-cols-3"><Milestone icon={Target} title="المرحلة الحالية" text="تحليل التميّز وتحديد حدود MVP قبل التوسع الوظيفي." /><Milestone icon={Sparkles} title="المحور الفارق" text="ذكاء اصطناعي تشغيلي يتعامل مع الطلبات والخطط والمعرفة." /><Milestone icon={Rocket} title="بوابة الإطلاق" text="لا تنتقل المنصة للإطلاق قبل اختبار الأمان والجودة والتبنّي." /></section></div></DashboardLayout>;
+  const summary = summarizeRoadmap();
+  const progress = Math.round(((summary.completed + summary.partial) / roadmapStages.length) * 100);
+
+  return (
+    <DashboardLayout>
+      <div dir="rtl" className="mx-auto max-w-7xl">
+        <section className="relative overflow-hidden rounded-[2rem] bg-[#183f31] px-6 py-8 text-white md:px-9">
+          <div className="absolute -left-12 -top-14 size-52 rounded-full border-[24px] border-[#e7c89c]/15" />
+          <div className="relative max-w-4xl">
+            <p className="flex items-center gap-2 text-xs font-bold text-[#e7c89c]"><Bot className="size-4" />برنامج حلول الغد الشامل</p>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">خارطة تنفيذ كاملة عبر 30 مرحلة.</h1>
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-[#d4e4d7]">تعرض الخارطة الآن الحالة الواقعية لكل مرحلة: ما اكتمل، وما يحتاج تحققاً حياً، وما يُنفذ جزئياً، وما ينتظر قرار نطاقه أو اعتماديته.</p>
+          </div>
+        </section>
+
+        <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <ProgressCard label="مكتملة" value={summary.completed} detail="مراحل ذات مخرج مثبت" tone="bg-[#e6f4e8] text-[#347950]" />
+          <ProgressCard label="بانتظار تحقق حي" value={summary.validation} detail="تحتاج جلسات أو قبولاً تشغيلياً" tone="bg-[#fff1de] text-[#a46723]" />
+          <ProgressCard label="منفذة جزئياً" value={summary.partial} detail="تحتاج توسيع نطاق محدداً" tone="bg-[#e9eef8] text-[#446b98]" />
+          <ProgressCard label="تقدم البرنامج" value={`${progress}%`} detail="منجزة أو منفذة جزئياً" tone="bg-[#edf5f3] text-[#27705e]" />
+        </section>
+
+        <section className="mt-8">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div><p className="text-xs font-bold text-[#5d8d70]">فريق افتراضي متعدد التخصصات</p><h2 className="mt-2 text-2xl font-bold text-[#1d4532]">8 أدوار تعمل ضمن برنامج واحد</h2></div>
+            <span className="rounded-full bg-[#e7f2e8] px-3 py-1.5 text-xs font-bold text-[#327950]">تنفيذ متدرج ومراجع</span>
+          </div>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {team.map(member => <article key={member.role} className="rounded-3xl border border-[#e1e9e2] bg-white p-5 shadow-[0_8px_22px_rgba(21,50,35,.035)]"><div className="flex size-10 items-center justify-center rounded-2xl bg-[#e8f3e9] text-[#367d55]"><member.icon className="size-5" /></div><h3 className="mt-5 text-sm font-bold text-[#294535]">{member.role}</h3><p className="mt-2 text-xs leading-6 text-[#728077]">{member.focus}</p></article>)}
+          </div>
+        </section>
+
+        <section className="mt-10">
+          <div><p className="text-xs font-bold text-[#5d8d70]">خارطة الإصدار الشاملة</p><h2 className="mt-2 text-2xl font-bold text-[#1d4532]">المراحل الثلاثون</h2><p className="mt-2 text-sm text-[#758278]">المراحل 18 و28 و29 لا تُعرض كمكتملة قبل تحقق حي موثق، حتى مع اكتمال ضماناتها الآلية.</p></div>
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {roadmapStages.map(stage => {
+              const status = roadmapStatusMeta[stage.status];
+              const isValidation = stage.status === "validation";
+              return <article key={stage.number} className={`relative overflow-hidden rounded-3xl border p-5 ${isValidation ? "border-[#efd5ae] bg-[#fffaf2]" : stage.status === "completed" ? "border-[#dce9df] bg-white" : "border-[#e2e9e2] bg-white"}`}>
+                <div className="flex items-start justify-between gap-4"><span className={`flex size-10 shrink-0 items-center justify-center rounded-2xl text-sm font-bold ${isValidation ? "bg-[#a46723] text-white" : "bg-[#edf4ee] text-[#397d56]"}`}>{stage.number}</span><span className={`rounded-full px-3 py-1 text-[10px] font-bold ${trackColors[stage.track]}`}>{stage.track}</span></div>
+                <div className="mt-5 flex items-center gap-2"><Layers3 className="size-4 text-[#58866b]" /><h3 className="font-bold text-[#294535]">{stage.title}</h3></div>
+                <p className="mt-2 text-xs leading-6 text-[#6f7e74]">{stage.detail}</p>
+                {stage.dependency && <p className="mt-3 rounded-2xl bg-[#f7f8f6] px-3 py-2 text-[11px] leading-5 text-[#68766d]">{stage.dependency}</p>}
+                <p className={`mt-4 flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${status.className}`}><StatusIcon status={stage.status} />{status.label}</p>
+              </article>;
+            })}
+          </div>
+        </section>
+
+        <section className="mt-8 rounded-3xl border border-[#ead9bd] bg-[#fff9f0] p-6"><div className="flex items-start gap-3"><BadgeCheck className="mt-0.5 size-5 text-[#a26a25]" /><div><h2 className="font-bold text-[#684920]">أولوية الإغلاق الحالية</h2><p className="mt-2 text-sm leading-7 text-[#806647]">إكمال قبول مسار الموافقات الحي بثلاثة أدوار مفعلة، ثم توثيق الأمن والقبول والتدريب. لا تُغلق هذه المراحل بمؤشرات أو اختبارات آلية وحدها.</p></div></div></section>
+        <section className="mt-6 grid gap-4 md:grid-cols-3"><Milestone icon={Target} title="أقرب اعتماد" text="جلسات OAuth مستقلة للموظف والمدير والوحدة المختصة." /><Milestone icon={Sparkles} title="محور التوسع التالي" text="التوظيف والتهيئة، ثم الدوام والرواتب بعد اعتماد نطاقهما." /><Milestone icon={Rocket} title="بوابة الإطلاق" text="القبول الحي والأمن والتدريب قبل اعتبار الإطلاق التشغيلي مغلقاً." /></section>
+      </div>
+    </DashboardLayout>
+  );
 }
-function Milestone({ icon: Icon, title, text }: { icon: typeof Target; title: string; text: string }) { return <article className="rounded-3xl border border-[#e0e9e1] bg-white p-5"><Icon className="size-5 text-[#4f8566]" /><h3 className="mt-4 font-bold text-[#294535]">{title}</h3><p className="mt-2 text-xs leading-6 text-[#728077]">{text}</p></article>; }
+
+function ProgressCard({ label, value, detail, tone }: { label: string; value: number | string; detail: string; tone: string }) {
+  return <article className="rounded-3xl border border-[#e0e9e1] bg-white p-5"><p className="text-xs font-bold text-[#758278]">{label}</p><p className={`mt-3 w-fit rounded-2xl px-3 py-1 text-2xl font-bold ${tone}`}>{value}</p><p className="mt-3 text-xs text-[#728077]">{detail}</p></article>;
+}
+
+function Milestone({ icon: Icon, title, text }: { icon: typeof Target; title: string; text: string }) {
+  return <article className="rounded-3xl border border-[#e0e9e1] bg-white p-5"><Icon className="size-5 text-[#4f8566]" /><h3 className="mt-4 font-bold text-[#294535]">{title}</h3><p className="mt-2 text-xs leading-6 text-[#728077]">{text}</p></article>;
+}
