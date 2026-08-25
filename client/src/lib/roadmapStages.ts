@@ -36,7 +36,7 @@ export const roadmapStages: RoadmapStage[] = [
   { number: 24, title: "المعرفة الذكية", detail: "بحث مؤسسي موجّه بالسياسات.", track: "الذكاء", status: "planned", dependency: "يتطلب مصادر معرفة مؤسسية مصنفة ومراجَعة." },
   { number: 25, title: "الأتمتة", detail: "تذكيرات وملخصات ومهام مقترحة.", track: "الذكاء", status: "planned", dependency: "يتطلب اعتماد أحداث التشغيل والسياسات الزمنية." },
   { number: 26, title: "التكاملات وAPI", detail: "ربط خدمات مؤسسية وإدارة المفاتيح.", track: "التوسع", status: "planned", dependency: "يتطلب تحديد الأنظمة الخارجية وبيانات الاعتماد." },
-  { number: 27, title: "الهاتف والإتاحة", detail: "تجربة متجاوبة وويب تقدمي وإمكانية وصول.", track: "التوسع", status: "partial", dependency: "التجاوب مكتمل؛ يتبقى تدقيق إتاحة شامل وتحديد نطاق PWA." },
+  { number: 27, title: "الهاتف والإتاحة", detail: "تجربة متجاوبة مع تركيز مرئي ودعم الحركة المختزلة.", track: "التوسع", status: "partial", dependency: "يتبقى تدقيق إتاحة شامل وتحديد نطاق PWA." },
   { number: 28, title: "الأمن والموثوقية", detail: "أداء وخصوصية وأمن واختبارات تحمّل.", track: "الاستعداد", status: "validation", dependency: "يتطلب فحوص قبول تشغيلية قبل الإطلاق النهائي." },
   { number: 29, title: "القبول والتدريب", detail: "اختبار قبول وتجهيز تدريب وإطلاق.", track: "الاستعداد", status: "validation", dependency: "يتطلب جلسات OAuth حية لأدوار القبول الثلاثة." },
   { number: 30, title: "الإطلاق والتحسين", detail: "قياس النتائج والتحسين المستمر.", track: "الاستعداد", status: "partial", dependency: "النشر متاح؛ الإغلاق يعتمد على اجتياز مراحل القبول السابقة." },
