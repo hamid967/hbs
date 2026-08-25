@@ -11,4 +11,12 @@ describe("approval workload", () => {
     ] }, now);
     expect(workload).toEqual({ pending: 2, overdue: 1, oldestHours: 26, byRole: { manager: 1, hr: 1, government: 0, admin: 0 } });
   });
+
+  it("returns a neutral summary when there are no pending tasks", () => {
+    const workload = buildApprovalWorkload({ tasks: [
+      { status: "approved", approverRole: "manager", createdAt: new Date("2026-08-20T09:00:00Z") },
+      { status: "rejected", approverRole: "hr", createdAt: new Date("2026-08-20T09:00:00Z") },
+    ] }, new Date("2026-08-25T12:00:00Z"));
+    expect(workload).toEqual({ pending: 0, overdue: 0, oldestHours: 0, byRole: { manager: 0, hr: 0, government: 0, admin: 0 } });
+  });
 });
