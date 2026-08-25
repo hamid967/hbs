@@ -322,6 +322,7 @@ export async function decideApprovalTask(input: { id: number; companyId: number;
     if (!task || !input.allowedRoles.includes(task.approverRole)) throw new Error("مهمة الموافقة غير متاحة لهذا الحساب");
     const request = (await tx.select().from(serviceRequests).where(eq(serviceRequests.id, task.requestId)).limit(1))[0];
     if (!request) throw new Error("الطلب المرتبط بالمهمة غير موجود");
+    if (task.approverRole !== "manager" && request.status !== "in_review") throw new Error("لا يمكن اتخاذ قرار المرحلة الثانية قبل موافقة المدير المباشر");
     await tx.update(approvalTasks).set({ status: input.decision, decidedByUserId: input.actorId, decisionNote: input.note ?? null, decidedAt: new Date() }).where(eq(approvalTasks.id, input.id));
     if (task.approverRole === "manager" && input.decision === "approved") {
       const nextRole = nextApprovalRoleForRequest(request.type);

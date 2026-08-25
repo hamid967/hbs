@@ -46,6 +46,16 @@ describe("approval workflow integration", () => {
     expect(state.inserts).not.toEqual(expect.arrayContaining([expect.objectContaining({ recipientUserId: 19, type: "request_decision" })]));
   });
 
+  it("blocks a unit decision when the manager has not advanced the request", async () => {
+    state.selectQueue = [
+      [{ id: 13, companyId: 4, requestId: 53, approverRole: "hr", status: "pending" }],
+      [{ id: 53, reference: "HR-53", type: "hr", employeeId: 7, status: "submitted" }],
+    ];
+    await expect(decideApprovalTask({ id: 13, companyId: 4, actorId: 19, allowedRoles: ["hr"], decision: "approved" })).rejects.toThrow("لا يمكن اتخاذ قرار المرحلة الثانية قبل موافقة المدير المباشر");
+    expect(state.updates).toEqual([]);
+    expect(state.inserts).toEqual([]);
+  });
+
   it("runs the complete created-request path: assigned manager, matching unit, then employee", async () => {
     const request = { id: 61, reference: "HR-61", type: "hr" as const, employeeId: 7, status: "submitted" as const };
     state.selectQueue = [
