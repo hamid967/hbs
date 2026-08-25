@@ -26,6 +26,11 @@ describe("approvals router", () => {
     const caller = approvalsRouter.createCaller(context("user"));
     await expect(caller.inbox()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
+  it("blocks unapproved users from reading approval workload", async () => {
+    const caller = approvalsRouter.createCaller(context("user"));
+    await expect(caller.workload()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(dbMocks.getApprovalInbox).not.toHaveBeenCalled();
+  });
   it("passes an approval decision with company and actor context", async () => {
     const caller = approvalsRouter.createCaller(context("government"));
     await expect(caller.decide({ id: 13, decision: "approved", note: "مستند مكتمل" })).resolves.toEqual({ success: true });
