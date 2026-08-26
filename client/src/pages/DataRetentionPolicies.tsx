@@ -1,0 +1,42 @@
+import { ArchiveRestore, FileWarning, Save, ShieldCheck } from "lucide-react";
+import { useState } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { dataRetentionDomainLabels, dataRetentionDomains, type DataRetentionDomain } from "@shared/dataGovernance";
+import { trpc } from "@/lib/trpc";
+
+export default function DataRetentionPolicies() {
+  const [domain, setDomain] = useState<DataRetentionDomain>("employees");
+  const [ownerLabel, setOwnerLabel] = useState("الموارد البشرية");
+  const [retentionDays, setRetentionDays] = useState("");
+  const [reviewState, setReviewState] = useState<"draft" | "reviewed">("draft");
+  const [policyNote, setPolicyNote] = useState("مسودة داخلية بانتظار مراجعة مالك البيانات.");
+  const { data, isLoading, isError, error } = trpc.dataGovernance.listRetentionPolicies.useQuery();
+  const utils = trpc.useUtils();
+  const save = trpc.dataGovernance.saveRetentionPolicy.useMutation({ onSuccess: () => utils.dataGovernance.listRetentionPolicies.invalidate() });
+  const numericDays = retentionDays.trim() ? Number(retentionDays) : undefined;
+  const readyToSave = ownerLabel.trim().length >= 2 && policyNote.trim().length >= 4 && (reviewState === "draft" || (numericDays && numericDays > 0));
+
+  return <DashboardLayout><div dir="rtl" className="mx-auto max-w-6xl">
+    <div><p className="text-xs font-bold text-[#5e8970]">حوكمة البيانات</p><h1 className="mt-2 text-3xl font-bold text-[#173e30]">مسودة سياسات الاحتفاظ</h1><p className="mt-3 max-w-3xl text-sm leading-7 text-[#748279]">سجل تشغيلي داخلي لمقترحات ملكية البيانات والاحتفاظ بها. لا ينفذ حذفاً تلقائياً ولا يمثل اعتماداً قانونياً أو سياسة امتثال نهائية.</p></div>
+    <section className="mt-7 rounded-3xl border border-[#f0dcb9] bg-[#fffaf1] p-5"><div className="flex gap-3"><FileWarning className="mt-0.5 size-5 shrink-0 text-[#a36a22]" /><div><h2 className="font-bold text-[#704514]">مراجعة مطلوبة</h2><p className="mt-1 text-sm leading-6 text-[#86623a]">الحالة «مراجع داخلياً» تعني أن المسؤول راجع المسودة التشغيلية فقط، ولا تُشغّل أي مهمة حذف أو تغيير تلقائي للبيانات.</p></div></div></section>
+    {isError ? <section className="mt-7 rounded-3xl border border-[#f1d4d1] bg-[#fff8f7] p-7 text-center"><ShieldCheck className="mx-auto size-9 text-[#b2514d]" /><h2 className="mt-4 text-lg font-bold text-[#6f332f]">لا تتوفر صلاحية إدارة السياسات</h2><p className="mt-2 text-sm text-[#855a55]">{error.message}</p></section> : <div className="mt-7 grid gap-6 lg:grid-cols-[.9fr_1.1fr]">
+      <form onSubmit={event => { event.preventDefault(); if (!readyToSave) return; save.mutate({ dataDomain: domain, ownerLabel: ownerLabel.trim(), retentionDays: numericDays, reviewState, policyNote: policyNote.trim() }); }} className="rounded-3xl border border-[#e1e9e2] bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-[#274333]">حفظ مسودة نطاق بيانات</h2><div className="mt-5 space-y-4">
+          <div><Label>نطاق البيانات</Label><Select value={domain} onValueChange={value => setDomain(value as DataRetentionDomain)}><SelectTrigger className="mt-2 h-11 rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{dataRetentionDomains.map(item => <SelectItem key={item} value={item}>{dataRetentionDomainLabels[item]}</SelectItem>)}</SelectContent></Select></div>
+          <div><Label>المالك التشغيلي</Label><Input value={ownerLabel} onChange={event => setOwnerLabel(event.target.value)} className="mt-2 h-11 rounded-xl" maxLength={120} /></div>
+          <div><Label>مدة الاحتفاظ المقترحة بالأيام</Label><Input type="number" min="1" max="36500" value={retentionDays} onChange={event => setRetentionDays(event.target.value)} placeholder="اختياري لمسودة غير مراجعة" className="mt-2 h-11 rounded-xl" /></div>
+          <div><Label>حالة المراجعة الداخلية</Label><Select value={reviewState} onValueChange={value => setReviewState(value as "draft" | "reviewed")}><SelectTrigger className="mt-2 h-11 rounded-xl"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="draft">مسودة</SelectItem><SelectItem value="reviewed">مراجع داخلياً</SelectItem></SelectContent></Select></div>
+          <div><Label>ملاحظة التشغيل</Label><Textarea value={policyNote} onChange={event => setPolicyNote(event.target.value)} className="mt-2 min-h-24 rounded-xl" maxLength={720} /></div>
+          <Button type="submit" disabled={!readyToSave || save.isPending} className="h-11 w-full rounded-xl bg-[#1f5b45] hover:bg-[#174735]"><Save className="ml-2 size-4" />{save.isPending ? "جارٍ الحفظ…" : "حفظ المسودة"}</Button>
+        </div>
+      </form>
+      <section><h2 className="text-lg font-bold text-[#274333]">السياسات المسجلة</h2>{isLoading ? <p className="mt-5 text-sm text-[#748279]">جارٍ تحميل السجل…</p> : data?.length ? <div className="mt-4 space-y-3">{data.map(policy => <article key={policy.id} className="rounded-3xl border border-[#e1e9e2] bg-white p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-bold text-[#284333]">{dataRetentionDomainLabels[policy.dataDomain]}</h3><p className="mt-1 text-sm text-[#68776e]">المالك: {policy.ownerLabel}</p></div><Badge className={policy.reviewState === "reviewed" ? "bg-[#e7f3eb] text-[#317a53] hover:bg-[#e7f3eb]" : "bg-[#fff0d9] text-[#9a651f] hover:bg-[#fff0d9]"}>{policy.reviewState === "reviewed" ? "مراجع داخلياً" : "مسودة"}</Badge></div><p className="mt-4 text-sm leading-6 text-[#607168]">{policy.policyNote}</p><div className="mt-4 flex items-center gap-2 text-xs text-[#829088]"><ArchiveRestore className="size-4" />مدة مقترحة: {policy.retentionDays ? `${policy.retentionDays} يوم` : "لم تحدد بعد"}</div></article>)}</div> : <p className="mt-5 rounded-2xl border border-dashed border-[#d6e2d8] bg-white p-6 text-sm text-[#718078]">لا توجد سياسات مسجلة بعد. ابدأ بمسودة نطاق واحد.</p>}</section>
+    </div>}
+  </div></DashboardLayout>;
+}

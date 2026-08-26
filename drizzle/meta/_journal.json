@@ -260,6 +260,13 @@
       "when": 1787731541955,
       "tag": "0036_early_jack_murdock",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1787780103012,
+      "tag": "0037_amazing_radioactive_man",
+      "breakpoints": true
     }
   ]
 }

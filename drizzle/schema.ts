@@ -438,6 +438,21 @@ export const auditEvents = mysqlTable("auditEvents", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("auditEvents_company_created_idx").on(table.companyId, table.createdAt), index("auditEvents_company_category_idx").on(table.companyId, table.category)]);
 
+export const dataRetentionPolicies = mysqlTable("dataRetentionPolicies", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  dataDomain: mysqlEnum("dataDomain", ["accounts", "employees", "dependents", "requests", "contracts", "leave", "assets", "offboarding", "recruitment", "goals", "audit"]).notNull(),
+  ownerLabel: varchar("ownerLabel", { length: 120 }).notNull(),
+  retentionDays: int("retentionDays"),
+  reviewState: mysqlEnum("reviewState", ["draft", "reviewed"]).notNull().default("draft"),
+  policyNote: varchar("policyNote", { length: 720 }).notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  reviewedByUserId: int("reviewedByUserId").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("dataRetentionPolicies_company_domain_unique").on(table.companyId, table.dataDomain), index("dataRetentionPolicies_company_state_idx").on(table.companyId, table.reviewState)]);
+
 export const approvalTasks = mysqlTable("approvalTasks", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),

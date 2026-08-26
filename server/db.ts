@@ -7,6 +7,7 @@ import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./ac
 import { defaultModulePermissionsForRole, normalizeModulePermissions, type ModulePermission } from "../shared/moduleAccess";
 import { isCandidateStatusTransitionAllowed, isInterviewStatusTransitionAllowed, isOfferStatusTransitionAllowed, type CandidateStatus, type InterviewStatus, type OfferStatus } from "./recruitmentRules";
 import { calculateLeaveBalance, countInclusiveLeaveDays, dateRangesOverlap, getLeaveRequestYear, type LeaveType } from "./leavePolicy";
+import { dataRetentionPolicies } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -849,6 +850,22 @@ export async function upsertCompanyLeavePolicy(input: { companyId: number; leave
   await db.insert(leavePolicies).values(input).onDuplicateKeyUpdate({ set: { title: input.title, referenceDays: input.referenceDays, isActive: input.isActive } });
   const policy = (await db.select().from(leavePolicies).where(and(eq(leavePolicies.companyId, input.companyId), eq(leavePolicies.leaveType, input.leaveType))).limit(1))[0];
   if (!policy) throw new Error("تعذر حفظ سياسة الإجازة");
+  return policy;
+}
+
+export async function getCompanyDataRetentionPolicies(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(dataRetentionPolicies).where(eq(dataRetentionPolicies.companyId, companyId)).orderBy(asc(dataRetentionPolicies.dataDomain));
+}
+
+export async function upsertCompanyDataRetentionPolicy(input: { companyId: number; createdByUserId: number; dataDomain: "accounts" | "employees" | "dependents" | "requests" | "contracts" | "leave" | "assets" | "offboarding" | "recruitment" | "goals" | "audit"; ownerLabel: string; retentionDays?: number; reviewState: "draft" | "reviewed"; policyNote: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const reviewed = input.reviewState === "reviewed";
+  await db.insert(dataRetentionPolicies).values({ ...input, retentionDays: input.retentionDays ?? null, reviewedByUserId: reviewed ? input.createdByUserId : null, reviewedAt: reviewed ? new Date() : null }).onDuplicateKeyUpdate({ set: { ownerLabel: input.ownerLabel, retentionDays: input.retentionDays ?? null, reviewState: input.reviewState, policyNote: input.policyNote, reviewedByUserId: reviewed ? input.createdByUserId : null, reviewedAt: reviewed ? new Date() : null } });
+  const policy = (await db.select().from(dataRetentionPolicies).where(and(eq(dataRetentionPolicies.companyId, input.companyId), eq(dataRetentionPolicies.dataDomain, input.dataDomain))).limit(1))[0];
+  if (!policy) throw new Error("تعذر حفظ مسودة سياسة الاحتفاظ");
   return policy;
 }
 
