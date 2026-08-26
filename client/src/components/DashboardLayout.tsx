@@ -77,6 +77,7 @@ const menuItems = [
   { icon: Clock3, label: "الدوام", path: "/attendance" },
   { icon: CalendarDays, label: "سياسات الدوام", path: "/attendance-schedules", requiresSchedulingAccess: true },
   { icon: ClipboardCheck, label: "صندوق الموافقات", path: "/approvals", requiresApprovalAccess: true },
+  { icon: ShieldCheck, label: "محاكي الموافقات", path: "/approval-simulator", requiresDirectoryAccess: true },
   { icon: Inbox, label: "صندوق العمل", path: "/workboard" },
   { icon: BellRing, label: "الإشعارات", path: "/notifications" },
   { icon: BarChart3, label: "التقارير", path: "/reports", requiresDirectoryAccess: true },
