@@ -264,6 +264,19 @@ export const employeeTrainingAssignments = mysqlTable("employeeTrainingAssignmen
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("employeeTrainingAssignments_company_employee_program_unique").on(table.companyId, table.employeeUserId, table.trainingProgramId), index("employeeTrainingAssignments_company_status_idx").on(table.companyId, table.status)]);
 
+export const executionDependencyReviews = mysqlTable("executionDependencyReviews", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  stageNumber: int("stageNumber").notNull(),
+  status: mysqlEnum("status", ["review_requested", "dependency_resolved", "retry_requested"]).default("review_requested").notNull(),
+  requestedByUserId: int("requestedByUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reviewedByUserId: int("reviewedByUserId").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewedAt"),
+  retryRequestedAt: timestamp("retryRequestedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("executionDependencyReviews_company_stage_unique").on(table.companyId, table.stageNumber), index("executionDependencyReviews_company_status_idx").on(table.companyId, table.status)]);
+
 export const auditEvents = mysqlTable("auditEvents", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
