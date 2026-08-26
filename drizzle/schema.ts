@@ -132,6 +132,19 @@ export const employeeEmergencyContacts = mysqlTable("employeeEmergencyContacts",
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("employeeEmergencyContacts_company_employee_unique").on(table.companyId, table.employeeUserId), index("employeeEmergencyContacts_company_employee_idx").on(table.companyId, table.employeeUserId)]);
 
+export const employeeDependents = mysqlTable("employeeDependents", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  employeeUserId: int("employeeUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  fullName: varchar("fullName", { length: 160 }).notNull(),
+  relationship: varchar("relationship", { length: 80 }).notNull(),
+  birthYear: int("birthYear"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("employeeDependents_company_employee_idx").on(table.companyId, table.employeeUserId), index("employeeDependents_company_active_idx").on(table.companyId, table.isActive)]);
+
 export const employeeContracts = mysqlTable("employeeContracts", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),

@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeAssets, employeeContracts, employeeDocuments, employeeEmergencyContacts, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobDesignations, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeAssets, employeeContracts, employeeDependents, employeeDocuments, employeeEmergencyContacts, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobDesignations, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -248,6 +248,12 @@ export async function listCompanyEmployeeEmergencyContacts(companyId: number) {
   return db.select().from(employeeEmergencyContacts).where(eq(employeeEmergencyContacts.companyId, companyId)).orderBy(desc(employeeEmergencyContacts.updatedAt));
 }
 
+export async function listCompanyEmployeeDependents(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(employeeDependents).where(eq(employeeDependents.companyId, companyId)).orderBy(desc(employeeDependents.isActive), desc(employeeDependents.createdAt));
+}
+
 export async function saveCompanyEmployeeEmergencyContact(input: { companyId: number; employeeUserId: number; contactName: string; relationship: string; phone: string; createdByUserId: number }) {
   const db = await getDb();
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
@@ -257,6 +263,19 @@ export async function saveCompanyEmployeeEmergencyContact(input: { companyId: nu
   await db.insert(employeeEmergencyContacts).values(values).onDuplicateKeyUpdate({ set: { contactName: values.contactName, relationship: values.relationship, phone: values.phone, createdByUserId: values.createdByUserId } });
   const saved = (await db.select().from(employeeEmergencyContacts).where(and(eq(employeeEmergencyContacts.companyId, input.companyId), eq(employeeEmergencyContacts.employeeUserId, input.employeeUserId))).limit(1))[0];
   if (!saved) throw new Error("تعذر حفظ جهة اتصال الطوارئ");
+  return saved;
+}
+
+export async function saveCompanyEmployeeDependent(input: { companyId: number; employeeUserId: number; fullName: string; relationship: string; birthYear?: number; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية");
+  const currentYear = new Date().getUTCFullYear();
+  if (input.birthYear && (input.birthYear < 1900 || input.birthYear > currentYear)) throw new Error("سنة الميلاد غير صالحة");
+  await db.insert(employeeDependents).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, fullName: input.fullName, relationship: input.relationship, birthYear: input.birthYear ?? null, createdByUserId: input.createdByUserId });
+  const saved = (await db.select().from(employeeDependents).where(and(eq(employeeDependents.companyId, input.companyId), eq(employeeDependents.employeeUserId, input.employeeUserId), eq(employeeDependents.fullName, input.fullName))).orderBy(desc(employeeDependents.id)).limit(1))[0];
+  if (!saved) throw new Error("تعذر حفظ سجل التابع");
   return saved;
 }
 
