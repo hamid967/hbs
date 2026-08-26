@@ -33,19 +33,19 @@ describe("employees router", () => {
   it("saves an employee profile with the active company context", async () => {
     const caller = employeesRouter.createCaller(context("admin"));
     await expect(caller.saveProfile({ userId: 20, jobTitle: "منسق عمليات", employmentStatus: "active" })).resolves.toMatchObject({ userId: 20 });
-    expect(dbMocks.saveEmployeeProfile).toHaveBeenCalledWith({ companyId: 1, userId: 20, jobTitle: "منسق عمليات", employmentStatus: "active" });
+    expect(dbMocks.saveEmployeeProfile).toHaveBeenCalledWith({ companyId: 1, updatedByUserId: 8, userId: 20, jobTitle: "منسق عمليات", employmentStatus: "active" });
   });
 
   it("saves an employee region within the active company context", async () => {
     const caller = employeesRouter.createCaller(context("hr"));
     await caller.saveProfile({ userId: 20, region: "الرياض", employmentStatus: "active" });
-    expect(dbMocks.saveEmployeeProfile).toHaveBeenCalledWith({ companyId: 1, userId: 20, region: "الرياض", employmentStatus: "active" });
+    expect(dbMocks.saveEmployeeProfile).toHaveBeenCalledWith({ companyId: 1, updatedByUserId: 8, userId: 20, region: "الرياض", employmentStatus: "active" });
   });
 
   it("saves work location within the active company context", async () => {
     const caller = employeesRouter.createCaller(context("hr"));
     await caller.saveProfile({ userId: 20, workLocation: "المقر الرئيسي", employmentStatus: "active" });
-    expect(dbMocks.saveEmployeeProfile).toHaveBeenCalledWith({ companyId: 1, userId: 20, workLocation: "المقر الرئيسي", employmentStatus: "active" });
+    expect(dbMocks.saveEmployeeProfile).toHaveBeenCalledWith({ companyId: 1, updatedByUserId: 8, userId: 20, workLocation: "المقر الرئيسي", employmentStatus: "active" });
   });
 
   it("limits emergency contacts to HR and admins while recording a generic profile event", async () => {
