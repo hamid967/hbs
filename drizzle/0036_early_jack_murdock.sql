@@ -1,0 +1,1 @@
+ALTER TABLE `employeeLifecycleEvents` MODIFY COLUMN `eventType` enum('joined','profile_updated','status_changed','role_changed','department_changed','designation_changed','manager_changed','offboarding_started','offboarding_completed','exit_interview_recorded') NOT NULL;

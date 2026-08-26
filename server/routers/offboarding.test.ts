@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const dbMocks = vi.hoisted(() => ({ createCompanyEmployeeLifecycleEvent: vi.fn(), createCompanyOffboarding: vi.fn(), listCompanyEmployees: vi.fn(), listCompanyOffboardingOverview: vi.fn(), updateCompanyOffboardingTask: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ createCompanyEmployeeLifecycleEvent: vi.fn(), createCompanyOffboarding: vi.fn(), listCompanyEmployees: vi.fn(), listCompanyOffboardingOverview: vi.fn(), updateCompanyOffboardingTask: vi.fn(), upsertCompanyExitInterview: vi.fn() }));
 vi.mock("../db", () => dbMocks);
 
 import { offboardingRouter } from "./offboarding";
@@ -14,10 +14,11 @@ describe("offboarding router", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dbMocks.listCompanyEmployees.mockResolvedValue([]);
-    dbMocks.listCompanyOffboardingOverview.mockResolvedValue({ offboardings: [], tasks: [], contracts: [], documents: [] });
+    dbMocks.listCompanyOffboardingOverview.mockResolvedValue({ offboardings: [], tasks: [], contracts: [], documents: [], exitInterviews: [] });
     dbMocks.createCompanyOffboarding.mockResolvedValue({ offboarding: { id: 3, companyId: 1, employeeUserId: 20 }, tasks: [] });
     dbMocks.updateCompanyOffboardingTask.mockResolvedValue({ offboarding: { id: 3, companyId: 1, employeeUserId: 20, status: "completed" }, completed: true, becameCompleted: true });
     dbMocks.createCompanyEmployeeLifecycleEvent.mockResolvedValue({ id: 4 });
+    dbMocks.upsertCompanyExitInterview.mockResolvedValue({ interview: { id: 9, companyId: 1, offboardingId: 3, employeeUserId: 20, status: "completed" }, becameCompleted: true });
   });
 
   it("restricts offboarding to HR and admins", async () => {
@@ -44,5 +45,13 @@ describe("offboarding router", () => {
     dbMocks.updateCompanyOffboardingTask.mockResolvedValueOnce({ offboarding: { id: 3, companyId: 1, employeeUserId: 20, status: "in_progress" }, completed: false, becameCompleted: false });
     await caller.setTask({ taskId: 11, completed: false });
     expect(dbMocks.createCompanyEmployeeLifecycleEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it("records an exit interview only within the current company and emits a concise lifecycle event once", async () => {
+    const caller = offboardingRouter.createCaller(context("hr"));
+    await caller.saveExitInterview({ offboardingId: 3, employeeUserId: 20, status: "completed", summary: "ملاحظات تشغيلية موجزة", followUpRequired: true });
+    expect(dbMocks.upsertCompanyExitInterview).toHaveBeenCalledWith(expect.objectContaining({ companyId: 1, recordedByUserId: 8, offboardingId: 3, employeeUserId: 20, status: "completed" }));
+    expect(dbMocks.createCompanyEmployeeLifecycleEvent).toHaveBeenCalledWith(expect.objectContaining({ companyId: 1, employeeUserId: 20, eventType: "exit_interview_recorded", note: "تسجيل مقابلة خروج داخلية" }));
+    await expect(offboardingRouter.createCaller(context("user")).saveExitInterview({ offboardingId: 3, employeeUserId: 20, status: "scheduled", followUpRequired: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

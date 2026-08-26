@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeAssets, employeeContracts, employeeDependents, employeeDocuments, employeeEmergencyContacts, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobDesignations, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeAssets, employeeContracts, employeeDependents, employeeDocuments, employeeEmergencyContacts, employeeExitInterviews, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobDesignations, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -223,7 +223,7 @@ export async function saveEmployeeProfile(input: { companyId: number; userId: nu
   return (await db.select().from(employeeProfiles).where(eq(employeeProfiles.userId, input.userId)).limit(1))[0];
 }
 
-type EmployeeLifecycleEventType = "joined" | "profile_updated" | "status_changed" | "role_changed" | "department_changed" | "designation_changed" | "manager_changed" | "offboarding_started" | "offboarding_completed";
+type EmployeeLifecycleEventType = "joined" | "profile_updated" | "status_changed" | "role_changed" | "department_changed" | "designation_changed" | "manager_changed" | "offboarding_started" | "offboarding_completed" | "exit_interview_recorded";
 
 export async function listCompanyEmployeeLifecycleEvents(companyId: number) {
   const db = await getDb();
@@ -376,14 +376,33 @@ const defaultOffboardingTasks = [
 
 export async function listCompanyOffboardingOverview(companyId: number) {
   const db = await getDb();
-  if (!db) return { offboardings: [], tasks: [], contracts: [], documents: [] };
-  const [offboardings, tasks, contracts, documents] = await Promise.all([
+  if (!db) return { offboardings: [], tasks: [], contracts: [], documents: [], exitInterviews: [] };
+  const [offboardings, tasks, contracts, documents, exitInterviews] = await Promise.all([
     db.select().from(employeeOffboardings).where(eq(employeeOffboardings.companyId, companyId)).orderBy(desc(employeeOffboardings.updatedAt)),
     db.select().from(employeeOffboardingTasks).where(eq(employeeOffboardingTasks.companyId, companyId)).orderBy(desc(employeeOffboardingTasks.updatedAt)),
     listCompanyEmployeeContracts(companyId),
     listCompanyEmployeeDocuments(companyId),
+    db.select().from(employeeExitInterviews).where(eq(employeeExitInterviews.companyId, companyId)).orderBy(desc(employeeExitInterviews.updatedAt)),
   ]);
-  return { offboardings, tasks, contracts, documents };
+  return { offboardings, tasks, contracts, documents, exitInterviews };
+}
+
+export async function upsertCompanyExitInterview(input: { companyId: number; offboardingId: number; employeeUserId: number; status: "scheduled" | "completed" | "declined"; scheduledAt?: Date; feedbackCategory?: string; summary?: string; followUpRequired: boolean; recordedByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const offboarding = (await db.select().from(employeeOffboardings).where(and(eq(employeeOffboardings.id, input.offboardingId), eq(employeeOffboardings.companyId, input.companyId), eq(employeeOffboardings.employeeUserId, input.employeeUserId))).limit(1))[0];
+  if (!offboarding) throw new Error("حالة إنهاء الخدمة غير موجودة ضمن الشركة الحالية أو لا تخص الموظف المحدد");
+  const existing = (await db.select().from(employeeExitInterviews).where(and(eq(employeeExitInterviews.offboardingId, input.offboardingId), eq(employeeExitInterviews.companyId, input.companyId))).limit(1))[0];
+  const becameCompleted = input.status === "completed" && existing?.status !== "completed";
+  const values = { status: input.status, scheduledAt: input.scheduledAt ?? existing?.scheduledAt ?? null, completedAt: input.status === "completed" ? existing?.completedAt ?? new Date() : null, feedbackCategory: input.feedbackCategory ?? null, summary: input.summary ?? null, followUpRequired: input.followUpRequired, recordedByUserId: input.recordedByUserId };
+  if (existing) {
+    await db.update(employeeExitInterviews).set(values).where(and(eq(employeeExitInterviews.id, existing.id), eq(employeeExitInterviews.companyId, input.companyId)));
+  } else {
+    await db.insert(employeeExitInterviews).values({ companyId: input.companyId, offboardingId: input.offboardingId, employeeUserId: input.employeeUserId, ...values });
+  }
+  const interview = (await db.select().from(employeeExitInterviews).where(and(eq(employeeExitInterviews.offboardingId, input.offboardingId), eq(employeeExitInterviews.companyId, input.companyId))).limit(1))[0];
+  if (!interview) throw new Error("تعذر حفظ مقابلة الخروج الداخلية");
+  return { interview, becameCompleted };
 }
 
 export async function listCompanyOpenOffboardingWork(companyId: number) {
