@@ -162,6 +162,22 @@ export const employeeDocuments = mysqlTable("employeeDocuments", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("employeeDocuments_company_employee_idx").on(table.companyId, table.employeeUserId), index("employeeDocuments_company_contract_idx").on(table.companyId, table.contractId)]);
 
+export const employeeAssets = mysqlTable("employeeAssets", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  assetName: varchar("assetName", { length: 160 }).notNull(),
+  assetTag: varchar("assetTag", { length: 80 }).notNull(),
+  assetType: varchar("assetType", { length: 80 }),
+  status: mysqlEnum("status", ["available", "assigned", "returned", "retired"]).notNull().default("available"),
+  assignedEmployeeUserId: int("assignedEmployeeUserId").references(() => users.id, { onDelete: "set null" }),
+  assignedAt: timestamp("assignedAt"),
+  returnedAt: timestamp("returnedAt"),
+  notes: varchar("notes", { length: 500 }),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("employeeAssets_company_tag_unique").on(table.companyId, table.assetTag), index("employeeAssets_company_employee_idx").on(table.companyId, table.assignedEmployeeUserId), index("employeeAssets_company_status_idx").on(table.companyId, table.status)]);
+
 export const employeeOffboardings = mysqlTable("employeeOffboardings", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),

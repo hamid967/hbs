@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeContracts, employeeDocuments, employeeEmergencyContacts, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobDesignations, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeAssets, employeeContracts, employeeDocuments, employeeEmergencyContacts, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobDesignations, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -262,11 +262,51 @@ export async function saveCompanyEmployeeEmergencyContact(input: { companyId: nu
 
 type EmployeeContractStatus = "draft" | "active" | "ended" | "archived";
 type EmployeeDocumentCategory = "contract_attachment" | "employee_document" | "other";
+type EmployeeAssetStatus = "available" | "assigned" | "returned" | "retired";
 
 export async function listCompanyEmployeeContracts(companyId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(employeeContracts).where(eq(employeeContracts.companyId, companyId)).orderBy(desc(employeeContracts.updatedAt));
+}
+
+export async function listCompanyEmployeeAssets(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ asset: employeeAssets, employee: users }).from(employeeAssets).leftJoin(users, eq(employeeAssets.assignedEmployeeUserId, users.id)).where(eq(employeeAssets.companyId, companyId)).orderBy(desc(employeeAssets.updatedAt));
+  return rows.map(row => ({ ...row.asset, assignedEmployee: row.employee ? { id: row.employee.id, name: row.employee.name } : null }));
+}
+
+async function ensureCompanyAssetEmployee(companyId: number, employeeUserId?: number) {
+  if (!employeeUserId) return;
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, employeeUserId), eq(users.companyId, companyId), eq(users.accountStatus, "active"))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود أو غير مفعّل ضمن الشركة الحالية");
+}
+
+export async function createCompanyEmployeeAsset(input: { companyId: number; assetName: string; assetTag: string; assetType?: string; assignedEmployeeUserId?: number; notes?: string; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await ensureCompanyAssetEmployee(input.companyId, input.assignedEmployeeUserId);
+  const isAssigned = Boolean(input.assignedEmployeeUserId);
+  await db.insert(employeeAssets).values({ companyId: input.companyId, assetName: input.assetName, assetTag: input.assetTag, assetType: input.assetType ?? null, status: isAssigned ? "assigned" : "available", assignedEmployeeUserId: input.assignedEmployeeUserId ?? null, assignedAt: isAssigned ? new Date() : null, notes: input.notes ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(employeeAssets).where(and(eq(employeeAssets.companyId, input.companyId), eq(employeeAssets.assetTag, input.assetTag))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ سجل العهدة");
+  return created;
+}
+
+export async function updateCompanyEmployeeAsset(input: { companyId: number; assetId: number; status: EmployeeAssetStatus; assignedEmployeeUserId?: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const asset = (await db.select().from(employeeAssets).where(and(eq(employeeAssets.id, input.assetId), eq(employeeAssets.companyId, input.companyId))).limit(1))[0];
+  if (!asset) throw new Error("العهدة غير موجودة ضمن الشركة الحالية");
+  if (input.status === "assigned" && !input.assignedEmployeeUserId) throw new Error("اختر موظفاً مفعّلاً عند تعيين العهدة");
+  await ensureCompanyAssetEmployee(input.companyId, input.assignedEmployeeUserId);
+  const returning = input.status === "returned";
+  const assigning = input.status === "assigned";
+  await db.update(employeeAssets).set({ status: input.status, assignedEmployeeUserId: assigning ? input.assignedEmployeeUserId ?? null : null, assignedAt: assigning ? new Date() : asset.assignedAt, returnedAt: returning ? new Date() : asset.returnedAt }).where(and(eq(employeeAssets.id, input.assetId), eq(employeeAssets.companyId, input.companyId)));
+  return (await db.select().from(employeeAssets).where(and(eq(employeeAssets.id, input.assetId), eq(employeeAssets.companyId, input.companyId))).limit(1))[0];
 }
 
 export async function listCompanyEmployeeDocuments(companyId: number) {
