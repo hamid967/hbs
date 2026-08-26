@@ -1,6 +1,7 @@
 import { jsxLocPlugin } from "@builder.io/vite-plugin-jsx-loc";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
@@ -152,8 +153,26 @@ function vitePluginManusDebugCollector(): Plugin {
 
 const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
 
+function readBuildRevision() {
+  try {
+    return execFileSync("git", ["rev-parse", "--short=12", "HEAD"], { cwd: PROJECT_ROOT, encoding: "utf-8" }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+
+const releaseInfo = {
+  version: process.env.HBS_RELEASE_TAG?.trim() || process.env.npm_package_version || "0.1.0",
+  revision: readBuildRevision(),
+  builtAt: new Date().toISOString(),
+  environment: process.env.NODE_ENV === "production" ? "production" : "development",
+};
+
 export default defineConfig({
   plugins,
+  define: {
+    __HBS_RELEASE_INFO__: JSON.stringify(releaseInfo),
+  },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),

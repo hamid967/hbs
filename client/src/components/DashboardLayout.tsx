@@ -52,6 +52,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
+import { BuildInfoStamp } from "./BuildInfoStamp";
 import { Button } from "./ui/button";
 
 const menuItems = [
@@ -105,6 +106,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <p className="mt-4 text-sm leading-7 text-[#64726a]">منصة داخلية منظمة لتقديم ومتابعة طلبات الموارد البشرية والعلاقات الحكومية.</p>
           <Button onClick={() => startLogin()} size="lg" className="mt-8 h-12 w-full rounded-2xl bg-[#1f5b45] text-base hover:bg-[#174735]">تسجيل الدخول للمنصة</Button>
           <p className="mt-5 text-xs leading-6 text-[#89938d]">هذه المنصة مخصصة للموظفين والفرق المخولة فقط. بعد أول دخول موحد، يراجع المسؤول طلب التفعيل قبل إتاحة الخدمات.</p>
+          <div className="mt-5 flex justify-center"><BuildInfoStamp compact /></div>
         </section>
       </div>
     );
@@ -172,6 +174,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <div className="mt-3 px-2 group-data-[collapsible=icon]:hidden"><BuildInfoStamp /></div>
         </SidebarFooter>
       </Sidebar>
 
