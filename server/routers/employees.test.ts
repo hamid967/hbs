@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const dbMocks = vi.hoisted(() => ({ assignCompanyTrainingProgram: vi.fn(), createCompanyDepartment: vi.fn(), createCompanyEmployeeLifecycleEvent: vi.fn(), createCompanyTrainingProgram: vi.fn(), listCompanyDepartments: vi.fn(), listCompanyEmployeeLifecycleEvents: vi.fn(), listCompanyEmployees: vi.fn(), listCompanyTrainingAssignments: vi.fn(), listCompanyTrainingPrograms: vi.fn(), saveEmployeeProfile: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ assignCompanyTrainingProgram: vi.fn(), createCompanyDepartment: vi.fn(), createCompanyEmployeeLifecycleEvent: vi.fn(), createCompanyTrainingProgram: vi.fn(), listCompanyDepartments: vi.fn(), listCompanyEmployeeLifecycleEvents: vi.fn(), listCompanyEmployees: vi.fn(), listCompanyTrainingAssignments: vi.fn(), listCompanyTrainingPrograms: vi.fn(), recordAuditEvent: vi.fn(), saveEmployeeProfile: vi.fn() }));
 vi.mock("../db", () => dbMocks);
 
 import { employeesRouter } from "./employees";
@@ -11,7 +11,7 @@ function context(role: "user" | "hr" | "manager" | "admin" = "hr"): TrpcContext 
 }
 
 describe("employees router", () => {
-  beforeEach(() => { vi.clearAllMocks(); dbMocks.listCompanyEmployees.mockResolvedValue([]); dbMocks.listCompanyDepartments.mockResolvedValue([]); dbMocks.listCompanyEmployeeLifecycleEvents.mockResolvedValue([]); dbMocks.listCompanyTrainingPrograms.mockResolvedValue([]); dbMocks.listCompanyTrainingAssignments.mockResolvedValue([]); dbMocks.createCompanyDepartment.mockResolvedValue({ id: 3, companyId: 1, name: "العمليات" }); dbMocks.createCompanyEmployeeLifecycleEvent.mockResolvedValue({ id: 5, companyId: 1, employeeUserId: 20 }); dbMocks.createCompanyTrainingProgram.mockResolvedValue({ id: 6, companyId: 1 }); dbMocks.assignCompanyTrainingProgram.mockResolvedValue({ id: 7, companyId: 1 }); dbMocks.saveEmployeeProfile.mockResolvedValue({ id: 4, companyId: 1, userId: 20 }); });
+  beforeEach(() => { vi.clearAllMocks(); dbMocks.listCompanyEmployees.mockResolvedValue([]); dbMocks.listCompanyDepartments.mockResolvedValue([]); dbMocks.listCompanyEmployeeLifecycleEvents.mockResolvedValue([]); dbMocks.listCompanyTrainingPrograms.mockResolvedValue([]); dbMocks.listCompanyTrainingAssignments.mockResolvedValue([]); dbMocks.recordAuditEvent.mockResolvedValue(undefined); dbMocks.createCompanyDepartment.mockResolvedValue({ id: 3, companyId: 1, name: "العمليات" }); dbMocks.createCompanyEmployeeLifecycleEvent.mockResolvedValue({ id: 5, companyId: 1, employeeUserId: 20 }); dbMocks.createCompanyTrainingProgram.mockResolvedValue({ id: 6, companyId: 1 }); dbMocks.assignCompanyTrainingProgram.mockResolvedValue({ id: 7, companyId: 1 }); dbMocks.saveEmployeeProfile.mockResolvedValue({ id: 4, companyId: 1, userId: 20 }); });
 
   it("lists employees only within the current company for directory roles", async () => {
     const caller = employeesRouter.createCaller(context("manager"));
@@ -62,5 +62,7 @@ describe("employees router", () => {
     await caller.assignTrainingProgram({ employeeUserId: 20, trainingProgramId: 6 });
     expect(dbMocks.createCompanyTrainingProgram).toHaveBeenCalledWith(expect.objectContaining({ companyId: 1, createdByUserId: 8, title: "سلامة العمل" }));
     expect(dbMocks.assignCompanyTrainingProgram).toHaveBeenCalledWith({ companyId: 1, assignedByUserId: 8, employeeUserId: 20, trainingProgramId: 6 });
+    expect(dbMocks.recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ companyId: 1, actorUserId: 8, category: "training", action: "training_program_created" }));
+    expect(dbMocks.recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ companyId: 1, actorUserId: 8, category: "training", action: "training_assigned" }));
   });
 });

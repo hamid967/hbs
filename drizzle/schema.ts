@@ -268,7 +268,7 @@ export const auditEvents = mysqlTable("auditEvents", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
   actorUserId: int("actorUserId").references(() => users.id, { onDelete: "set null" }),
-  category: mysqlEnum("category", ["recruitment", "attendance", "approval", "account", "permission"]).notNull(),
+  category: mysqlEnum("category", ["recruitment", "attendance", "training", "approval", "account", "permission"]).notNull(),
   action: varchar("action", { length: 120 }).notNull(),
   entityType: varchar("entityType", { length: 80 }).notNull(),
   entityId: int("entityId"),
