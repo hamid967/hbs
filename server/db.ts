@@ -296,6 +296,23 @@ export async function listCompanyOpenOffboardingWork(companyId: number) {
     .orderBy(desc(employeeOffboardingTasks.updatedAt));
 }
 
+export async function getManagerTeamGoals(companyId: number, managerUserId: number) {
+  const db = await getDb();
+  if (!db) return { members: [], goals: [] };
+  const members = await db.select({ id: users.id, name: users.name, email: users.email, departmentName: departments.name }).from(employeeProfiles)
+    .innerJoin(users, eq(employeeProfiles.userId, users.id))
+    .leftJoin(departments, eq(employeeProfiles.departmentId, departments.id))
+    .where(and(eq(employeeProfiles.companyId, companyId), eq(employeeProfiles.managerUserId, managerUserId), eq(users.accountStatus, "active")));
+  if (!members.length) return { members, goals: [] };
+  const memberIds = members.map(member => member.id);
+  const goals = await db.select({ goal: employeeGoals, employeeId: users.id, employeeName: users.name, employeeEmail: users.email, departmentName: departments.name }).from(employeeGoals)
+    .innerJoin(users, eq(employeeGoals.employeeUserId, users.id))
+    .leftJoin(employeeProfiles, eq(employeeGoals.employeeUserId, employeeProfiles.userId))
+    .leftJoin(departments, eq(employeeProfiles.departmentId, departments.id))
+    .where(and(eq(employeeGoals.companyId, companyId), inArray(employeeGoals.employeeUserId, memberIds), ne(employeeGoals.status, "cancelled")));
+  return { members, goals };
+}
+
 export async function createCompanyOffboarding(input: { companyId: number; employeeUserId: number; lastWorkingAt?: Date; createdByUserId: number }) {
   const db = await getDb();
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
