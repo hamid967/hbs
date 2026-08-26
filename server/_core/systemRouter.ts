@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { probeDatabaseConnection } from "../db";
+import { buildOperationalHealthSnapshot } from "../operationalHealth";
 import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, router } from "./trpc";
 
@@ -12,6 +14,8 @@ export const systemRouter = router({
     .query(() => ({
       ok: true,
     })),
+
+  operationalStatus: adminProcedure.query(async () => buildOperationalHealthSnapshot({ databaseReachable: await probeDatabaseConnection() })),
 
   notifyOwner: adminProcedure
     .input(
