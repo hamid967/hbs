@@ -218,6 +218,13 @@
       "when": 1787721927601,
       "tag": "0030_overjoyed_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1787724480268,
+      "tag": "0031_luxuriant_blindfold",
+      "breakpoints": true
     }
   ]
 }

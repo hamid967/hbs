@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeContracts, employeeDocuments, employeeEmergencyContacts, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeContracts, employeeDocuments, employeeEmergencyContacts, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobDesignations, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -154,19 +154,35 @@ export async function createCompanyDepartment(input: { companyId: number; name: 
 export async function listCompanyEmployees(companyId: number) {
   const db = await getDb();
   if (!db) return [];
-  const rows = await db.select({ user: users, profile: employeeProfiles, department: departments }).from(users).leftJoin(employeeProfiles, eq(employeeProfiles.userId, users.id)).leftJoin(departments, eq(employeeProfiles.departmentId, departments.id)).where(and(eq(users.companyId, companyId), eq(users.accountStatus, "active"))).orderBy(desc(users.lastSignedIn));
-  return rows.map(row => ({ ...row.user, profile: row.profile, department: row.department ? { id: row.department.id, name: row.department.name, code: row.department.code } : null }));
+  const rows = await db.select({ user: users, profile: employeeProfiles, department: departments, designation: jobDesignations }).from(users).leftJoin(employeeProfiles, eq(employeeProfiles.userId, users.id)).leftJoin(departments, eq(employeeProfiles.departmentId, departments.id)).leftJoin(jobDesignations, eq(employeeProfiles.designationId, jobDesignations.id)).where(and(eq(users.companyId, companyId), eq(users.accountStatus, "active"))).orderBy(desc(users.lastSignedIn));
+  return rows.map(row => ({ ...row.user, profile: row.profile, department: row.department ? { id: row.department.id, name: row.department.name, code: row.department.code } : null, designation: row.designation ? { id: row.designation.id, title: row.designation.title, code: row.designation.code, isActive: row.designation.isActive } : null }));
 }
 
-export function buildEmployeeProfileLifecycleChanges(previous: { employmentStatus: string; departmentId: number | null; managerUserId: number | null }, next: { employmentStatus: string; departmentId: number | null; managerUserId: number | null }) {
+export async function listCompanyJobDesignations(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(jobDesignations).where(eq(jobDesignations.companyId, companyId)).orderBy(desc(jobDesignations.isActive), jobDesignations.title);
+}
+
+export async function createCompanyJobDesignation(input: { companyId: number; title: string; code?: string; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await db.insert(jobDesignations).values({ companyId: input.companyId, title: input.title, code: input.code ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(jobDesignations).where(and(eq(jobDesignations.companyId, input.companyId), eq(jobDesignations.title, input.title))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ المسمى الوظيفي");
+  return created;
+}
+
+export function buildEmployeeProfileLifecycleChanges(previous: { employmentStatus: string; departmentId: number | null; designationId: number | null; managerUserId: number | null }, next: { employmentStatus: string; departmentId: number | null; designationId: number | null; managerUserId: number | null }) {
   const changes: Array<{ eventType: EmployeeLifecycleEventType; note: string }> = [];
   if (previous.employmentStatus !== next.employmentStatus) changes.push({ eventType: "status_changed", note: "تحديث الحالة الوظيفية من ملف الموظف" });
   if (previous.departmentId !== next.departmentId) changes.push({ eventType: "department_changed", note: "تحديث القسم من ملف الموظف" });
+  if (previous.designationId !== next.designationId) changes.push({ eventType: "designation_changed", note: "تحديث المسمى الوظيفي المنظم من ملف الموظف" });
   if (previous.managerUserId !== next.managerUserId) changes.push({ eventType: "manager_changed", note: "تحديث المدير المباشر من ملف الموظف" });
   return changes;
 }
 
-export async function saveEmployeeProfile(input: { companyId: number; userId: number; updatedByUserId: number; employeeNumber?: string; jobTitle?: string; departmentId?: number; region?: string; workLocation?: string; managerUserId?: number; employmentStatus: "active" | "on_leave" | "inactive"; joinedAt?: Date }) {
+export async function saveEmployeeProfile(input: { companyId: number; userId: number; updatedByUserId: number; employeeNumber?: string; jobTitle?: string; designationId?: number; departmentId?: number; region?: string; workLocation?: string; managerUserId?: number; employmentStatus: "active" | "on_leave" | "inactive"; joinedAt?: Date }) {
   const db = await getDb();
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
   const user = (await db.select().from(users).where(and(eq(users.id, input.userId), eq(users.companyId, input.companyId))).limit(1))[0];
@@ -175,13 +191,17 @@ export async function saveEmployeeProfile(input: { companyId: number; userId: nu
     const department = (await db.select().from(departments).where(and(eq(departments.id, input.departmentId), eq(departments.companyId, input.companyId))).limit(1))[0];
     if (!department) throw new Error("القسم غير موجود ضمن الشركة الحالية");
   }
+  if (input.designationId) {
+    const designation = (await db.select().from(jobDesignations).where(and(eq(jobDesignations.id, input.designationId), eq(jobDesignations.companyId, input.companyId))).limit(1))[0];
+    if (!designation) throw new Error("المسمى الوظيفي غير موجود ضمن الشركة الحالية");
+  }
   if (input.managerUserId) {
     const manager = (await db.select().from(users).where(and(eq(users.id, input.managerUserId), eq(users.companyId, input.companyId))).limit(1))[0];
     if (!manager) throw new Error("المدير غير موجود ضمن الشركة الحالية");
   }
   const existing = (await db.select().from(employeeProfiles).where(and(eq(employeeProfiles.companyId, input.companyId), eq(employeeProfiles.userId, input.userId))).limit(1))[0];
-  const values = { companyId: input.companyId, userId: input.userId, employeeNumber: input.employeeNumber ?? null, jobTitle: input.jobTitle ?? null, departmentId: input.departmentId ?? null, region: input.region ?? null, workLocation: input.workLocation ?? null, managerUserId: input.managerUserId ?? null, employmentStatus: input.employmentStatus, joinedAt: input.joinedAt ?? null };
-  await db.insert(employeeProfiles).values(values).onDuplicateKeyUpdate({ set: { employeeNumber: values.employeeNumber, jobTitle: values.jobTitle, departmentId: values.departmentId, region: values.region, workLocation: values.workLocation, managerUserId: values.managerUserId, employmentStatus: values.employmentStatus, joinedAt: values.joinedAt } });
+  const values = { companyId: input.companyId, userId: input.userId, employeeNumber: input.employeeNumber ?? null, jobTitle: input.jobTitle ?? null, designationId: input.designationId ?? null, departmentId: input.departmentId ?? null, region: input.region ?? null, workLocation: input.workLocation ?? null, managerUserId: input.managerUserId ?? null, employmentStatus: input.employmentStatus, joinedAt: input.joinedAt ?? null };
+  await db.insert(employeeProfiles).values(values).onDuplicateKeyUpdate({ set: { employeeNumber: values.employeeNumber, jobTitle: values.jobTitle, designationId: values.designationId, departmentId: values.departmentId, region: values.region, workLocation: values.workLocation, managerUserId: values.managerUserId, employmentStatus: values.employmentStatus, joinedAt: values.joinedAt } });
   if (existing) {
     const changes = buildEmployeeProfileLifecycleChanges(existing, values);
     if (changes.length) await db.insert(employeeLifecycleEvents).values(changes.map(change => ({ companyId: input.companyId, employeeUserId: input.userId, eventType: change.eventType, effectiveAt: new Date(), note: change.note, createdByUserId: input.updatedByUserId })));
@@ -189,7 +209,7 @@ export async function saveEmployeeProfile(input: { companyId: number; userId: nu
   return (await db.select().from(employeeProfiles).where(eq(employeeProfiles.userId, input.userId)).limit(1))[0];
 }
 
-type EmployeeLifecycleEventType = "joined" | "profile_updated" | "status_changed" | "role_changed" | "department_changed" | "manager_changed" | "offboarding_started" | "offboarding_completed";
+type EmployeeLifecycleEventType = "joined" | "profile_updated" | "status_changed" | "role_changed" | "department_changed" | "designation_changed" | "manager_changed" | "offboarding_started" | "offboarding_completed";
 
 export async function listCompanyEmployeeLifecycleEvents(companyId: number) {
   const db = await getDb();

@@ -92,12 +92,24 @@ export const departments = mysqlTable("departments", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("departments_company_name_unique").on(table.companyId, table.name)]);
 
+export const jobDesignations = mysqlTable("jobDesignations", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 160 }).notNull(),
+  code: varchar("code", { length: 32 }),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("jobDesignations_company_title_unique").on(table.companyId, table.title), uniqueIndex("jobDesignations_company_code_unique").on(table.companyId, table.code), index("jobDesignations_company_active_idx").on(table.companyId, table.isActive)]);
+
 export const employeeProfiles = mysqlTable("employeeProfiles", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   employeeNumber: varchar("employeeNumber", { length: 40 }),
   jobTitle: varchar("jobTitle", { length: 160 }),
+  designationId: int("designationId").references(() => jobDesignations.id, { onDelete: "set null" }),
   departmentId: int("departmentId").references(() => departments.id, { onDelete: "set null" }),
   region: varchar("region", { length: 120 }),
   workLocation: varchar("workLocation", { length: 160 }),
@@ -201,7 +213,7 @@ export const employeeLifecycleEvents = mysqlTable("employeeLifecycleEvents", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
   employeeUserId: int("employeeUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
-  eventType: mysqlEnum("eventType", ["joined", "profile_updated", "status_changed", "role_changed", "department_changed", "manager_changed", "offboarding_started", "offboarding_completed"]).notNull(),
+  eventType: mysqlEnum("eventType", ["joined", "profile_updated", "status_changed", "role_changed", "department_changed", "designation_changed", "manager_changed", "offboarding_started", "offboarding_completed"]).notNull(),
   effectiveAt: timestamp("effectiveAt").notNull(),
   note: varchar("note", { length: 500 }),
   createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
