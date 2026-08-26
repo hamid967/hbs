@@ -246,6 +246,20 @@
       "when": 1787727002362,
       "tag": "0034_goofy_cyclops",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1787731439270,
+      "tag": "0035_lyrical_mathemanic",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1787731541955,
+      "tag": "0036_early_jack_murdock",
+      "breakpoints": true
     }
   ]
 }
