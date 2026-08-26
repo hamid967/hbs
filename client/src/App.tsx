@@ -41,6 +41,7 @@ const ManagerDashboard = lazy(() => import("./pages/ManagerDashboard"));
 const LeavePolicies = lazy(() => import("./pages/LeavePolicies"));
 const OperationalHealth = lazy(() => import("./pages/OperationalHealth"));
 const DataRetentionPolicies = lazy(() => import("./pages/DataRetentionPolicies"));
+const DataInventory = lazy(() => import("./pages/DataInventory"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 function RouteFallback() { return <main dir="rtl" className="flex min-h-screen items-center justify-center bg-[#f8faf8] px-6" role="status" aria-live="polite"><div className="text-center"><span className="mx-auto block size-10 animate-spin rounded-full border-4 border-[#d7e8da] border-t-[#256645]" /><p className="mt-4 text-sm font-bold text-[#315440]">جارٍ تحميل الصفحة…</p></div></main>; }
@@ -49,7 +50,7 @@ function Router() {
   return <Suspense fallback={<RouteFallback />}><Switch>
     <Route path="/" component={MarketingHome} /><Route path="/request-demo" component={RequestDemo} /><Route path="/app" component={Home} />
     <Route path="/assistant" component={AssistantIntake} /><Route path="/hr-system" component={HrSystemDesigner} /><Route path="/hr-tools" component={HrToolsCenter} />
-    <Route path="/employee-requests" component={EmployeeRequests} /><Route path="/leave-policies" component={LeavePolicies} /><Route path="/system-health" component={OperationalHealth} /><Route path="/data-retention" component={DataRetentionPolicies} />
+    <Route path="/employee-requests" component={EmployeeRequests} /><Route path="/leave-policies" component={LeavePolicies} /><Route path="/system-health" component={OperationalHealth} /><Route path="/data-retention" component={DataRetentionPolicies} /><Route path="/data-inventory" component={DataInventory} />
     <Route path="/requests/new" component={NewRequest} /><Route path="/requests/:id" component={RequestDetail} /><Route path="/my-requests" component={MyRequests} />
     <Route path="/operations" component={Operations} /><Route path="/demo-requests" component={DemoRequestsAdmin} /><Route path="/roadmap" component={DeliveryRoadmap} /><Route path="/mvp" component={MvpStudio} />
     <Route path="/accounts" component={AccountManagement} /><Route path="/company-templates" component={CompanyPermissionTemplates} /><Route path="/employees" component={EmployeeDirectory} /><Route path="/employee-lifecycle" component={EmployeeLifecycle} />

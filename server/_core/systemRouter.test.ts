@@ -28,3 +28,15 @@ describe("system operational status", () => {
     expect(dbMocks.probeDatabaseConnection).not.toHaveBeenCalled();
   });
 });
+
+describe("system data inventory", () => {
+  it("returns only the catalog metadata to an administrator", async () => {
+    const result = await systemRouter.createCaller(context()).dataInventory();
+    expect(result.domains).toEqual(expect.arrayContaining([expect.objectContaining({ id: "employees", retentionState: "policy_pending" })]));
+    expect(JSON.stringify(result)).not.toContain("employeeId");
+  });
+
+  it("blocks non-administrators from the catalog", async () => {
+    await expect(systemRouter.createCaller(context("hr")).dataInventory()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});

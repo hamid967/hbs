@@ -51,6 +51,7 @@ import {
   ChartNoAxesCombined,
   Activity,
   ArchiveRestore,
+  Database,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -72,6 +73,7 @@ const menuItems = [
   { icon: ShieldCheck, label: "سجل التدقيق", path: "/audit", adminOnly: true },
   { icon: Activity, label: "صحة التطبيق", path: "/system-health", adminOnly: true },
   { icon: ArchiveRestore, label: "سياسات الاحتفاظ", path: "/data-retention", adminOnly: true },
+  { icon: Database, label: "جرد البيانات", path: "/data-inventory", adminOnly: true },
   { icon: Building2, label: "قوالب الشركة", path: "/company-templates", adminOnly: true },
   { icon: UserRoundSearch, label: "دليل الموظفين", path: "/employees", requiresDirectoryAccess: true },
   { icon: ClipboardCheck, label: "دورة حياة الموظف", path: "/employee-lifecycle", requiresLifecycleAccess: true },
