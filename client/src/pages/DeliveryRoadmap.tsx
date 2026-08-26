@@ -1,6 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { roadmapStages, roadmapStatusMeta, summarizeRoadmap } from "@/lib/roadmapStages";
-import { BadgeCheck, Bot, BrainCircuit, CheckCircle2, CircleDashed, Clock3, Code2, Compass, Database, Gauge, Layers3, Palette, Rocket, ShieldCheck, Sparkles, Target, UsersRound } from "lucide-react";
+import { operationalBatches, roadmapStages, roadmapStatusMeta, summarizeRoadmap } from "@/lib/roadmapStages";
+import { BadgeCheck, Bot, BrainCircuit, CheckCircle2, CircleDashed, Clock3, Code2, Compass, Database, Gauge, History, Layers3, Palette, Rocket, ShieldCheck, Sparkles, Target, UsersRound } from "lucide-react";
 
 const team = [
   { icon: Compass, role: "قيادة البرنامج والمنتج", focus: "الاتجاه، الأولويات، المؤشرات، وإدارة المخاطر." },
@@ -44,6 +44,11 @@ export default function DeliveryRoadmap() {
           <ProgressCard label="بانتظار تحقق حي" value={summary.validation} detail="تحتاج جلسات أو قبولاً تشغيلياً" tone="bg-[#fff1de] text-[#a46723]" />
           <ProgressCard label="منفذة جزئياً" value={summary.partial} detail="تحتاج توسيع نطاق محدداً" tone="bg-[#e9eef8] text-[#446b98]" />
           <ProgressCard label="تقدم البرنامج" value={`${progress}%`} detail="منجزة أو منفذة جزئياً" tone="bg-[#edf5f3] text-[#27705e]" />
+        </section>
+
+        <section className="mt-8 rounded-3xl border border-[#dce9df] bg-white p-5 shadow-[0_8px_22px_rgba(21,50,35,.035)] md:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="flex items-center gap-2 text-xs font-bold text-[#5d8d70]"><History className="size-4" />دفعات تشغيلية محفوظة</p><h2 className="mt-2 text-2xl font-bold text-[#1d4532]">حالة التنفيذ ونقطة الاستعادة</h2><p className="mt-2 max-w-3xl text-sm leading-7 text-[#758278]">كل بطاقة تمثل دفعة منشورة مع معرف نقطة استعادة مرجعي ونتيجة تحقق مسجلة، دون عرض أسرار أو بيانات تشغيلية حساسة.</p></div><span className="rounded-full bg-[#e7f4ea] px-3 py-1.5 text-xs font-bold text-[#30774e]">{operationalBatches.length} دفعات متحققة</span></div>
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{operationalBatches.map((batch, index) => <article key={batch.checkpointId} className="relative overflow-hidden rounded-2xl border border-[#e1e9e2] bg-[#fbfdfb] p-4"><div className="absolute inset-y-0 right-0 w-1 bg-[#4f8a63]" /><div className="flex items-start justify-between gap-3"><span className="flex size-9 items-center justify-center rounded-xl bg-[#e7f4ea] text-[#347950]"><CheckCircle2 className="size-5" /></span><span className="rounded-full bg-[#edf5f3] px-2 py-1 text-[10px] font-bold text-[#27705e]">دفعة {index + 1}</span></div><h3 className="mt-4 font-bold text-[#294535]">{batch.title}</h3><p className="mt-2 min-h-10 text-xs leading-5 text-[#718075]">{batch.summary}</p><div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#e5ece6] pt-3 text-[11px]"><div><p className="text-[#8a968e]">التحقق</p><p className="mt-1 flex items-center gap-1 font-bold text-[#347950]"><CheckCircle2 className="size-3" />{batch.verified ? "مكتمل" : "قيد المراجعة"}</p></div><div><p className="text-[#8a968e]">الاختبارات</p><p className="mt-1 font-bold text-[#375648]">{batch.testCount}</p></div></div><div className="mt-3 rounded-xl bg-white px-3 py-2 text-[10px] text-[#66766c]"><span className="font-bold text-[#4d7a5d]">نقطة الاستعادة: </span>{batch.checkpointId}</div></article>)}</div>
         </section>
 
         <section className="mt-8">

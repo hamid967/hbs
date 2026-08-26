@@ -49,6 +49,22 @@ export const roadmapStatusMeta: Record<RoadmapStatus, { label: string; className
   planned: { label: "مخططة", className: "bg-[#f1f2f1] text-[#66736a]" },
 };
 
+export type OperationalBatch = {
+  title: string;
+  summary: string;
+  checkpointId: string;
+  verified: boolean;
+  testCount: number;
+  scope: string;
+};
+
+export const operationalBatches: OperationalBatch[] = [
+  { title: "توسعة ATS", summary: "مقابلات وعروض داخلية وقوالب تهيئة.", checkpointId: "d7ea1e69", verified: true, testCount: 107, scope: "HR Core" },
+  { title: "دورة حياة الموظف", summary: "سجل أحداث داخلي غير وثائقي.", checkpointId: "72ed9ce7", verified: true, testCount: 109, scope: "HR Core" },
+  { title: "سياسات الدوام", summary: "ساعات وورديات وصفية وتعيينات مقيدة.", checkpointId: "b6673a12", verified: true, testCount: 111, scope: "HR Core" },
+  { title: "التدريب الداخلي", summary: "مسارات تعلم وتعيينات داخل الشركة.", checkpointId: "57729040", verified: true, testCount: 112, scope: "HR Core" },
+];
+
 export function summarizeRoadmap(stages: readonly RoadmapStage[] = roadmapStages) {
   return stages.reduce<Record<RoadmapStatus, number>>((summary, stage) => {
     summary[stage.status] += 1;
