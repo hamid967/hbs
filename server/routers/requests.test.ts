@@ -8,7 +8,9 @@ const dbMocks = vi.hoisted(() => ({
   getUserModulePermissions: vi.fn(),
   getOperationsRequests: vi.fn(),
   getRequestDetail: vi.fn(),
+  saveLeaveRequestDetails: vi.fn(),
   updateRequestStatus: vi.fn(),
+  validateLeaveRequestCapacity: vi.fn(),
 }));
 
 vi.mock("../db", () => dbMocks);
@@ -46,6 +48,8 @@ describe("requests router authorization and review workflow", () => {
     dbMocks.updateRequestStatus.mockResolvedValue({ success: true });
     dbMocks.createRequestWithHistory.mockResolvedValue({ id: 52, reference: "HR-TEST", status: "submitted" });
     dbMocks.addRequestNote.mockResolvedValue({ success: true });
+    dbMocks.validateLeaveRequestCapacity.mockResolvedValue({ requestedDays: 2 });
+    dbMocks.saveLeaveRequestDetails.mockResolvedValue({ success: true });
     dbMocks.getUserModulePermissions.mockImplementation((_userId: number, role: string) => {
       if (role === "hr") return [{ module: "hr", canView: true, canManage: true }, { module: "government", canView: false, canManage: false }];
       if (role === "government") return [{ module: "hr", canView: false, canManage: false }, { module: "government", canView: true, canManage: true }];
@@ -64,6 +68,13 @@ describe("requests router authorization and review workflow", () => {
     const caller = requestsRouter.createCaller(context("user"));
     await expect(caller.create({ type: "hr", category: "إجازة", subject: "طلب إجازة سنوية", details: "أرغب في تقديم طلب إجازة سنوية مع تحديد المدة.", priority: "normal" })).resolves.toMatchObject({ id: 52 });
     expect(dbMocks.createRequestWithHistory).toHaveBeenCalledWith(expect.objectContaining({ type: "hr", employeeId: 10, companyId: 1 }));
+  });
+
+  it("checks the employee company balance and saves leave details before the approval workflow", async () => {
+    const caller = requestsRouter.createCaller(context("user"));
+    await caller.createLeave({ leaveType: "annual", startDate: "2026-09-01", endDate: "2026-09-02", details: "إجازة مجدولة" });
+    expect(dbMocks.validateLeaveRequestCapacity).toHaveBeenCalledWith({ companyId: 1, employeeUserId: 10, leaveType: "annual", startDate: "2026-09-01", endDate: "2026-09-02", details: "إجازة مجدولة" });
+    expect(dbMocks.saveLeaveRequestDetails).toHaveBeenCalledWith({ requestId: 52, companyId: 1, leaveType: "annual", startDate: "2026-09-01", endDate: "2026-09-02", details: "إجازة مجدولة" });
   });
 
   it("allows HR staff to update an HR request status with an auditable note", async () => {

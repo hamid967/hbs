@@ -78,6 +78,7 @@ const menuItems = [
   { icon: BriefcaseBusiness, label: "التوظيف والتهيئة", path: "/recruitment", requiresRecruitmentAccess: true },
   { icon: Clock3, label: "الدوام", path: "/attendance" },
   { icon: CalendarDays, label: "سياسات الدوام", path: "/attendance-schedules", requiresSchedulingAccess: true },
+  { icon: CalendarDays, label: "سياسات الإجازة", path: "/leave-policies", requiresSchedulingAccess: true },
   { icon: ClipboardCheck, label: "صندوق الموافقات", path: "/approvals", requiresApprovalAccess: true },
   { icon: ShieldCheck, label: "محاكي الموافقات", path: "/approval-simulator", requiresDirectoryAccess: true },
   { icon: Inbox, label: "صندوق العمل", path: "/workboard" },

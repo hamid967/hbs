@@ -371,7 +371,7 @@ export const auditEvents = mysqlTable("auditEvents", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
   actorUserId: int("actorUserId").references(() => users.id, { onDelete: "set null" }),
-  category: mysqlEnum("category", ["recruitment", "attendance", "training", "approval", "account", "permission"]).notNull(),
+  category: mysqlEnum("category", ["recruitment", "attendance", "training", "approval", "account", "permission", "leave"]).notNull(),
   action: varchar("action", { length: 120 }).notNull(),
   entityType: varchar("entityType", { length: 80 }).notNull(),
   entityId: int("entityId"),
@@ -435,6 +435,7 @@ export type InAppNotification = typeof inAppNotifications.$inferSelect;
 export const requestTypes = ["hr", "government"] as const;
 export const requestStatuses = ["submitted", "in_review", "approved", "rejected", "completed"] as const;
 export const requestPriorities = ["normal", "urgent"] as const;
+export const leaveTypes = ["annual", "sick", "emergency"] as const;
 
 export const serviceRequests = mysqlTable("serviceRequests", {
   id: int("id").autoincrement().primaryKey(),
@@ -455,11 +456,35 @@ export const leaveRequests = mysqlTable("leaveRequests", {
   id: int("id").autoincrement().primaryKey(),
   requestId: int("requestId").notNull().references(() => serviceRequests.id, { onDelete: "cascade" }).unique(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  leaveType: mysqlEnum("leaveType", ["annual", "sick", "emergency"]).notNull(),
+  leaveType: mysqlEnum("leaveType", leaveTypes).notNull(),
   startDate: varchar("startDate", { length: 10 }).notNull(),
   endDate: varchar("endDate", { length: 10 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+export const leavePolicies = mysqlTable("leavePolicies", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  leaveType: mysqlEnum("leaveType", leaveTypes).notNull(),
+  title: varchar("title", { length: 120 }).notNull(),
+  referenceDays: int("referenceDays").notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("leavePolicies_company_type_unique").on(table.companyId, table.leaveType), index("leavePolicies_company_active_idx").on(table.companyId, table.isActive)]);
+
+export const leaveAllocations = mysqlTable("leaveAllocations", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  employeeUserId: int("employeeUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  leavePolicyId: int("leavePolicyId").notNull().references(() => leavePolicies.id, { onDelete: "cascade" }),
+  allocationYear: int("allocationYear").notNull(),
+  allocatedDays: int("allocatedDays").notNull(),
+  allocatedByUserId: int("allocatedByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("leaveAllocations_company_employee_policy_year_unique").on(table.companyId, table.employeeUserId, table.leavePolicyId, table.allocationYear), index("leaveAllocations_company_employee_year_idx").on(table.companyId, table.employeeUserId, table.allocationYear)]);
 
 export const expenseRequests = mysqlTable("expenseRequests", {
   id: int("id").autoincrement().primaryKey(),

@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 import { ShieldAlert, ShieldCheck } from "lucide-react";
 
-const categoryLabels = { recruitment: "التوظيف", attendance: "الدوام", training: "التدريب", approval: "الموافقات", account: "الحسابات", permission: "الصلاحيات" } as const;
+const categoryLabels = { recruitment: "التوظيف", attendance: "الدوام", training: "التدريب", approval: "الموافقات", account: "الحسابات", permission: "الصلاحيات", leave: "الإجازات" } as const;
 
 export default function AuditLog() {
   const { data, isLoading, isError, error } = trpc.audit.list.useQuery({ limit: 100 });

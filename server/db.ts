@@ -1,11 +1,12 @@
 import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeContracts, employeeDocuments, employeeEmergencyContacts, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeContracts, employeeDocuments, employeeEmergencyContacts, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
 import { defaultModulePermissionsForRole, normalizeModulePermissions, type ModulePermission } from "../shared/moduleAccess";
 import { isCandidateStatusTransitionAllowed, isInterviewStatusTransitionAllowed, isOfferStatusTransitionAllowed, type CandidateStatus, type InterviewStatus, type OfferStatus } from "./recruitmentRules";
+import { calculateLeaveBalance, countInclusiveLeaveDays, dateRangesOverlap, getLeaveRequestYear, type LeaveType } from "./leavePolicy";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -660,7 +661,7 @@ export async function requestExecutionRetry(input: { companyId: number; stageNum
 export async function createCompanyTrainingProgram(input: { companyId: number; title: string; description?: string; durationMinutes: number; createdByUserId: number }) { const db = await getDb(); if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً"); await db.insert(trainingPrograms).values({ companyId: input.companyId, title: input.title, description: input.description ?? null, durationMinutes: input.durationMinutes, createdByUserId: input.createdByUserId }); const created = (await db.select().from(trainingPrograms).where(and(eq(trainingPrograms.companyId, input.companyId), eq(trainingPrograms.title, input.title))).limit(1))[0]; if (!created) throw new Error("تعذر حفظ مسار التدريب"); return created; }
 export async function assignCompanyTrainingProgram(input: { companyId: number; employeeUserId: number; trainingProgramId: number; dueAt?: Date; assignedByUserId: number }) { const db = await getDb(); if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً"); const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"))).limit(1))[0]; if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية أو غير مفعّل"); const program = (await db.select().from(trainingPrograms).where(and(eq(trainingPrograms.id, input.trainingProgramId), eq(trainingPrograms.companyId, input.companyId), eq(trainingPrograms.isActive, true))).limit(1))[0]; if (!program) throw new Error("مسار التدريب غير موجود ضمن الشركة الحالية أو غير مفعّل"); await db.insert(employeeTrainingAssignments).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, trainingProgramId: input.trainingProgramId, dueAt: input.dueAt ?? null, assignedByUserId: input.assignedByUserId }); const created = (await db.select().from(employeeTrainingAssignments).where(and(eq(employeeTrainingAssignments.companyId, input.companyId), eq(employeeTrainingAssignments.employeeUserId, input.employeeUserId), eq(employeeTrainingAssignments.trainingProgramId, input.trainingProgramId))).limit(1))[0]; if (!created) throw new Error("تعذر تعيين مسار التدريب"); return created; }
 
-type AuditCategory = "recruitment" | "attendance" | "training" | "approval" | "account" | "permission";
+type AuditCategory = "recruitment" | "attendance" | "training" | "approval" | "account" | "permission" | "leave";
 
 export async function recordAuditEvent(input: { companyId: number; actorUserId?: number; category: AuditCategory; action: string; entityType: string; entityId?: number; summary: string }) {
   const db = await getDb();
@@ -711,6 +712,78 @@ export async function saveLeaveRequestDetails(input: { requestId: number; compan
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
   await db.insert(leaveRequests).values(input).onDuplicateKeyUpdate({ set: { leaveType: input.leaveType, startDate: input.startDate, endDate: input.endDate } });
   return { success: true } as const;
+}
+
+export async function upsertCompanyLeavePolicy(input: { companyId: number; leaveType: LeaveType; title: string; referenceDays: number; isActive: boolean; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await db.insert(leavePolicies).values(input).onDuplicateKeyUpdate({ set: { title: input.title, referenceDays: input.referenceDays, isActive: input.isActive } });
+  const policy = (await db.select().from(leavePolicies).where(and(eq(leavePolicies.companyId, input.companyId), eq(leavePolicies.leaveType, input.leaveType))).limit(1))[0];
+  if (!policy) throw new Error("تعذر حفظ سياسة الإجازة");
+  return policy;
+}
+
+export async function upsertEmployeeLeaveAllocation(input: { companyId: number; employeeUserId: number; leavePolicyId: number; allocationYear: number; allocatedDays: number; allocatedByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select({ id: users.id }).from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية أو غير مفعّل");
+  const policy = (await db.select({ id: leavePolicies.id }).from(leavePolicies).where(and(eq(leavePolicies.id, input.leavePolicyId), eq(leavePolicies.companyId, input.companyId))).limit(1))[0];
+  if (!policy) throw new Error("سياسة الإجازة لا تنتمي إلى الشركة الحالية");
+  await db.insert(leaveAllocations).values(input).onDuplicateKeyUpdate({ set: { allocatedDays: input.allocatedDays, allocatedByUserId: input.allocatedByUserId } });
+  const allocation = (await db.select().from(leaveAllocations).where(and(eq(leaveAllocations.companyId, input.companyId), eq(leaveAllocations.employeeUserId, input.employeeUserId), eq(leaveAllocations.leavePolicyId, input.leavePolicyId), eq(leaveAllocations.allocationYear, input.allocationYear))).limit(1))[0];
+  if (!allocation) throw new Error("تعذر حفظ رصيد الإجازة");
+  return allocation;
+}
+
+async function getEmployeeLeaveUsage(input: { companyId: number; employeeUserId: number; leaveType: LeaveType; allocationYear: number }) {
+  const db = await getDb();
+  if (!db) return { approvedDays: 0, pendingDays: 0, rows: [] as Array<{ startDate: string; endDate: string; status: "submitted" | "in_review" | "approved" | "rejected" | "completed" }> };
+  const rows = await db.select({ startDate: leaveRequests.startDate, endDate: leaveRequests.endDate, leaveType: leaveRequests.leaveType, status: serviceRequests.status }).from(leaveRequests).innerJoin(serviceRequests, eq(leaveRequests.requestId, serviceRequests.id)).where(and(eq(leaveRequests.companyId, input.companyId), eq(serviceRequests.employeeId, input.employeeUserId)));
+  const activeRows = rows.filter(row => row.leaveType === input.leaveType && Number(row.startDate.slice(0, 4)) === input.allocationYear && row.status !== "rejected");
+  return activeRows.reduce((usage, row) => {
+    const days = countInclusiveLeaveDays(row.startDate, row.endDate);
+    if (row.status === "submitted" || row.status === "in_review") usage.pendingDays += days;
+    else usage.approvedDays += days;
+    return usage;
+  }, { approvedDays: 0, pendingDays: 0, rows: activeRows });
+}
+
+export async function getMyLeaveBalances(input: { companyId: number; employeeUserId: number; allocationYear: number }) {
+  const db = await getDb();
+  if (!db) return [];
+  const allocations = await db.select({ allocation: leaveAllocations, policy: leavePolicies }).from(leaveAllocations).innerJoin(leavePolicies, eq(leaveAllocations.leavePolicyId, leavePolicies.id)).where(and(eq(leaveAllocations.companyId, input.companyId), eq(leaveAllocations.employeeUserId, input.employeeUserId), eq(leaveAllocations.allocationYear, input.allocationYear), eq(leavePolicies.companyId, input.companyId)));
+  return Promise.all(allocations.map(async ({ allocation, policy }) => {
+    const usage = await getEmployeeLeaveUsage({ companyId: input.companyId, employeeUserId: input.employeeUserId, leaveType: policy.leaveType, allocationYear: input.allocationYear });
+    return { allocation, policy, balance: calculateLeaveBalance({ allocatedDays: allocation.allocatedDays, approvedDays: usage.approvedDays, pendingDays: usage.pendingDays }) };
+  }));
+}
+
+export async function validateLeaveRequestCapacity(input: { companyId: number; employeeUserId: number; leaveType: LeaveType; startDate: string; endDate: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const allocationYear = getLeaveRequestYear(input.startDate, input.endDate);
+  const requestedDays = countInclusiveLeaveDays(input.startDate, input.endDate);
+  const policy = (await db.select().from(leavePolicies).where(and(eq(leavePolicies.companyId, input.companyId), eq(leavePolicies.leaveType, input.leaveType), eq(leavePolicies.isActive, true))).limit(1))[0];
+  if (!policy) throw new Error("لا توجد سياسة إجازة فعالة لهذا النوع داخل الشركة");
+  const allocation = (await db.select().from(leaveAllocations).where(and(eq(leaveAllocations.companyId, input.companyId), eq(leaveAllocations.employeeUserId, input.employeeUserId), eq(leaveAllocations.leavePolicyId, policy.id), eq(leaveAllocations.allocationYear, allocationYear))).limit(1))[0];
+  if (!allocation) throw new Error("لا يوجد رصيد مخصص لهذا النوع من الإجازة في السنة المحددة");
+  const existingRows = await db.select({ startDate: leaveRequests.startDate, endDate: leaveRequests.endDate, status: serviceRequests.status }).from(leaveRequests).innerJoin(serviceRequests, eq(leaveRequests.requestId, serviceRequests.id)).where(and(eq(leaveRequests.companyId, input.companyId), eq(serviceRequests.employeeId, input.employeeUserId)));
+  if (existingRows.some(row => row.status !== "rejected" && dateRangesOverlap(input.startDate, input.endDate, row.startDate, row.endDate))) throw new Error("يتداخل هذا الطلب مع إجازة قائمة أو معلّقة");
+  const usage = await getEmployeeLeaveUsage({ companyId: input.companyId, employeeUserId: input.employeeUserId, leaveType: input.leaveType, allocationYear });
+  const balance = calculateLeaveBalance({ ...usage, allocatedDays: allocation.allocatedDays });
+  if (requestedDays > balance.remainingDays) throw new Error("أيام الإجازة المطلوبة تتجاوز الرصيد المتاح بعد الطلبات المعلّقة والمعتمدة");
+  return { policy, allocation, requestedDays, allocationYear, balance };
+}
+
+export async function getLeaveManagementOverview(companyId: number, allocationYear: number) {
+  const db = await getDb();
+  if (!db) return { policies: [], allocations: [] };
+  const [policies, allocations] = await Promise.all([
+    db.select().from(leavePolicies).where(eq(leavePolicies.companyId, companyId)).orderBy(desc(leavePolicies.isActive), asc(leavePolicies.leaveType)),
+    db.select({ allocation: leaveAllocations, policy: leavePolicies, employee: users }).from(leaveAllocations).innerJoin(leavePolicies, eq(leaveAllocations.leavePolicyId, leavePolicies.id)).innerJoin(users, eq(leaveAllocations.employeeUserId, users.id)).where(and(eq(leaveAllocations.companyId, companyId), eq(leaveAllocations.allocationYear, allocationYear), eq(leavePolicies.companyId, companyId), eq(users.companyId, companyId))).orderBy(asc(users.name), asc(leavePolicies.leaveType)),
+  ]);
+  return { policies, allocations };
 }
 
 export async function saveExpenseRequestDetails(input: { requestId: number; companyId: number; expenseType: "travel" | "operating"; amountSar: string; reason: string }) {
