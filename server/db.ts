@@ -139,7 +139,8 @@ export async function deleteCompanyPermissionTemplate(id: number, companyId: num
 export async function listCompanyDepartments(companyId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(departments).where(eq(departments.companyId, companyId)).orderBy(desc(departments.updatedAt));
+  const rows = await db.select({ department: departments, manager: users }).from(departments).leftJoin(users, eq(departments.managerUserId, users.id)).where(eq(departments.companyId, companyId)).orderBy(desc(departments.updatedAt));
+  return rows.map(row => ({ ...row.department, manager: row.manager ? { id: row.manager.id, name: row.manager.name } : null }));
 }
 
 export async function createCompanyDepartment(input: { companyId: number; name: string; code?: string }) {
@@ -149,6 +150,19 @@ export async function createCompanyDepartment(input: { companyId: number; name: 
   const created = (await db.select().from(departments).where(and(eq(departments.companyId, input.companyId), eq(departments.name, input.name))).limit(1))[0];
   if (!created) throw new Error("تعذر حفظ القسم");
   return created;
+}
+
+export async function saveCompanyDepartmentManager(input: { companyId: number; departmentId: number; managerUserId?: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const department = (await db.select().from(departments).where(and(eq(departments.id, input.departmentId), eq(departments.companyId, input.companyId))).limit(1))[0];
+  if (!department) throw new Error("القسم غير موجود ضمن الشركة الحالية");
+  if (input.managerUserId) {
+    const manager = (await db.select().from(users).where(and(eq(users.id, input.managerUserId), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"))).limit(1))[0];
+    if (!manager) throw new Error("مدير القسم غير موجود أو غير مفعّل ضمن الشركة الحالية");
+  }
+  await db.update(departments).set({ managerUserId: input.managerUserId ?? null }).where(and(eq(departments.id, input.departmentId), eq(departments.companyId, input.companyId)));
+  return (await db.select().from(departments).where(and(eq(departments.id, input.departmentId), eq(departments.companyId, input.companyId))).limit(1))[0];
 }
 
 export async function listCompanyEmployees(companyId: number) {
