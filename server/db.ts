@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeContracts, employeeDocuments, employeeEmergencyContacts, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeContracts, employeeDocuments, employeeEmergencyContacts, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -314,6 +314,47 @@ export async function updateCompanyOffboardingTask(input: { companyId: number; t
   const offboarding = (await db.select().from(employeeOffboardings).where(and(eq(employeeOffboardings.id, task.offboardingId), eq(employeeOffboardings.companyId, input.companyId))).limit(1))[0];
   if (!offboarding) throw new Error("تعذر تحديث حالة إنهاء الخدمة");
   return { offboarding, completed, becameCompleted: completed && before.status !== "completed" };
+}
+
+export async function listCompanyGoalsOverview(companyId: number) {
+  const db = await getDb();
+  if (!db) return { goals: [], updates: [], programs: [] };
+  const [goals, updates, programs] = await Promise.all([
+    db.select().from(employeeGoals).where(eq(employeeGoals.companyId, companyId)).orderBy(desc(employeeGoals.updatedAt)),
+    db.select().from(employeeGoalUpdates).where(eq(employeeGoalUpdates.companyId, companyId)).orderBy(desc(employeeGoalUpdates.createdAt)),
+    listCompanyTrainingPrograms(companyId),
+  ]);
+  return { goals, updates, programs };
+}
+
+export async function createCompanyEmployeeGoal(input: { companyId: number; employeeUserId: number; title: string; description?: string; targetAt?: Date; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية أو غير مفعّل");
+  await db.insert(employeeGoals).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, title: input.title, description: input.description ?? null, targetAt: input.targetAt ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(employeeGoals).where(and(eq(employeeGoals.companyId, input.companyId), eq(employeeGoals.employeeUserId, input.employeeUserId), eq(employeeGoals.title, input.title))).orderBy(desc(employeeGoals.id)).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ الهدف");
+  return created;
+}
+
+export async function addCompanyGoalProgressUpdate(input: { companyId: number; goalId: number; progressPercent: number; note?: string; trainingProgramId?: number; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  if (input.progressPercent < 0 || input.progressPercent > 100) throw new Error("نسبة التقدم يجب أن تكون بين 0 و100");
+  const goal = (await db.select().from(employeeGoals).where(and(eq(employeeGoals.id, input.goalId), eq(employeeGoals.companyId, input.companyId))).limit(1))[0];
+  if (!goal) throw new Error("الهدف غير موجود ضمن الشركة الحالية");
+  if (goal.status === "cancelled") throw new Error("لا يمكن تحديث هدف ملغى");
+  if (input.trainingProgramId) {
+    const program = (await db.select().from(trainingPrograms).where(and(eq(trainingPrograms.id, input.trainingProgramId), eq(trainingPrograms.companyId, input.companyId))).limit(1))[0];
+    if (!program) throw new Error("مسار التدريب غير موجود ضمن الشركة الحالية");
+  }
+  await db.insert(employeeGoalUpdates).values({ companyId: input.companyId, goalId: input.goalId, trainingProgramId: input.trainingProgramId ?? null, progressPercent: input.progressPercent, note: input.note ?? null, createdByUserId: input.createdByUserId });
+  const status = input.progressPercent === 100 ? "completed" : input.progressPercent > 0 ? "in_progress" : "not_started";
+  await db.update(employeeGoals).set({ progressPercent: input.progressPercent, status }).where(and(eq(employeeGoals.id, input.goalId), eq(employeeGoals.companyId, input.companyId)));
+  const updated = (await db.select().from(employeeGoals).where(and(eq(employeeGoals.id, input.goalId), eq(employeeGoals.companyId, input.companyId))).limit(1))[0];
+  if (!updated) throw new Error("تعذر تحديث الهدف");
+  return updated;
 }
 
 type OpeningStatus = "draft" | "open" | "closed";

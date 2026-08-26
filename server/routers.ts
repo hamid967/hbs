@@ -18,6 +18,7 @@ import { workboardRouter } from "./routers/workboard";
 import { executionControlRouter } from "./routers/executionControl";
 import { contractsRouter } from "./routers/contracts";
 import { offboardingRouter } from "./routers/offboarding";
+import { goalsRouter } from "./routers/goals";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -48,6 +49,7 @@ export const appRouter = router({
   executionControl: executionControlRouter,
   contracts: contractsRouter,
   offboarding: offboardingRouter,
+  goals: goalsRouter,
 });
 
 export type AppRouter = typeof appRouter;

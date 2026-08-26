@@ -172,6 +172,31 @@ export const employeeOffboardingTasks = mysqlTable("employeeOffboardingTasks", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("employeeOffboardingTasks_offboarding_key_unique").on(table.offboardingId, table.taskKey), index("employeeOffboardingTasks_company_offboarding_idx").on(table.companyId, table.offboardingId)]);
 
+export const employeeGoals = mysqlTable("employeeGoals", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  employeeUserId: int("employeeUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 180 }).notNull(),
+  description: varchar("description", { length: 600 }),
+  status: mysqlEnum("status", ["not_started", "in_progress", "completed", "cancelled"]).notNull().default("not_started"),
+  progressPercent: int("progressPercent").notNull().default(0),
+  targetAt: timestamp("targetAt"),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("employeeGoals_company_employee_status_idx").on(table.companyId, table.employeeUserId, table.status)]);
+
+export const employeeGoalUpdates = mysqlTable("employeeGoalUpdates", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  goalId: int("goalId").notNull().references(() => employeeGoals.id, { onDelete: "cascade" }),
+  trainingProgramId: int("trainingProgramId").references(() => trainingPrograms.id, { onDelete: "set null" }),
+  progressPercent: int("progressPercent").notNull(),
+  note: varchar("note", { length: 600 }),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("employeeGoalUpdates_company_goal_idx").on(table.companyId, table.goalId), index("employeeGoalUpdates_company_training_idx").on(table.companyId, table.trainingProgramId)]);
+
 export const employeeLifecycleEvents = mysqlTable("employeeLifecycleEvents", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -391,6 +416,8 @@ export type EmployeeContract = typeof employeeContracts.$inferSelect;
 export type EmployeeDocument = typeof employeeDocuments.$inferSelect;
 export type EmployeeOffboarding = typeof employeeOffboardings.$inferSelect;
 export type EmployeeOffboardingTask = typeof employeeOffboardingTasks.$inferSelect;
+export type EmployeeGoal = typeof employeeGoals.$inferSelect;
+export type EmployeeGoalUpdate = typeof employeeGoalUpdates.$inferSelect;
 export type EmployeeLifecycleEvent = typeof employeeLifecycleEvents.$inferSelect;
 export type JobOpening = typeof jobOpenings.$inferSelect;
 export type JobCandidate = typeof jobCandidates.$inferSelect;
