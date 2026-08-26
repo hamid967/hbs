@@ -46,6 +46,7 @@ import {
   BookOpenCheck,
   Inbox,
   FileText,
+  ListChecks,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -68,6 +69,7 @@ const menuItems = [
   { icon: UserRoundSearch, label: "دليل الموظفين", path: "/employees", requiresDirectoryAccess: true },
   { icon: ClipboardCheck, label: "دورة حياة الموظف", path: "/employee-lifecycle", requiresLifecycleAccess: true },
   { icon: FileText, label: "العقود والوثائق", path: "/contracts", requiresContractsAccess: true },
+  { icon: ListChecks, label: "إنهاء الخدمة", path: "/offboarding", requiresOffboardingAccess: true },
   { icon: BookOpenCheck, label: "التدريب الداخلي", path: "/training", requiresLifecycleAccess: true },
   { icon: BriefcaseBusiness, label: "التوظيف والتهيئة", path: "/recruitment", requiresRecruitmentAccess: true },
   { icon: Clock3, label: "الدوام", path: "/attendance" },
@@ -114,7 +116,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const canManageRecruitment = ["admin", "hr"].includes(user.role);
   const canManageSchedules = ["admin", "hr"].includes(user.role);
   const canManageContracts = ["admin", "hr"].includes(user.role);
-  const visibleMenuItems = menuItems.filter(item => (!item.adminOnly || user.role === "admin") && (!item.requiresOperationAccess || hasOperationAccess) && (!item.requiresDirectoryAccess || canManageDirectory) && (!item.requiresLifecycleAccess || canManageLifecycle) && (!item.requiresContractsAccess || canManageContracts) && (!item.requiresRecruitmentAccess || canManageRecruitment) && (!item.requiresSchedulingAccess || canManageSchedules) && (!item.requiresApprovalAccess || canApprove));
+  const canManageOffboarding = ["admin", "hr"].includes(user.role);
+  const visibleMenuItems = menuItems.filter(item => (!item.adminOnly || user.role === "admin") && (!item.requiresOperationAccess || hasOperationAccess) && (!item.requiresDirectoryAccess || canManageDirectory) && (!item.requiresLifecycleAccess || canManageLifecycle) && (!item.requiresContractsAccess || canManageContracts) && (!item.requiresOffboardingAccess || canManageOffboarding) && (!item.requiresRecruitmentAccess || canManageRecruitment) && (!item.requiresSchedulingAccess || canManageSchedules) && (!item.requiresApprovalAccess || canApprove));
 
   return (
     <SidebarProvider dir="rtl" className="bg-[#f8f8f5] text-[#17211c]">

@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeContracts, employeeDocuments, employeeEmergencyContacts, employeeLifecycleEvents, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeContracts, employeeDocuments, employeeEmergencyContacts, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -265,6 +265,55 @@ export async function createCompanyEmployeeDocument(input: { companyId: number; 
   const created = (await db.select().from(employeeDocuments).where(and(eq(employeeDocuments.companyId, input.companyId), eq(employeeDocuments.storageKey, input.storageKey))).limit(1))[0];
   if (!created) throw new Error("تعذر حفظ بيانات الوثيقة");
   return created;
+}
+
+const defaultOffboardingTasks = [
+  { taskKey: "contracts_review", label: "مراجعة سجلات العقود التشغيلية" },
+  { taskKey: "documents_review", label: "مراجعة الوثائق المرتبطة بالموظف" },
+  { taskKey: "access_review", label: "تأكيد مراجعة الوصول التشغيلي" },
+  { taskKey: "handover_review", label: "تأكيد مراجعة التسليم الداخلي" },
+] as const;
+
+export async function listCompanyOffboardingOverview(companyId: number) {
+  const db = await getDb();
+  if (!db) return { offboardings: [], tasks: [], contracts: [], documents: [] };
+  const [offboardings, tasks, contracts, documents] = await Promise.all([
+    db.select().from(employeeOffboardings).where(eq(employeeOffboardings.companyId, companyId)).orderBy(desc(employeeOffboardings.updatedAt)),
+    db.select().from(employeeOffboardingTasks).where(eq(employeeOffboardingTasks.companyId, companyId)).orderBy(desc(employeeOffboardingTasks.updatedAt)),
+    listCompanyEmployeeContracts(companyId),
+    listCompanyEmployeeDocuments(companyId),
+  ]);
+  return { offboardings, tasks, contracts, documents };
+}
+
+export async function createCompanyOffboarding(input: { companyId: number; employeeUserId: number; lastWorkingAt?: Date; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية");
+  const existing = (await db.select().from(employeeOffboardings).where(and(eq(employeeOffboardings.companyId, input.companyId), eq(employeeOffboardings.employeeUserId, input.employeeUserId))).limit(1))[0];
+  if (existing) throw new Error("توجد قائمة إنهاء خدمة لهذا الموظف بالفعل");
+  await db.insert(employeeOffboardings).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, lastWorkingAt: input.lastWorkingAt ?? null, createdByUserId: input.createdByUserId });
+  const offboarding = (await db.select().from(employeeOffboardings).where(and(eq(employeeOffboardings.companyId, input.companyId), eq(employeeOffboardings.employeeUserId, input.employeeUserId))).limit(1))[0];
+  if (!offboarding) throw new Error("تعذر حفظ حالة إنهاء الخدمة");
+  await db.insert(employeeOffboardingTasks).values(defaultOffboardingTasks.map(task => ({ companyId: input.companyId, offboardingId: offboarding.id, ...task })));
+  return { offboarding, tasks: defaultOffboardingTasks };
+}
+
+export async function updateCompanyOffboardingTask(input: { companyId: number; taskId: number; completed: boolean; updatedByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const task = (await db.select().from(employeeOffboardingTasks).where(and(eq(employeeOffboardingTasks.id, input.taskId), eq(employeeOffboardingTasks.companyId, input.companyId))).limit(1))[0];
+  if (!task) throw new Error("مهمة إنهاء الخدمة غير موجودة ضمن الشركة الحالية");
+  const before = (await db.select().from(employeeOffboardings).where(and(eq(employeeOffboardings.id, task.offboardingId), eq(employeeOffboardings.companyId, input.companyId))).limit(1))[0];
+  if (!before) throw new Error("حالة إنهاء الخدمة غير موجودة ضمن الشركة الحالية");
+  await db.update(employeeOffboardingTasks).set({ status: input.completed ? "completed" : "pending", completedAt: input.completed ? new Date() : null, completedByUserId: input.completed ? input.updatedByUserId : null }).where(and(eq(employeeOffboardingTasks.id, input.taskId), eq(employeeOffboardingTasks.companyId, input.companyId)));
+  const tasks = await db.select().from(employeeOffboardingTasks).where(and(eq(employeeOffboardingTasks.companyId, input.companyId), eq(employeeOffboardingTasks.offboardingId, task.offboardingId)));
+  const completed = tasks.every(item => item.status === "completed");
+  await db.update(employeeOffboardings).set({ status: completed ? "completed" : "in_progress" }).where(and(eq(employeeOffboardings.id, task.offboardingId), eq(employeeOffboardings.companyId, input.companyId)));
+  const offboarding = (await db.select().from(employeeOffboardings).where(and(eq(employeeOffboardings.id, task.offboardingId), eq(employeeOffboardings.companyId, input.companyId))).limit(1))[0];
+  if (!offboarding) throw new Error("تعذر تحديث حالة إنهاء الخدمة");
+  return { offboarding, completed, becameCompleted: completed && before.status !== "completed" };
 }
 
 type OpeningStatus = "draft" | "open" | "closed";

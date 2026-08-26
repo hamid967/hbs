@@ -10,7 +10,7 @@ describe("خارطة المراحل الثلاثين", () => {
 
   it("تميز مراحل القبول الحي عن المراحل المكتملة", () => {
     const summary = summarizeRoadmap();
-    expect(summary).toEqual({ completed: 16, validation: 3, partial: 6, planned: 5 });
+    expect(summary).toEqual({ completed: 16, validation: 3, partial: 7, planned: 4 });
     expect(roadmapStages.find(stage => stage.number === 18)?.status).toBe("validation");
     expect(roadmapStages.find(stage => stage.number === 29)?.dependency).toContain("OAuth");
   });
