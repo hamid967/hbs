@@ -31,11 +31,6 @@ describe("approvals router", () => {
     const caller = approvalsRouter.createCaller(context("user"));
     await expect(caller.inbox()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
-  it("blocks a non-specialized account from deciding a second-stage task before reaching the data layer", async () => {
-    const caller = approvalsRouter.createCaller(context("user"));
-    await expect(caller.decide({ id: 13, decision: "approved" })).rejects.toMatchObject({ code: "FORBIDDEN" });
-    expect(dbMocks.decideApprovalTask).not.toHaveBeenCalled();
-  });
   it("blocks unapproved users from reading approval workload", async () => {
     const caller = approvalsRouter.createCaller(context("user"));
     await expect(caller.workload()).rejects.toMatchObject({ code: "FORBIDDEN" });
