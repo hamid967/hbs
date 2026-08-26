@@ -1,4 +1,4 @@
-import { boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 export const companies = mysqlTable("companies", {
   id: int("id").autoincrement().primaryKey(),
@@ -138,13 +138,15 @@ export const employeeContracts = mysqlTable("employeeContracts", {
   employeeUserId: int("employeeUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   contractReference: varchar("contractReference", { length: 80 }).notNull(),
   title: varchar("title", { length: 160 }).notNull(),
+  versionNumber: int("versionNumber").notNull().default(1),
+  supersedesContractId: int("supersedesContractId").references((): AnyMySqlColumn => employeeContracts.id, { onDelete: "set null" }),
   status: mysqlEnum("status", ["draft", "active", "ended", "archived"]).notNull().default("draft"),
   startAt: timestamp("startAt"),
   endAt: timestamp("endAt"),
   createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [uniqueIndex("employeeContracts_company_reference_unique").on(table.companyId, table.contractReference), index("employeeContracts_company_employee_idx").on(table.companyId, table.employeeUserId)]);
+}, table => [uniqueIndex("employeeContracts_company_reference_unique").on(table.companyId, table.contractReference), index("employeeContracts_company_employee_idx").on(table.companyId, table.employeeUserId), index("employeeContracts_company_previous_idx").on(table.companyId, table.supersedesContractId)]);
 
 export const employeeDocuments = mysqlTable("employeeDocuments", {
   id: int("id").autoincrement().primaryKey(),

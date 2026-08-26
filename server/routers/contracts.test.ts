@@ -44,6 +44,13 @@ describe("contracts router", () => {
     expect(dbMocks.createCompanyEmployeeLifecycleEvent).toHaveBeenCalledWith(expect.objectContaining({ companyId: 1, employeeUserId: 20, eventType: "profile_updated", note: "إضافة سجل عقد تشغيلي" }));
   });
 
+  it("links an operational contract version only through the active company context", async () => {
+    const caller = contractsRouter.createCaller(context("hr"));
+    await caller.createContract({ employeeUserId: 20, contractReference: "CTR-002", title: "إصدار محدث", status: "draft", supersedesContractId: 4 });
+    expect(dbMocks.createCompanyEmployeeContract).toHaveBeenCalledWith(expect.objectContaining({ companyId: 1, createdByUserId: 8, employeeUserId: 20, contractReference: "CTR-002", supersedesContractId: 4 }));
+    expect(dbMocks.createCompanyEmployeeLifecycleEvent).toHaveBeenCalledWith(expect.objectContaining({ companyId: 1, employeeUserId: 20, note: "إضافة إصدار عقد تشغيلي" }));
+  });
+
   it("stores only approved previewable documents with metadata outside the database blob", async () => {
     const caller = contractsRouter.createCaller(context("hr"));
     await caller.uploadDocument({ employeeUserId: 20, category: "employee_document", fileName: "document.pdf", mimeType: "application/pdf", fileContentBase64: Buffer.from("%PDF-1.7\n").toString("base64") });

@@ -275,13 +275,19 @@ export async function listCompanyEmployeeDocuments(companyId: number) {
   return db.select().from(employeeDocuments).where(eq(employeeDocuments.companyId, companyId)).orderBy(desc(employeeDocuments.createdAt));
 }
 
-export async function createCompanyEmployeeContract(input: { companyId: number; employeeUserId: number; contractReference: string; title: string; status: EmployeeContractStatus; startAt?: Date; endAt?: Date; createdByUserId: number }) {
+export async function createCompanyEmployeeContract(input: { companyId: number; employeeUserId: number; contractReference: string; title: string; status: EmployeeContractStatus; supersedesContractId?: number; startAt?: Date; endAt?: Date; createdByUserId: number }) {
   const db = await getDb();
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
   const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId))).limit(1))[0];
   if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية");
   if (input.startAt && input.endAt && input.endAt < input.startAt) throw new Error("تاريخ نهاية العقد يجب أن يكون بعد تاريخ البداية");
-  await db.insert(employeeContracts).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, contractReference: input.contractReference, title: input.title, status: input.status, startAt: input.startAt ?? null, endAt: input.endAt ?? null, createdByUserId: input.createdByUserId });
+  let versionNumber = 1;
+  if (input.supersedesContractId) {
+    const previous = (await db.select().from(employeeContracts).where(and(eq(employeeContracts.id, input.supersedesContractId), eq(employeeContracts.companyId, input.companyId), eq(employeeContracts.employeeUserId, input.employeeUserId))).limit(1))[0];
+    if (!previous) throw new Error("العقد السابق غير موجود ضمن الشركة الحالية أو لا يخص الموظف المحدد");
+    versionNumber = previous.versionNumber + 1;
+  }
+  await db.insert(employeeContracts).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, contractReference: input.contractReference, title: input.title, versionNumber, supersedesContractId: input.supersedesContractId ?? null, status: input.status, startAt: input.startAt ?? null, endAt: input.endAt ?? null, createdByUserId: input.createdByUserId });
   const created = (await db.select().from(employeeContracts).where(and(eq(employeeContracts.companyId, input.companyId), eq(employeeContracts.contractReference, input.contractReference))).limit(1))[0];
   if (!created) throw new Error("تعذر حفظ سجل العقد");
   return created;
