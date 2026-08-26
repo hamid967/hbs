@@ -286,6 +286,16 @@ export async function listCompanyOffboardingOverview(companyId: number) {
   return { offboardings, tasks, contracts, documents };
 }
 
+export async function listCompanyOpenOffboardingWork(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ task: employeeOffboardingTasks, offboarding: employeeOffboardings, employee: users }).from(employeeOffboardingTasks)
+    .innerJoin(employeeOffboardings, eq(employeeOffboardingTasks.offboardingId, employeeOffboardings.id))
+    .innerJoin(users, eq(employeeOffboardings.employeeUserId, users.id))
+    .where(and(eq(employeeOffboardingTasks.companyId, companyId), eq(employeeOffboardingTasks.status, "pending"), eq(employeeOffboardings.status, "in_progress")))
+    .orderBy(desc(employeeOffboardingTasks.updatedAt));
+}
+
 export async function createCompanyOffboarding(input: { companyId: number; employeeUserId: number; lastWorkingAt?: Date; createdByUserId: number }) {
   const db = await getDb();
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");

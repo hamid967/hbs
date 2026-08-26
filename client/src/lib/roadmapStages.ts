@@ -76,7 +76,7 @@ export const directExecutionStages: DirectExecutionStage[] = [
   { number: 5, title: "الإتاحة", status: "partial", detail: "تحسينات داخلية منجزة، مع بقاء تدقيق يدوي شامل." },
   { number: 6, title: "الإطلاق والتحسين", status: "completed", detail: "لوحة دفعات محفوظة ونقاط استعادة ومؤشرات تحقق." },
   { number: 7, title: "الرواتب", status: "blocked", detail: "لا توجد حسابات رواتب في النطاق الحالي.", dependency: "قرار مزود الرواتب والنطاق المحاسبي.", retryLabel: "مراجعة قرار المزوّد" },
-  { number: 8, title: "الوثائق والتوقيع", status: "blocked", detail: "لا تخزين مرفقات أو توقيع في هذه الدفعة.", dependency: "سياسة المرفقات والتوقيع المعتمدة.", retryLabel: "مراجعة سياسة الوثائق" },
+  { number: 8, title: "الوثائق والتوقيع", status: "partial", detail: "إدارة عقود تشغيلية ووثائق PDF وصور مع معاينة قبل الحفظ.", dependency: "سياسة الاحتفاظ والتوقيع الإلكتروني المعتمدة قبل العقود القانونية أو التوقيع.", retryLabel: "مراجعة سياسة التوقيع" },
   { number: 9, title: "المعرفة الذكية", status: "blocked", detail: "لا تُستورد مصادر معرفة غير مصنفة.", dependency: "مصادر معرفة مصنفة ومراجعة.", retryLabel: "مراجعة مصادر المعرفة" },
   { number: 10, title: "التكاملات وAPI", status: "blocked", detail: "لا اتصال خارجي أو أسرار ضمن التطبيق.", dependency: "نظام مستهدف وبيانات اعتماد رسمية.", retryLabel: "مراجعة جاهزية التكامل" },
 ];
