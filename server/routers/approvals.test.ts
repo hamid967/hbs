@@ -22,6 +22,11 @@ describe("approvals router", () => {
     await expect(caller.inbox()).resolves.toEqual([]);
     expect(dbMocks.getApprovalInbox).toHaveBeenCalledWith(1, 9, ["manager"]);
   });
+  it("scopes the government-relations inbox to the signed-in unit user and matching role", async () => {
+    const caller = approvalsRouter.createCaller(context("government"));
+    await expect(caller.inbox()).resolves.toEqual([]);
+    expect(dbMocks.getApprovalInbox).toHaveBeenCalledWith(1, 9, ["government"]);
+  });
   it("blocks users without an approval role", async () => {
     const caller = approvalsRouter.createCaller(context("user"));
     await expect(caller.inbox()).rejects.toMatchObject({ code: "FORBIDDEN" });
