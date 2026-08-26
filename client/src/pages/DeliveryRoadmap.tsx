@@ -50,6 +50,7 @@ export default function DeliveryRoadmap() {
   return (
     <DashboardLayout>
       <div dir="rtl" className="mx-auto max-w-7xl">
+        <p className="sr-only" aria-live="polite">{`حالة خارطة التنفيذ: ${summary.completed} مرحلة مكتملة، ${summary.partial} مرحلة منفذة جزئياً، و${summary.validation} مراحل بانتظار تحقق حي. توجد ${dependencyReviews.length} مراجعات اعتماديات مسجلة للشركة الحالية.`}</p>
         <section className="relative overflow-hidden rounded-[2rem] bg-[#183f31] px-6 py-8 text-white md:px-9">
           <div className="absolute -left-12 -top-14 size-52 rounded-full border-[24px] border-[#e7c89c]/15" />
           <div className="relative max-w-4xl">
