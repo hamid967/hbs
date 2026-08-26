@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, audit/frappe-hrms-integration]
   pull_request:
-    branches: [main]
+    branches: [main, audit/frappe-hrms-integration]
 
 jobs:
   verify:
