@@ -1,0 +1,1 @@
+ALTER TABLE `auditEvents` MODIFY COLUMN `category` enum('recruitment','attendance','training','approval','account','permission') NOT NULL;

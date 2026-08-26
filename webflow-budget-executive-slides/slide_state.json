@@ -1,0 +1,133 @@
+{
+  "project_info": {
+    "title": "حلول الغد على Webflow",
+    "created": 1787694232.13,
+    "last_updated": 1787694504.408,
+    "total_slides": 11
+  },
+  "slides": [
+    {
+      "id": "cover",
+      "state": "edited",
+      "pageNum": 1
+    },
+    {
+      "id": "decision",
+      "state": "edited",
+      "pageNum": 2
+    },
+    {
+      "id": "architecture",
+      "state": "edited",
+      "pageNum": 3
+    },
+    {
+      "id": "delivery",
+      "state": "edited",
+      "pageNum": 4
+    },
+    {
+      "id": "budget_overview",
+      "state": "edited",
+      "pageNum": 5
+    },
+    {
+      "id": "cost_distribution",
+      "state": "edited",
+      "pageNum": 6
+    },
+    {
+      "id": "timeline",
+      "state": "edited",
+      "pageNum": 7
+    },
+    {
+      "id": "risks",
+      "state": "edited",
+      "pageNum": 8
+    },
+    {
+      "id": "kpis",
+      "state": "edited",
+      "pageNum": 9
+    },
+    {
+      "id": "decisions",
+      "state": "edited",
+      "pageNum": 10
+    },
+    {
+      "id": "closing",
+      "state": "edited",
+      "pageNum": 11
+    }
+  ],
+  "outline": [
+    {
+      "id": "cover",
+      "title": "حلول الغد على Webflow",
+      "summary": "غلاف تنفيذي لخطة الموقع التسويقي والميزانية والجدول الزمني.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "decision",
+      "title": "قرار الإدارة",
+      "summary": "توضيح الفصل بين Webflow التسويقي وتطبيق HR HBS الداخلي وقرار البدء المطلوب.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "architecture",
+      "title": "بنية الموقع والتحويل",
+      "summary": "خريطة الصفحات وCMS وتدفق CTA وحدود التكامل الآمن.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "delivery",
+      "title": "ست حزم للتنفيذ",
+      "summary": "عرض موجز لحزم التنفيذ من الحوكمة حتى الإطلاق.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "budget_overview",
+      "title": "الميزانية الموجزة",
+      "summary": "تكلفة العمل واحتياطي المخاطر والإجمالي قبل الضريبة من النموذج التخطيطي.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "cost_distribution",
+      "title": "توزيع التكلفة",
+      "summary": "رسم تكلفة العمل حسب الحزم التنفيذية.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "timeline",
+      "title": "الجدول التنفيذي",
+      "summary": "مخطط زمني تتابعي لمدة 30 يوم عمل و6 أسابيع.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "risks",
+      "title": "المخاطر والضوابط",
+      "summary": "المخاطر الرئيسية وخطط التحكم قبل أن ترفع التكلفة أو المدة.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "kpis",
+      "title": "مؤشرات الإطلاق",
+      "summary": "KPIs لصفحات التحويل وCMS والنماذج والإتاحة والقياس.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "decisions",
+      "title": "قرارات البدء",
+      "summary": "ثلاثة قرارات مطلوبة لتفعيل التنفيذ المنضبط.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "closing",
+      "title": "بداية منضبطة",
+      "summary": "خلاصة تنفيذية وقرار اليوم.",
+      "image_plan": "Use a suitable image if needed"
+    }
+  ]
+}

@@ -10,9 +10,11 @@ import {
   saveLeaveRequestDetails,
   updateRequestStatus,
   addRequestNote,
+  validateLeaveRequestCapacity,
 } from "../db";
 import { canManageRequest, createRequestReference, permittedRequestTypes } from "../requestPolicy";
 import { protectedProcedure, router } from "../_core/trpc";
+import { leaveTypeLabels } from "../leavePolicy";
 
 const requestType = z.enum(["hr", "government"]);
 const requestStatus = z.enum(["submitted", "in_review", "approved", "rejected", "completed"]);
@@ -43,7 +45,8 @@ export const requestsRouter = router({
 
   createLeave: protectedProcedure.input(z.object({ leaveType: z.enum(["annual", "sick", "emergency"]), startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), details: z.string().trim().max(1000).optional() })).mutation(async ({ ctx, input }) => {
     if (input.endDate < input.startDate) throw new TRPCError({ code: "BAD_REQUEST", message: "تاريخ النهاية يجب أن يكون بعد تاريخ البداية" });
-    const label = { annual: "إجازة سنوية", sick: "إجازة مرضية", emergency: "إجازة طارئة" }[input.leaveType];
+    await validateLeaveRequestCapacity({ companyId: ctx.user.companyId, employeeUserId: ctx.user.id, ...input });
+    const label = leaveTypeLabels[input.leaveType];
     const request = await createRequestWithHistory({ type: "hr", category: label, subject: `${label} من ${input.startDate} إلى ${input.endDate}`, details: input.details || `طلب ${label}`, priority: "normal", reference: createRequestReference("hr"), employeeId: ctx.user.id, companyId: ctx.user.companyId });
     await saveLeaveRequestDetails({ requestId: request.id, companyId: ctx.user.companyId, ...input });
     return request;

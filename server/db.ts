@@ -1,10 +1,12 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeProfiles, expenseRequests, hrSystemPlans, inAppNotifications, leaveRequests, requestHistory, serviceRequests, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeContracts, employeeDocuments, employeeEmergencyContacts, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
 import { defaultModulePermissionsForRole, normalizeModulePermissions, type ModulePermission } from "../shared/moduleAccess";
+import { isCandidateStatusTransitionAllowed, isInterviewStatusTransitionAllowed, isOfferStatusTransitionAllowed, type CandidateStatus, type InterviewStatus, type OfferStatus } from "./recruitmentRules";
+import { calculateLeaveBalance, countInclusiveLeaveDays, dateRangesOverlap, getLeaveRequestYear, type LeaveType } from "./leavePolicy";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -156,7 +158,15 @@ export async function listCompanyEmployees(companyId: number) {
   return rows.map(row => ({ ...row.user, profile: row.profile, department: row.department ? { id: row.department.id, name: row.department.name, code: row.department.code } : null }));
 }
 
-export async function saveEmployeeProfile(input: { companyId: number; userId: number; employeeNumber?: string; jobTitle?: string; departmentId?: number; region?: string; managerUserId?: number; employmentStatus: "active" | "on_leave" | "inactive"; joinedAt?: Date }) {
+export function buildEmployeeProfileLifecycleChanges(previous: { employmentStatus: string; departmentId: number | null; managerUserId: number | null }, next: { employmentStatus: string; departmentId: number | null; managerUserId: number | null }) {
+  const changes: Array<{ eventType: EmployeeLifecycleEventType; note: string }> = [];
+  if (previous.employmentStatus !== next.employmentStatus) changes.push({ eventType: "status_changed", note: "تحديث الحالة الوظيفية من ملف الموظف" });
+  if (previous.departmentId !== next.departmentId) changes.push({ eventType: "department_changed", note: "تحديث القسم من ملف الموظف" });
+  if (previous.managerUserId !== next.managerUserId) changes.push({ eventType: "manager_changed", note: "تحديث المدير المباشر من ملف الموظف" });
+  return changes;
+}
+
+export async function saveEmployeeProfile(input: { companyId: number; userId: number; updatedByUserId: number; employeeNumber?: string; jobTitle?: string; departmentId?: number; region?: string; workLocation?: string; managerUserId?: number; employmentStatus: "active" | "on_leave" | "inactive"; joinedAt?: Date }) {
   const db = await getDb();
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
   const user = (await db.select().from(users).where(and(eq(users.id, input.userId), eq(users.companyId, input.companyId))).limit(1))[0];
@@ -169,9 +179,500 @@ export async function saveEmployeeProfile(input: { companyId: number; userId: nu
     const manager = (await db.select().from(users).where(and(eq(users.id, input.managerUserId), eq(users.companyId, input.companyId))).limit(1))[0];
     if (!manager) throw new Error("المدير غير موجود ضمن الشركة الحالية");
   }
-  const values = { companyId: input.companyId, userId: input.userId, employeeNumber: input.employeeNumber ?? null, jobTitle: input.jobTitle ?? null, departmentId: input.departmentId ?? null, region: input.region ?? null, managerUserId: input.managerUserId ?? null, employmentStatus: input.employmentStatus, joinedAt: input.joinedAt ?? null };
-  await db.insert(employeeProfiles).values(values).onDuplicateKeyUpdate({ set: { employeeNumber: values.employeeNumber, jobTitle: values.jobTitle, departmentId: values.departmentId, region: values.region, managerUserId: values.managerUserId, employmentStatus: values.employmentStatus, joinedAt: values.joinedAt } });
+  const existing = (await db.select().from(employeeProfiles).where(and(eq(employeeProfiles.companyId, input.companyId), eq(employeeProfiles.userId, input.userId))).limit(1))[0];
+  const values = { companyId: input.companyId, userId: input.userId, employeeNumber: input.employeeNumber ?? null, jobTitle: input.jobTitle ?? null, departmentId: input.departmentId ?? null, region: input.region ?? null, workLocation: input.workLocation ?? null, managerUserId: input.managerUserId ?? null, employmentStatus: input.employmentStatus, joinedAt: input.joinedAt ?? null };
+  await db.insert(employeeProfiles).values(values).onDuplicateKeyUpdate({ set: { employeeNumber: values.employeeNumber, jobTitle: values.jobTitle, departmentId: values.departmentId, region: values.region, workLocation: values.workLocation, managerUserId: values.managerUserId, employmentStatus: values.employmentStatus, joinedAt: values.joinedAt } });
+  if (existing) {
+    const changes = buildEmployeeProfileLifecycleChanges(existing, values);
+    if (changes.length) await db.insert(employeeLifecycleEvents).values(changes.map(change => ({ companyId: input.companyId, employeeUserId: input.userId, eventType: change.eventType, effectiveAt: new Date(), note: change.note, createdByUserId: input.updatedByUserId })));
+  }
   return (await db.select().from(employeeProfiles).where(eq(employeeProfiles.userId, input.userId)).limit(1))[0];
+}
+
+type EmployeeLifecycleEventType = "joined" | "profile_updated" | "status_changed" | "role_changed" | "department_changed" | "manager_changed" | "offboarding_started" | "offboarding_completed";
+
+export async function listCompanyEmployeeLifecycleEvents(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(employeeLifecycleEvents).where(eq(employeeLifecycleEvents.companyId, companyId)).orderBy(desc(employeeLifecycleEvents.effectiveAt), desc(employeeLifecycleEvents.createdAt));
+}
+
+export async function createCompanyEmployeeLifecycleEvent(input: { companyId: number; employeeUserId: number; eventType: EmployeeLifecycleEventType; effectiveAt: Date; note?: string; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية");
+  await db.insert(employeeLifecycleEvents).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, eventType: input.eventType, effectiveAt: input.effectiveAt, note: input.note ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(employeeLifecycleEvents).where(and(eq(employeeLifecycleEvents.companyId, input.companyId), eq(employeeLifecycleEvents.employeeUserId, input.employeeUserId), eq(employeeLifecycleEvents.eventType, input.eventType), eq(employeeLifecycleEvents.effectiveAt, input.effectiveAt))).orderBy(desc(employeeLifecycleEvents.id)).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ حدث دورة الحياة");
+  return created;
+}
+
+export async function listCompanyEmployeeEmergencyContacts(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(employeeEmergencyContacts).where(eq(employeeEmergencyContacts.companyId, companyId)).orderBy(desc(employeeEmergencyContacts.updatedAt));
+}
+
+export async function saveCompanyEmployeeEmergencyContact(input: { companyId: number; employeeUserId: number; contactName: string; relationship: string; phone: string; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية");
+  const values = { companyId: input.companyId, employeeUserId: input.employeeUserId, contactName: input.contactName, relationship: input.relationship, phone: input.phone, createdByUserId: input.createdByUserId };
+  await db.insert(employeeEmergencyContacts).values(values).onDuplicateKeyUpdate({ set: { contactName: values.contactName, relationship: values.relationship, phone: values.phone, createdByUserId: values.createdByUserId } });
+  const saved = (await db.select().from(employeeEmergencyContacts).where(and(eq(employeeEmergencyContacts.companyId, input.companyId), eq(employeeEmergencyContacts.employeeUserId, input.employeeUserId))).limit(1))[0];
+  if (!saved) throw new Error("تعذر حفظ جهة اتصال الطوارئ");
+  return saved;
+}
+
+type EmployeeContractStatus = "draft" | "active" | "ended" | "archived";
+type EmployeeDocumentCategory = "contract_attachment" | "employee_document" | "other";
+
+export async function listCompanyEmployeeContracts(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(employeeContracts).where(eq(employeeContracts.companyId, companyId)).orderBy(desc(employeeContracts.updatedAt));
+}
+
+export async function listCompanyEmployeeDocuments(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(employeeDocuments).where(eq(employeeDocuments.companyId, companyId)).orderBy(desc(employeeDocuments.createdAt));
+}
+
+export async function createCompanyEmployeeContract(input: { companyId: number; employeeUserId: number; contractReference: string; title: string; status: EmployeeContractStatus; startAt?: Date; endAt?: Date; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية");
+  if (input.startAt && input.endAt && input.endAt < input.startAt) throw new Error("تاريخ نهاية العقد يجب أن يكون بعد تاريخ البداية");
+  await db.insert(employeeContracts).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, contractReference: input.contractReference, title: input.title, status: input.status, startAt: input.startAt ?? null, endAt: input.endAt ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(employeeContracts).where(and(eq(employeeContracts.companyId, input.companyId), eq(employeeContracts.contractReference, input.contractReference))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ سجل العقد");
+  return created;
+}
+
+export async function createCompanyEmployeeDocument(input: { companyId: number; employeeUserId: number; contractId?: number; category: EmployeeDocumentCategory; fileName: string; mimeType: string; sizeBytes: number; storageKey: string; uploadedByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية");
+  if (input.contractId) {
+    const contract = (await db.select().from(employeeContracts).where(and(eq(employeeContracts.id, input.contractId), eq(employeeContracts.companyId, input.companyId), eq(employeeContracts.employeeUserId, input.employeeUserId))).limit(1))[0];
+    if (!contract) throw new Error("العقد غير موجود ضمن ملف الموظف والشركة الحالية");
+  }
+  await db.insert(employeeDocuments).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, contractId: input.contractId ?? null, category: input.category, fileName: input.fileName, mimeType: input.mimeType, sizeBytes: input.sizeBytes, storageKey: input.storageKey, uploadedByUserId: input.uploadedByUserId });
+  const created = (await db.select().from(employeeDocuments).where(and(eq(employeeDocuments.companyId, input.companyId), eq(employeeDocuments.storageKey, input.storageKey))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ بيانات الوثيقة");
+  return created;
+}
+
+const defaultOffboardingTasks = [
+  { taskKey: "contracts_review", label: "مراجعة سجلات العقود التشغيلية" },
+  { taskKey: "documents_review", label: "مراجعة الوثائق المرتبطة بالموظف" },
+  { taskKey: "access_review", label: "تأكيد مراجعة الوصول التشغيلي" },
+  { taskKey: "handover_review", label: "تأكيد مراجعة التسليم الداخلي" },
+] as const;
+
+export async function listCompanyOffboardingOverview(companyId: number) {
+  const db = await getDb();
+  if (!db) return { offboardings: [], tasks: [], contracts: [], documents: [] };
+  const [offboardings, tasks, contracts, documents] = await Promise.all([
+    db.select().from(employeeOffboardings).where(eq(employeeOffboardings.companyId, companyId)).orderBy(desc(employeeOffboardings.updatedAt)),
+    db.select().from(employeeOffboardingTasks).where(eq(employeeOffboardingTasks.companyId, companyId)).orderBy(desc(employeeOffboardingTasks.updatedAt)),
+    listCompanyEmployeeContracts(companyId),
+    listCompanyEmployeeDocuments(companyId),
+  ]);
+  return { offboardings, tasks, contracts, documents };
+}
+
+export async function listCompanyOpenOffboardingWork(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ task: employeeOffboardingTasks, offboarding: employeeOffboardings, employee: users }).from(employeeOffboardingTasks)
+    .innerJoin(employeeOffboardings, eq(employeeOffboardingTasks.offboardingId, employeeOffboardings.id))
+    .innerJoin(users, eq(employeeOffboardings.employeeUserId, users.id))
+    .where(and(eq(employeeOffboardingTasks.companyId, companyId), eq(employeeOffboardingTasks.status, "pending"), eq(employeeOffboardings.status, "in_progress")))
+    .orderBy(desc(employeeOffboardingTasks.updatedAt));
+}
+
+export async function getManagerTeamGoals(companyId: number, managerUserId: number) {
+  const db = await getDb();
+  if (!db) return { members: [], goals: [] };
+  const members = await db.select({ id: users.id, name: users.name, email: users.email, departmentName: departments.name }).from(employeeProfiles)
+    .innerJoin(users, eq(employeeProfiles.userId, users.id))
+    .leftJoin(departments, eq(employeeProfiles.departmentId, departments.id))
+    .where(and(eq(employeeProfiles.companyId, companyId), eq(employeeProfiles.managerUserId, managerUserId), eq(users.accountStatus, "active")));
+  if (!members.length) return { members, goals: [] };
+  const memberIds = members.map(member => member.id);
+  const goals = await db.select({ goal: employeeGoals, employeeId: users.id, employeeName: users.name, employeeEmail: users.email, departmentName: departments.name }).from(employeeGoals)
+    .innerJoin(users, eq(employeeGoals.employeeUserId, users.id))
+    .leftJoin(employeeProfiles, eq(employeeGoals.employeeUserId, employeeProfiles.userId))
+    .leftJoin(departments, eq(employeeProfiles.departmentId, departments.id))
+    .where(and(eq(employeeGoals.companyId, companyId), inArray(employeeGoals.employeeUserId, memberIds), ne(employeeGoals.status, "cancelled")));
+  return { members, goals };
+}
+
+export async function createCompanyOffboarding(input: { companyId: number; employeeUserId: number; lastWorkingAt?: Date; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية");
+  const existing = (await db.select().from(employeeOffboardings).where(and(eq(employeeOffboardings.companyId, input.companyId), eq(employeeOffboardings.employeeUserId, input.employeeUserId))).limit(1))[0];
+  if (existing) throw new Error("توجد قائمة إنهاء خدمة لهذا الموظف بالفعل");
+  await db.insert(employeeOffboardings).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, lastWorkingAt: input.lastWorkingAt ?? null, createdByUserId: input.createdByUserId });
+  const offboarding = (await db.select().from(employeeOffboardings).where(and(eq(employeeOffboardings.companyId, input.companyId), eq(employeeOffboardings.employeeUserId, input.employeeUserId))).limit(1))[0];
+  if (!offboarding) throw new Error("تعذر حفظ حالة إنهاء الخدمة");
+  await db.insert(employeeOffboardingTasks).values(defaultOffboardingTasks.map(task => ({ companyId: input.companyId, offboardingId: offboarding.id, ...task })));
+  return { offboarding, tasks: defaultOffboardingTasks };
+}
+
+export async function updateCompanyOffboardingTask(input: { companyId: number; taskId: number; completed: boolean; updatedByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const task = (await db.select().from(employeeOffboardingTasks).where(and(eq(employeeOffboardingTasks.id, input.taskId), eq(employeeOffboardingTasks.companyId, input.companyId))).limit(1))[0];
+  if (!task) throw new Error("مهمة إنهاء الخدمة غير موجودة ضمن الشركة الحالية");
+  const before = (await db.select().from(employeeOffboardings).where(and(eq(employeeOffboardings.id, task.offboardingId), eq(employeeOffboardings.companyId, input.companyId))).limit(1))[0];
+  if (!before) throw new Error("حالة إنهاء الخدمة غير موجودة ضمن الشركة الحالية");
+  await db.update(employeeOffboardingTasks).set({ status: input.completed ? "completed" : "pending", completedAt: input.completed ? new Date() : null, completedByUserId: input.completed ? input.updatedByUserId : null }).where(and(eq(employeeOffboardingTasks.id, input.taskId), eq(employeeOffboardingTasks.companyId, input.companyId)));
+  const tasks = await db.select().from(employeeOffboardingTasks).where(and(eq(employeeOffboardingTasks.companyId, input.companyId), eq(employeeOffboardingTasks.offboardingId, task.offboardingId)));
+  const completed = tasks.every(item => item.status === "completed");
+  await db.update(employeeOffboardings).set({ status: completed ? "completed" : "in_progress" }).where(and(eq(employeeOffboardings.id, task.offboardingId), eq(employeeOffboardings.companyId, input.companyId)));
+  const offboarding = (await db.select().from(employeeOffboardings).where(and(eq(employeeOffboardings.id, task.offboardingId), eq(employeeOffboardings.companyId, input.companyId))).limit(1))[0];
+  if (!offboarding) throw new Error("تعذر تحديث حالة إنهاء الخدمة");
+  return { offboarding, completed, becameCompleted: completed && before.status !== "completed" };
+}
+
+export async function listCompanyGoalsOverview(companyId: number) {
+  const db = await getDb();
+  if (!db) return { goals: [], updates: [], programs: [] };
+  const [goals, updates, programs] = await Promise.all([
+    db.select().from(employeeGoals).where(eq(employeeGoals.companyId, companyId)).orderBy(desc(employeeGoals.updatedAt)),
+    db.select().from(employeeGoalUpdates).where(eq(employeeGoalUpdates.companyId, companyId)).orderBy(desc(employeeGoalUpdates.createdAt)),
+    listCompanyTrainingPrograms(companyId),
+  ]);
+  return { goals, updates, programs };
+}
+
+export async function createCompanyEmployeeGoal(input: { companyId: number; employeeUserId: number; title: string; description?: string; targetAt?: Date; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية أو غير مفعّل");
+  await db.insert(employeeGoals).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, title: input.title, description: input.description ?? null, targetAt: input.targetAt ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(employeeGoals).where(and(eq(employeeGoals.companyId, input.companyId), eq(employeeGoals.employeeUserId, input.employeeUserId), eq(employeeGoals.title, input.title))).orderBy(desc(employeeGoals.id)).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ الهدف");
+  return created;
+}
+
+export async function addCompanyGoalProgressUpdate(input: { companyId: number; goalId: number; progressPercent: number; note?: string; trainingProgramId?: number; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  if (input.progressPercent < 0 || input.progressPercent > 100) throw new Error("نسبة التقدم يجب أن تكون بين 0 و100");
+  const goal = (await db.select().from(employeeGoals).where(and(eq(employeeGoals.id, input.goalId), eq(employeeGoals.companyId, input.companyId))).limit(1))[0];
+  if (!goal) throw new Error("الهدف غير موجود ضمن الشركة الحالية");
+  if (goal.status === "cancelled") throw new Error("لا يمكن تحديث هدف ملغى");
+  if (input.trainingProgramId) {
+    const program = (await db.select().from(trainingPrograms).where(and(eq(trainingPrograms.id, input.trainingProgramId), eq(trainingPrograms.companyId, input.companyId))).limit(1))[0];
+    if (!program) throw new Error("مسار التدريب غير موجود ضمن الشركة الحالية");
+  }
+  await db.insert(employeeGoalUpdates).values({ companyId: input.companyId, goalId: input.goalId, trainingProgramId: input.trainingProgramId ?? null, progressPercent: input.progressPercent, note: input.note ?? null, createdByUserId: input.createdByUserId });
+  const status = input.progressPercent === 100 ? "completed" : input.progressPercent > 0 ? "in_progress" : "not_started";
+  await db.update(employeeGoals).set({ progressPercent: input.progressPercent, status }).where(and(eq(employeeGoals.id, input.goalId), eq(employeeGoals.companyId, input.companyId)));
+  const updated = (await db.select().from(employeeGoals).where(and(eq(employeeGoals.id, input.goalId), eq(employeeGoals.companyId, input.companyId))).limit(1))[0];
+  if (!updated) throw new Error("تعذر تحديث الهدف");
+  return updated;
+}
+
+type OpeningStatus = "draft" | "open" | "closed";
+type EmploymentType = "full_time" | "part_time" | "contract";
+
+async function ensureRecruitmentCompanyUser(companyId: number, userId: number, label: string) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const user = (await db.select().from(users).where(and(eq(users.id, userId), eq(users.companyId, companyId), eq(users.accountStatus, "active"))).limit(1))[0];
+  if (!user) throw new Error(`${label} غير موجود ضمن الشركة الحالية أو غير مفعّل`);
+  return user;
+}
+
+export async function listCompanyJobOpenings(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ opening: jobOpenings, department: departments, manager: users }).from(jobOpenings).leftJoin(departments, eq(jobOpenings.departmentId, departments.id)).leftJoin(users, eq(jobOpenings.hiringManagerUserId, users.id)).where(eq(jobOpenings.companyId, companyId)).orderBy(desc(jobOpenings.updatedAt));
+}
+
+export async function createCompanyJobOpening(input: { companyId: number; createdByUserId: number; title: string; departmentId?: number; hiringManagerUserId?: number; employmentType: EmploymentType; headcount: number; description?: string; status: OpeningStatus }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  if (input.departmentId) {
+    const department = (await db.select().from(departments).where(and(eq(departments.id, input.departmentId), eq(departments.companyId, input.companyId))).limit(1))[0];
+    if (!department) throw new Error("القسم غير موجود ضمن الشركة الحالية");
+  }
+  if (input.hiringManagerUserId) await ensureRecruitmentCompanyUser(input.companyId, input.hiringManagerUserId, "المدير المسؤول");
+  await db.insert(jobOpenings).values({ ...input, departmentId: input.departmentId ?? null, hiringManagerUserId: input.hiringManagerUserId ?? null, description: input.description ?? null });
+  const created = (await db.select().from(jobOpenings).where(and(eq(jobOpenings.companyId, input.companyId), eq(jobOpenings.title, input.title))).orderBy(desc(jobOpenings.id)).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ الشاغر");
+  return created;
+}
+
+export async function listCompanyJobCandidates(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ candidate: jobCandidates, opening: jobOpenings }).from(jobCandidates).innerJoin(jobOpenings, eq(jobCandidates.openingId, jobOpenings.id)).where(and(eq(jobCandidates.companyId, companyId), eq(jobOpenings.companyId, companyId))).orderBy(desc(jobCandidates.updatedAt));
+}
+
+export async function createCompanyJobCandidate(input: { companyId: number; openingId: number; fullName: string; email?: string; internalNote?: string; expectedStartAt?: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const opening = (await db.select().from(jobOpenings).where(and(eq(jobOpenings.id, input.openingId), eq(jobOpenings.companyId, input.companyId))).limit(1))[0];
+  if (!opening) throw new Error("الشاغر غير موجود ضمن الشركة الحالية");
+  await db.insert(jobCandidates).values({ companyId: input.companyId, openingId: input.openingId, fullName: input.fullName, email: input.email ?? null, internalNote: input.internalNote ?? null, expectedStartAt: input.expectedStartAt ?? null });
+  const created = (await db.select().from(jobCandidates).where(and(eq(jobCandidates.companyId, input.companyId), eq(jobCandidates.openingId, input.openingId), eq(jobCandidates.fullName, input.fullName))).orderBy(desc(jobCandidates.id)).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ المرشح");
+  return created;
+}
+
+export async function updateCompanyJobCandidate(input: { companyId: number; candidateId: number; status: CandidateStatus; internalNote?: string; expectedStartAt?: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const candidate = (await db.select().from(jobCandidates).where(and(eq(jobCandidates.id, input.candidateId), eq(jobCandidates.companyId, input.companyId))).limit(1))[0];
+  if (!candidate) throw new Error("المرشح غير موجود ضمن الشركة الحالية");
+  if (!isCandidateStatusTransitionAllowed(candidate.status, input.status)) throw new Error("لا يسمح بالانتقال بين مراحل المرشح المحددة");
+  await db.update(jobCandidates).set({ status: input.status, internalNote: input.internalNote ?? candidate.internalNote, expectedStartAt: input.expectedStartAt ?? candidate.expectedStartAt }).where(and(eq(jobCandidates.id, input.candidateId), eq(jobCandidates.companyId, input.companyId)));
+  return (await db.select().from(jobCandidates).where(and(eq(jobCandidates.id, input.candidateId), eq(jobCandidates.companyId, input.companyId))).limit(1))[0];
+}
+
+export async function listCompanyJobInterviews(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ interview: jobInterviews, candidate: jobCandidates, opening: jobOpenings, interviewer: users }).from(jobInterviews).innerJoin(jobCandidates, eq(jobInterviews.candidateId, jobCandidates.id)).innerJoin(jobOpenings, eq(jobCandidates.openingId, jobOpenings.id)).innerJoin(users, eq(jobInterviews.interviewerUserId, users.id)).where(and(eq(jobInterviews.companyId, companyId), eq(jobCandidates.companyId, companyId), eq(jobOpenings.companyId, companyId), eq(users.companyId, companyId))).orderBy(desc(jobInterviews.scheduledAt));
+}
+
+export async function createCompanyJobInterview(input: { companyId: number; candidateId: number; interviewerUserId: number; scheduledAt: Date; channel: "in_person" | "video" | "phone"; internalSummary?: string; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const candidate = (await db.select().from(jobCandidates).where(and(eq(jobCandidates.id, input.candidateId), eq(jobCandidates.companyId, input.companyId))).limit(1))[0];
+  if (!candidate) throw new Error("المرشح غير موجود ضمن الشركة الحالية");
+  if (!isCandidateStatusTransitionAllowed(candidate.status, "interview")) throw new Error("لا يمكن جدولة مقابلة لمرشح في هذه المرحلة");
+  await ensureRecruitmentCompanyUser(input.companyId, input.interviewerUserId, "محاور المقابلة");
+  if (candidate.status !== "interview") await db.update(jobCandidates).set({ status: "interview" }).where(and(eq(jobCandidates.id, candidate.id), eq(jobCandidates.companyId, input.companyId)));
+  await db.insert(jobInterviews).values({ companyId: input.companyId, candidateId: input.candidateId, interviewerUserId: input.interviewerUserId, scheduledAt: input.scheduledAt, channel: input.channel, internalSummary: input.internalSummary ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(jobInterviews).where(and(eq(jobInterviews.companyId, input.companyId), eq(jobInterviews.candidateId, input.candidateId), eq(jobInterviews.interviewerUserId, input.interviewerUserId), eq(jobInterviews.scheduledAt, input.scheduledAt))).orderBy(desc(jobInterviews.id)).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ المقابلة");
+  return created;
+}
+
+export async function updateCompanyJobInterview(input: { companyId: number; interviewId: number; status: InterviewStatus; internalSummary?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const interview = (await db.select().from(jobInterviews).where(and(eq(jobInterviews.id, input.interviewId), eq(jobInterviews.companyId, input.companyId))).limit(1))[0];
+  if (!interview) throw new Error("المقابلة غير موجودة ضمن الشركة الحالية");
+  if (!isInterviewStatusTransitionAllowed(interview.status, input.status)) throw new Error("لا يسمح بالانتقال بين حالات المقابلة المحددة");
+  await db.update(jobInterviews).set({ status: input.status, internalSummary: input.internalSummary ?? interview.internalSummary }).where(and(eq(jobInterviews.id, input.interviewId), eq(jobInterviews.companyId, input.companyId)));
+  return (await db.select().from(jobInterviews).where(and(eq(jobInterviews.id, input.interviewId), eq(jobInterviews.companyId, input.companyId))).limit(1))[0];
+}
+
+export async function listCompanyJobOffers(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ offer: jobOffers, candidate: jobCandidates, opening: jobOpenings }).from(jobOffers).innerJoin(jobCandidates, eq(jobOffers.candidateId, jobCandidates.id)).innerJoin(jobOpenings, eq(jobCandidates.openingId, jobOpenings.id)).where(and(eq(jobOffers.companyId, companyId), eq(jobCandidates.companyId, companyId), eq(jobOpenings.companyId, companyId))).orderBy(desc(jobOffers.updatedAt));
+}
+
+export async function createCompanyJobOffer(input: { companyId: number; candidateId: number; proposedStartAt?: Date; responseDueAt?: Date; internalNote?: string; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const candidate = (await db.select().from(jobCandidates).where(and(eq(jobCandidates.id, input.candidateId), eq(jobCandidates.companyId, input.companyId))).limit(1))[0];
+  if (!candidate) throw new Error("المرشح غير موجود ضمن الشركة الحالية");
+  if (!isCandidateStatusTransitionAllowed(candidate.status, "offer")) throw new Error("لا يمكن إنشاء عرض لمرشح في هذه المرحلة");
+  if (candidate.status !== "offer") await db.update(jobCandidates).set({ status: "offer" }).where(and(eq(jobCandidates.id, candidate.id), eq(jobCandidates.companyId, input.companyId)));
+  await db.insert(jobOffers).values({ companyId: input.companyId, candidateId: input.candidateId, proposedStartAt: input.proposedStartAt ?? null, responseDueAt: input.responseDueAt ?? null, internalNote: input.internalNote ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(jobOffers).where(and(eq(jobOffers.companyId, input.companyId), eq(jobOffers.candidateId, input.candidateId))).orderBy(desc(jobOffers.id)).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ العرض الداخلي");
+  return created;
+}
+
+export async function updateCompanyJobOffer(input: { companyId: number; offerId: number; status: OfferStatus; internalNote?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const offer = (await db.select().from(jobOffers).where(and(eq(jobOffers.id, input.offerId), eq(jobOffers.companyId, input.companyId))).limit(1))[0];
+  if (!offer) throw new Error("العرض الداخلي غير موجود ضمن الشركة الحالية");
+  if (!isOfferStatusTransitionAllowed(offer.status, input.status)) throw new Error("لا يسمح بالانتقال بين حالات العرض المحددة");
+  const now = new Date();
+  await db.update(jobOffers).set({ status: input.status, internalNote: input.internalNote ?? offer.internalNote, issuedAt: input.status === "issued" ? now : offer.issuedAt, decidedAt: ["accepted", "declined", "withdrawn"].includes(input.status) ? now : offer.decidedAt }).where(and(eq(jobOffers.id, input.offerId), eq(jobOffers.companyId, input.companyId)));
+  if (input.status === "accepted") await updateCompanyJobCandidate({ companyId: input.companyId, candidateId: offer.candidateId, status: "accepted" });
+  return (await db.select().from(jobOffers).where(and(eq(jobOffers.id, input.offerId), eq(jobOffers.companyId, input.companyId))).limit(1))[0];
+}
+
+export async function listCompanyOnboardingTasks(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ task: onboardingTasks, candidate: jobCandidates, opening: jobOpenings, owner: users }).from(onboardingTasks).innerJoin(jobCandidates, eq(onboardingTasks.candidateId, jobCandidates.id)).innerJoin(jobOpenings, eq(jobCandidates.openingId, jobOpenings.id)).leftJoin(users, eq(onboardingTasks.ownerUserId, users.id)).where(and(eq(onboardingTasks.companyId, companyId), eq(jobCandidates.companyId, companyId), eq(jobOpenings.companyId, companyId))).orderBy(desc(onboardingTasks.updatedAt));
+}
+
+export async function listCompanyOnboardingTaskTemplates(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ template: onboardingTaskTemplates, owner: users }).from(onboardingTaskTemplates).leftJoin(users, and(eq(onboardingTaskTemplates.defaultOwnerUserId, users.id), eq(users.companyId, companyId))).where(eq(onboardingTaskTemplates.companyId, companyId)).orderBy(desc(onboardingTaskTemplates.updatedAt));
+}
+
+export async function createCompanyOnboardingTaskTemplate(input: { companyId: number; title: string; defaultOwnerUserId?: number; dueOffsetDays: number; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  if (input.defaultOwnerUserId) await ensureRecruitmentCompanyUser(input.companyId, input.defaultOwnerUserId, "مالك القالب");
+  await db.insert(onboardingTaskTemplates).values({ companyId: input.companyId, title: input.title, defaultOwnerUserId: input.defaultOwnerUserId ?? null, dueOffsetDays: input.dueOffsetDays, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(onboardingTaskTemplates).where(and(eq(onboardingTaskTemplates.companyId, input.companyId), eq(onboardingTaskTemplates.title, input.title))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ قالب التهيئة");
+  return created;
+}
+
+export async function applyCompanyOnboardingTaskTemplate(input: { companyId: number; templateId: number; candidateId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const template = (await db.select().from(onboardingTaskTemplates).where(and(eq(onboardingTaskTemplates.id, input.templateId), eq(onboardingTaskTemplates.companyId, input.companyId))).limit(1))[0];
+  if (!template) throw new Error("قالب التهيئة غير موجود ضمن الشركة الحالية");
+  const candidate = (await db.select().from(jobCandidates).where(and(eq(jobCandidates.id, input.candidateId), eq(jobCandidates.companyId, input.companyId))).limit(1))[0];
+  if (!candidate) throw new Error("المرشح غير موجود ضمن الشركة الحالية");
+  if (candidate.status !== "accepted") throw new Error("لا يمكن تطبيق قالب التهيئة إلا على مرشح مقبول");
+  if (template.defaultOwnerUserId) await ensureRecruitmentCompanyUser(input.companyId, template.defaultOwnerUserId, "مالك القالب");
+  const existing = (await db.select().from(onboardingTasks).where(and(eq(onboardingTasks.companyId, input.companyId), eq(onboardingTasks.candidateId, input.candidateId), eq(onboardingTasks.title, template.title))).limit(1))[0];
+  if (existing) throw new Error("طُبّق هذا القالب على المرشح مسبقاً");
+  const anchor = candidate.expectedStartAt ?? new Date();
+  const dueAt = new Date(anchor);
+  dueAt.setUTCDate(dueAt.getUTCDate() + template.dueOffsetDays);
+  await db.insert(onboardingTasks).values({ companyId: input.companyId, candidateId: input.candidateId, ownerUserId: template.defaultOwnerUserId, title: template.title, dueAt });
+  const created = (await db.select().from(onboardingTasks).where(and(eq(onboardingTasks.companyId, input.companyId), eq(onboardingTasks.candidateId, input.candidateId), eq(onboardingTasks.title, template.title))).orderBy(desc(onboardingTasks.id)).limit(1))[0];
+  if (!created) throw new Error("تعذر تطبيق قالب التهيئة");
+  return created;
+}
+
+export async function createCompanyOnboardingTask(input: { companyId: number; candidateId: number; ownerUserId?: number; title: string; dueAt?: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const candidate = (await db.select().from(jobCandidates).where(and(eq(jobCandidates.id, input.candidateId), eq(jobCandidates.companyId, input.companyId))).limit(1))[0];
+  if (!candidate) throw new Error("المرشح غير موجود ضمن الشركة الحالية");
+  if (input.ownerUserId) await ensureRecruitmentCompanyUser(input.companyId, input.ownerUserId, "مالك مهمة التهيئة");
+  await db.insert(onboardingTasks).values({ companyId: input.companyId, candidateId: input.candidateId, ownerUserId: input.ownerUserId ?? null, title: input.title, dueAt: input.dueAt ?? null });
+  const created = (await db.select().from(onboardingTasks).where(and(eq(onboardingTasks.companyId, input.companyId), eq(onboardingTasks.candidateId, input.candidateId), eq(onboardingTasks.title, input.title))).orderBy(desc(onboardingTasks.id)).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ مهمة التهيئة");
+  return created;
+}
+
+export async function completeCompanyOnboardingTask(companyId: number, taskId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const task = (await db.select().from(onboardingTasks).where(and(eq(onboardingTasks.id, taskId), eq(onboardingTasks.companyId, companyId))).limit(1))[0];
+  if (!task) throw new Error("مهمة التهيئة غير موجودة ضمن الشركة الحالية");
+  await db.update(onboardingTasks).set({ status: "completed", completedAt: new Date() }).where(and(eq(onboardingTasks.id, taskId), eq(onboardingTasks.companyId, companyId)));
+  return (await db.select().from(onboardingTasks).where(and(eq(onboardingTasks.id, taskId), eq(onboardingTasks.companyId, companyId))).limit(1))[0];
+}
+
+export function getSaudiWorkDate(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Riyadh", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find(part => part.type === type)?.value;
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
+export async function getMyAttendanceEntry(companyId: number, userId: number, workDate = getSaudiWorkDate()) {
+  const db = await getDb();
+  if (!db) return undefined;
+  return (await db.select().from(attendanceEntries).where(and(eq(attendanceEntries.companyId, companyId), eq(attendanceEntries.userId, userId), eq(attendanceEntries.workDate, workDate))).limit(1))[0];
+}
+
+export async function checkInAttendance(input: { companyId: number; userId: number; workMode: "onsite" | "remote"; note?: string; now?: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const now = input.now ?? new Date();
+  const workDate = getSaudiWorkDate(now);
+  const existing = await getMyAttendanceEntry(input.companyId, input.userId, workDate);
+  if (existing) throw new Error("تم تسجيل دوامك لهذا اليوم بالفعل");
+  await db.insert(attendanceEntries).values({ companyId: input.companyId, userId: input.userId, workDate, workMode: input.workMode, status: "open", checkInAt: now, note: input.note ?? null });
+  return (await db.select().from(attendanceEntries).where(and(eq(attendanceEntries.companyId, input.companyId), eq(attendanceEntries.userId, input.userId), eq(attendanceEntries.workDate, workDate))).limit(1))[0];
+}
+
+export async function checkOutAttendance(input: { companyId: number; userId: number; now?: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const now = input.now ?? new Date();
+  const workDate = getSaudiWorkDate(now);
+  const existing = await getMyAttendanceEntry(input.companyId, input.userId, workDate);
+  if (!existing) throw new Error("لا يوجد تسجيل حضور مفتوح لهذا اليوم");
+  if (existing.status === "completed") throw new Error("تم تسجيل الانصراف لهذا اليوم بالفعل");
+  await db.update(attendanceEntries).set({ status: "completed", checkOutAt: now }).where(and(eq(attendanceEntries.id, existing.id), eq(attendanceEntries.companyId, input.companyId), eq(attendanceEntries.userId, input.userId)));
+  return (await db.select().from(attendanceEntries).where(eq(attendanceEntries.id, existing.id)).limit(1))[0];
+}
+
+export async function listAttendanceForScope(input: { companyId: number; actorId: number; role: UserRole; workDate?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  const workDate = input.workDate ?? getSaudiWorkDate();
+  const base = db.select({ entry: attendanceEntries, user: users, profile: employeeProfiles }).from(attendanceEntries).innerJoin(users, eq(attendanceEntries.userId, users.id)).leftJoin(employeeProfiles, eq(employeeProfiles.userId, users.id));
+  const companyAndDate = and(eq(attendanceEntries.companyId, input.companyId), eq(attendanceEntries.workDate, workDate), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"));
+  if (["admin", "hr"].includes(input.role)) return base.where(companyAndDate).orderBy(desc(attendanceEntries.checkInAt));
+  if (input.role === "manager") return base.where(and(companyAndDate, eq(employeeProfiles.managerUserId, input.actorId))).orderBy(desc(attendanceEntries.checkInAt));
+  return base.where(and(companyAndDate, eq(attendanceEntries.userId, input.actorId))).orderBy(desc(attendanceEntries.checkInAt));
+}
+
+export async function listCompanyAttendancePolicies(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(attendancePolicies).where(eq(attendancePolicies.companyId, companyId)).orderBy(desc(attendancePolicies.isActive), desc(attendancePolicies.updatedAt));
+}
+
+export async function listCompanyShiftAssignments(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ assignment: employeeShiftAssignments, policy: attendancePolicies, employee: users }).from(employeeShiftAssignments).innerJoin(attendancePolicies, eq(employeeShiftAssignments.attendancePolicyId, attendancePolicies.id)).innerJoin(users, eq(employeeShiftAssignments.employeeUserId, users.id)).where(and(eq(employeeShiftAssignments.companyId, companyId), eq(attendancePolicies.companyId, companyId), eq(users.companyId, companyId))).orderBy(desc(employeeShiftAssignments.effectiveFrom), desc(employeeShiftAssignments.createdAt));
+}
+
+export async function createCompanyAttendancePolicy(input: { companyId: number; title: string; startTime: string; endTime: string; workDays: string; graceMinutes: number; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await db.insert(attendancePolicies).values({ companyId: input.companyId, title: input.title, startTime: input.startTime, endTime: input.endTime, workDays: input.workDays, graceMinutes: input.graceMinutes, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(attendancePolicies).where(and(eq(attendancePolicies.companyId, input.companyId), eq(attendancePolicies.title, input.title))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ سياسة الدوام");
+  return created;
+}
+
+export async function assignCompanyAttendancePolicy(input: { companyId: number; employeeUserId: number; attendancePolicyId: number; effectiveFrom: string; effectiveTo?: string; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية أو غير مفعّل");
+  const policy = (await db.select().from(attendancePolicies).where(and(eq(attendancePolicies.id, input.attendancePolicyId), eq(attendancePolicies.companyId, input.companyId), eq(attendancePolicies.isActive, true))).limit(1))[0];
+  if (!policy) throw new Error("سياسة الدوام غير موجودة ضمن الشركة الحالية أو غير مفعّلة");
+  if (input.effectiveTo && input.effectiveTo < input.effectiveFrom) throw new Error("تاريخ نهاية الوردية يجب أن يأتي بعد تاريخ البداية");
+  const existing = (await db.select().from(employeeShiftAssignments).where(and(eq(employeeShiftAssignments.companyId, input.companyId), eq(employeeShiftAssignments.employeeUserId, input.employeeUserId), eq(employeeShiftAssignments.attendancePolicyId, input.attendancePolicyId), eq(employeeShiftAssignments.effectiveFrom, input.effectiveFrom))).limit(1))[0];
+  if (existing) throw new Error("هذه الوردية مضافة للموظف بالتاريخ نفسه بالفعل");
+  await db.insert(employeeShiftAssignments).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, attendancePolicyId: input.attendancePolicyId, effectiveFrom: input.effectiveFrom, effectiveTo: input.effectiveTo ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(employeeShiftAssignments).where(and(eq(employeeShiftAssignments.companyId, input.companyId), eq(employeeShiftAssignments.employeeUserId, input.employeeUserId), eq(employeeShiftAssignments.attendancePolicyId, input.attendancePolicyId), eq(employeeShiftAssignments.effectiveFrom, input.effectiveFrom))).orderBy(desc(employeeShiftAssignments.id)).limit(1))[0];
+  if (!created) throw new Error("تعذر تعيين وردية الموظف");
+  return created;
+}
+
+export async function listCompanyTrainingPrograms(companyId: number) { const db = await getDb(); if (!db) return []; return db.select().from(trainingPrograms).where(eq(trainingPrograms.companyId, companyId)).orderBy(desc(trainingPrograms.isActive), desc(trainingPrograms.updatedAt)); }
+export async function listCompanyTrainingAssignments(companyId: number) { const db = await getDb(); if (!db) return []; return db.select({ assignment: employeeTrainingAssignments, program: trainingPrograms, employee: users }).from(employeeTrainingAssignments).innerJoin(trainingPrograms, eq(employeeTrainingAssignments.trainingProgramId, trainingPrograms.id)).innerJoin(users, eq(employeeTrainingAssignments.employeeUserId, users.id)).where(and(eq(employeeTrainingAssignments.companyId, companyId), eq(trainingPrograms.companyId, companyId), eq(users.companyId, companyId))).orderBy(desc(employeeTrainingAssignments.createdAt)); }
+export async function listMyTrainingAssignments(companyId: number, userId: number) { const db = await getDb(); if (!db) return []; return db.select({ assignment: employeeTrainingAssignments, program: trainingPrograms }).from(employeeTrainingAssignments).innerJoin(trainingPrograms, eq(employeeTrainingAssignments.trainingProgramId, trainingPrograms.id)).where(and(eq(employeeTrainingAssignments.companyId, companyId), eq(employeeTrainingAssignments.employeeUserId, userId), eq(trainingPrograms.companyId, companyId), eq(employeeTrainingAssignments.status, "assigned"))).orderBy(desc(employeeTrainingAssignments.dueAt), desc(employeeTrainingAssignments.createdAt)); }
+export async function listMyEmployeeGoals(companyId: number, userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(employeeGoals).where(and(eq(employeeGoals.companyId, companyId), eq(employeeGoals.employeeUserId, userId), ne(employeeGoals.status, "cancelled"))).orderBy(desc(employeeGoals.updatedAt)); }
+export async function listCompanyExecutionDependencyReviews(companyId: number) { const db = await getDb(); if (!db) return []; return db.select().from(executionDependencyReviews).where(eq(executionDependencyReviews.companyId, companyId)).orderBy(desc(executionDependencyReviews.updatedAt)); }
+export async function requestExecutionDependencyReview(input: { companyId: number; stageNumber: number; requestedByUserId: number }) { const db = await getDb(); if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً"); const existing = (await db.select().from(executionDependencyReviews).where(and(eq(executionDependencyReviews.companyId, input.companyId), eq(executionDependencyReviews.stageNumber, input.stageNumber))).limit(1))[0]; if (existing) { await db.update(executionDependencyReviews).set({ status: "review_requested", requestedByUserId: input.requestedByUserId, reviewedByUserId: null, reviewedAt: null, retryRequestedAt: null }).where(and(eq(executionDependencyReviews.companyId, input.companyId), eq(executionDependencyReviews.stageNumber, input.stageNumber))); } else { await db.insert(executionDependencyReviews).values({ companyId: input.companyId, stageNumber: input.stageNumber, requestedByUserId: input.requestedByUserId }); } const saved = (await db.select().from(executionDependencyReviews).where(and(eq(executionDependencyReviews.companyId, input.companyId), eq(executionDependencyReviews.stageNumber, input.stageNumber))).limit(1))[0]; if (!saved) throw new Error("تعذر حفظ طلب مراجعة الاعتمادية"); return saved; }
+export async function resolveExecutionDependency(input: { companyId: number; stageNumber: number; reviewedByUserId: number }) { const db = await getDb(); if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً"); const existing = (await db.select().from(executionDependencyReviews).where(and(eq(executionDependencyReviews.companyId, input.companyId), eq(executionDependencyReviews.stageNumber, input.stageNumber))).limit(1))[0]; if (!existing) throw new Error("لا يوجد طلب مراجعة مسجل لهذا البند"); await db.update(executionDependencyReviews).set({ status: "dependency_resolved", reviewedByUserId: input.reviewedByUserId, reviewedAt: new Date(), retryRequestedAt: null }).where(and(eq(executionDependencyReviews.companyId, input.companyId), eq(executionDependencyReviews.stageNumber, input.stageNumber))); return (await db.select().from(executionDependencyReviews).where(and(eq(executionDependencyReviews.companyId, input.companyId), eq(executionDependencyReviews.stageNumber, input.stageNumber))).limit(1))[0]; }
+export async function requestExecutionRetry(input: { companyId: number; stageNumber: number }) { const db = await getDb(); if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً"); const existing = (await db.select().from(executionDependencyReviews).where(and(eq(executionDependencyReviews.companyId, input.companyId), eq(executionDependencyReviews.stageNumber, input.stageNumber))).limit(1))[0]; if (!existing || existing.status !== "dependency_resolved") throw new Error("لا يمكن إعادة المحاولة قبل إقرار حل الاعتمادية"); await db.update(executionDependencyReviews).set({ status: "retry_requested", retryRequestedAt: new Date() }).where(and(eq(executionDependencyReviews.companyId, input.companyId), eq(executionDependencyReviews.stageNumber, input.stageNumber))); return (await db.select().from(executionDependencyReviews).where(and(eq(executionDependencyReviews.companyId, input.companyId), eq(executionDependencyReviews.stageNumber, input.stageNumber))).limit(1))[0]; }
+export async function createCompanyTrainingProgram(input: { companyId: number; title: string; description?: string; durationMinutes: number; createdByUserId: number }) { const db = await getDb(); if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً"); await db.insert(trainingPrograms).values({ companyId: input.companyId, title: input.title, description: input.description ?? null, durationMinutes: input.durationMinutes, createdByUserId: input.createdByUserId }); const created = (await db.select().from(trainingPrograms).where(and(eq(trainingPrograms.companyId, input.companyId), eq(trainingPrograms.title, input.title))).limit(1))[0]; if (!created) throw new Error("تعذر حفظ مسار التدريب"); return created; }
+export async function assignCompanyTrainingProgram(input: { companyId: number; employeeUserId: number; trainingProgramId: number; dueAt?: Date; assignedByUserId: number }) { const db = await getDb(); if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً"); const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"))).limit(1))[0]; if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية أو غير مفعّل"); const program = (await db.select().from(trainingPrograms).where(and(eq(trainingPrograms.id, input.trainingProgramId), eq(trainingPrograms.companyId, input.companyId), eq(trainingPrograms.isActive, true))).limit(1))[0]; if (!program) throw new Error("مسار التدريب غير موجود ضمن الشركة الحالية أو غير مفعّل"); await db.insert(employeeTrainingAssignments).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, trainingProgramId: input.trainingProgramId, dueAt: input.dueAt ?? null, assignedByUserId: input.assignedByUserId }); const created = (await db.select().from(employeeTrainingAssignments).where(and(eq(employeeTrainingAssignments.companyId, input.companyId), eq(employeeTrainingAssignments.employeeUserId, input.employeeUserId), eq(employeeTrainingAssignments.trainingProgramId, input.trainingProgramId))).limit(1))[0]; if (!created) throw new Error("تعذر تعيين مسار التدريب"); return created; }
+
+type AuditCategory = "recruitment" | "attendance" | "training" | "approval" | "account" | "permission" | "leave";
+
+export async function recordAuditEvent(input: { companyId: number; actorUserId?: number; category: AuditCategory; action: string; entityType: string; entityId?: number; summary: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await db.insert(auditEvents).values({ companyId: input.companyId, actorUserId: input.actorUserId ?? null, category: input.category, action: input.action, entityType: input.entityType, entityId: input.entityId ?? null, summary: input.summary });
+}
+
+export async function listCompanyAuditEvents(companyId: number, limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ event: auditEvents, actor: users }).from(auditEvents).leftJoin(users, eq(auditEvents.actorUserId, users.id)).where(eq(auditEvents.companyId, companyId)).orderBy(desc(auditEvents.createdAt)).limit(Math.min(Math.max(limit, 1), 200));
 }
 
 export async function createRequestWithHistory(input: {
@@ -211,6 +712,78 @@ export async function saveLeaveRequestDetails(input: { requestId: number; compan
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
   await db.insert(leaveRequests).values(input).onDuplicateKeyUpdate({ set: { leaveType: input.leaveType, startDate: input.startDate, endDate: input.endDate } });
   return { success: true } as const;
+}
+
+export async function upsertCompanyLeavePolicy(input: { companyId: number; leaveType: LeaveType; title: string; referenceDays: number; isActive: boolean; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await db.insert(leavePolicies).values(input).onDuplicateKeyUpdate({ set: { title: input.title, referenceDays: input.referenceDays, isActive: input.isActive } });
+  const policy = (await db.select().from(leavePolicies).where(and(eq(leavePolicies.companyId, input.companyId), eq(leavePolicies.leaveType, input.leaveType))).limit(1))[0];
+  if (!policy) throw new Error("تعذر حفظ سياسة الإجازة");
+  return policy;
+}
+
+export async function upsertEmployeeLeaveAllocation(input: { companyId: number; employeeUserId: number; leavePolicyId: number; allocationYear: number; allocatedDays: number; allocatedByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select({ id: users.id }).from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية أو غير مفعّل");
+  const policy = (await db.select({ id: leavePolicies.id }).from(leavePolicies).where(and(eq(leavePolicies.id, input.leavePolicyId), eq(leavePolicies.companyId, input.companyId))).limit(1))[0];
+  if (!policy) throw new Error("سياسة الإجازة لا تنتمي إلى الشركة الحالية");
+  await db.insert(leaveAllocations).values(input).onDuplicateKeyUpdate({ set: { allocatedDays: input.allocatedDays, allocatedByUserId: input.allocatedByUserId } });
+  const allocation = (await db.select().from(leaveAllocations).where(and(eq(leaveAllocations.companyId, input.companyId), eq(leaveAllocations.employeeUserId, input.employeeUserId), eq(leaveAllocations.leavePolicyId, input.leavePolicyId), eq(leaveAllocations.allocationYear, input.allocationYear))).limit(1))[0];
+  if (!allocation) throw new Error("تعذر حفظ رصيد الإجازة");
+  return allocation;
+}
+
+async function getEmployeeLeaveUsage(input: { companyId: number; employeeUserId: number; leaveType: LeaveType; allocationYear: number }) {
+  const db = await getDb();
+  if (!db) return { approvedDays: 0, pendingDays: 0, rows: [] as Array<{ startDate: string; endDate: string; status: "submitted" | "in_review" | "approved" | "rejected" | "completed" }> };
+  const rows = await db.select({ startDate: leaveRequests.startDate, endDate: leaveRequests.endDate, leaveType: leaveRequests.leaveType, status: serviceRequests.status }).from(leaveRequests).innerJoin(serviceRequests, eq(leaveRequests.requestId, serviceRequests.id)).where(and(eq(leaveRequests.companyId, input.companyId), eq(serviceRequests.employeeId, input.employeeUserId)));
+  const activeRows = rows.filter(row => row.leaveType === input.leaveType && Number(row.startDate.slice(0, 4)) === input.allocationYear && row.status !== "rejected");
+  return activeRows.reduce((usage, row) => {
+    const days = countInclusiveLeaveDays(row.startDate, row.endDate);
+    if (row.status === "submitted" || row.status === "in_review") usage.pendingDays += days;
+    else usage.approvedDays += days;
+    return usage;
+  }, { approvedDays: 0, pendingDays: 0, rows: activeRows });
+}
+
+export async function getMyLeaveBalances(input: { companyId: number; employeeUserId: number; allocationYear: number }) {
+  const db = await getDb();
+  if (!db) return [];
+  const allocations = await db.select({ allocation: leaveAllocations, policy: leavePolicies }).from(leaveAllocations).innerJoin(leavePolicies, eq(leaveAllocations.leavePolicyId, leavePolicies.id)).where(and(eq(leaveAllocations.companyId, input.companyId), eq(leaveAllocations.employeeUserId, input.employeeUserId), eq(leaveAllocations.allocationYear, input.allocationYear), eq(leavePolicies.companyId, input.companyId)));
+  return Promise.all(allocations.map(async ({ allocation, policy }) => {
+    const usage = await getEmployeeLeaveUsage({ companyId: input.companyId, employeeUserId: input.employeeUserId, leaveType: policy.leaveType, allocationYear: input.allocationYear });
+    return { allocation, policy, balance: calculateLeaveBalance({ allocatedDays: allocation.allocatedDays, approvedDays: usage.approvedDays, pendingDays: usage.pendingDays }) };
+  }));
+}
+
+export async function validateLeaveRequestCapacity(input: { companyId: number; employeeUserId: number; leaveType: LeaveType; startDate: string; endDate: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const allocationYear = getLeaveRequestYear(input.startDate, input.endDate);
+  const requestedDays = countInclusiveLeaveDays(input.startDate, input.endDate);
+  const policy = (await db.select().from(leavePolicies).where(and(eq(leavePolicies.companyId, input.companyId), eq(leavePolicies.leaveType, input.leaveType), eq(leavePolicies.isActive, true))).limit(1))[0];
+  if (!policy) throw new Error("لا توجد سياسة إجازة فعالة لهذا النوع داخل الشركة");
+  const allocation = (await db.select().from(leaveAllocations).where(and(eq(leaveAllocations.companyId, input.companyId), eq(leaveAllocations.employeeUserId, input.employeeUserId), eq(leaveAllocations.leavePolicyId, policy.id), eq(leaveAllocations.allocationYear, allocationYear))).limit(1))[0];
+  if (!allocation) throw new Error("لا يوجد رصيد مخصص لهذا النوع من الإجازة في السنة المحددة");
+  const existingRows = await db.select({ startDate: leaveRequests.startDate, endDate: leaveRequests.endDate, status: serviceRequests.status }).from(leaveRequests).innerJoin(serviceRequests, eq(leaveRequests.requestId, serviceRequests.id)).where(and(eq(leaveRequests.companyId, input.companyId), eq(serviceRequests.employeeId, input.employeeUserId)));
+  if (existingRows.some(row => row.status !== "rejected" && dateRangesOverlap(input.startDate, input.endDate, row.startDate, row.endDate))) throw new Error("يتداخل هذا الطلب مع إجازة قائمة أو معلّقة");
+  const usage = await getEmployeeLeaveUsage({ companyId: input.companyId, employeeUserId: input.employeeUserId, leaveType: input.leaveType, allocationYear });
+  const balance = calculateLeaveBalance({ ...usage, allocatedDays: allocation.allocatedDays });
+  if (requestedDays > balance.remainingDays) throw new Error("أيام الإجازة المطلوبة تتجاوز الرصيد المتاح بعد الطلبات المعلّقة والمعتمدة");
+  return { policy, allocation, requestedDays, allocationYear, balance };
+}
+
+export async function getLeaveManagementOverview(companyId: number, allocationYear: number) {
+  const db = await getDb();
+  if (!db) return { policies: [], allocations: [] };
+  const [policies, allocations] = await Promise.all([
+    db.select().from(leavePolicies).where(eq(leavePolicies.companyId, companyId)).orderBy(desc(leavePolicies.isActive), asc(leavePolicies.leaveType)),
+    db.select({ allocation: leaveAllocations, policy: leavePolicies, employee: users }).from(leaveAllocations).innerJoin(leavePolicies, eq(leaveAllocations.leavePolicyId, leavePolicies.id)).innerJoin(users, eq(leaveAllocations.employeeUserId, users.id)).where(and(eq(leaveAllocations.companyId, companyId), eq(leaveAllocations.allocationYear, allocationYear), eq(leavePolicies.companyId, companyId), eq(users.companyId, companyId))).orderBy(asc(users.name), asc(leavePolicies.leaveType)),
+  ]);
+  return { policies, allocations };
 }
 
 export async function saveExpenseRequestDetails(input: { requestId: number; companyId: number; expenseType: "travel" | "operating"; amountSar: string; reason: string }) {
@@ -528,6 +1101,18 @@ export function buildOperationsPulse(source: {
   return {
     requests: { submitted: requestCount("submitted"), inReview: requestCount("in_review"), completed: requestCount("completed") + requestCount("approved") },
     approvals: { pending: taskCount("pending"), approved: taskCount("approved"), rejected: taskCount("rejected") },
+  };
+}
+
+export function buildApprovalWorkload(source: { tasks: Array<{ status: "pending" | "approved" | "rejected" | "cancelled"; approverRole: "manager" | "hr" | "government" | "admin"; createdAt: Date }> }, now = new Date()) {
+  const pending = source.tasks.filter(task => task.status === "pending");
+  const hoursOpen = (task: { createdAt: Date }) => Math.max(0, Math.floor((now.getTime() - task.createdAt.getTime()) / 3600000));
+  const byRole = (role: "manager" | "hr" | "government" | "admin") => pending.filter(task => task.approverRole === role).length;
+  return {
+    pending: pending.length,
+    overdue: pending.filter(task => hoursOpen(task) >= 24).length,
+    oldestHours: pending.length ? Math.max(...pending.map(hoursOpen)) : 0,
+    byRole: { manager: byRole("manager"), hr: byRole("hr"), government: byRole("government"), admin: byRole("admin") },
   };
 }
 

@@ -78,4 +78,22 @@ describe("approval workflow integration", () => {
     ]));
     expect(state.inserts).toEqual(expect.arrayContaining([expect.objectContaining({ recipientUserId: 7, type: "request_decision", relatedRequestId: 61 })]));
   });
+
+  it("routes an approved manager government request to government relations and then notifies only the employee", async () => {
+    state.selectQueue = [
+      [{ id: 31, companyId: 4, requestId: 71, approverRole: "manager", status: "pending" }],
+      [{ id: 71, reference: "GOV-71", type: "government", employeeId: 7, status: "submitted" }],
+      [{ id: 29 }],
+      [{ id: 32, companyId: 4, requestId: 71, approverRole: "government", status: "pending" }],
+      [{ id: 71, reference: "GOV-71", type: "government", employeeId: 7, status: "in_review" }],
+    ];
+    await decideApprovalTask({ id: 31, companyId: 4, actorId: 9, allowedRoles: ["manager"], decision: "approved" });
+    await decideApprovalTask({ id: 32, companyId: 4, actorId: 29, allowedRoles: ["government"], decision: "approved" });
+    expect(state.inserts).toEqual(expect.arrayContaining([
+      { companyId: 4, requestId: 71, approverRole: "government" },
+      expect.arrayContaining([expect.objectContaining({ companyId: 4, recipientUserId: 29, type: "approval_required", relatedRequestId: 71 })]),
+      expect.objectContaining({ companyId: 4, recipientUserId: 7, type: "request_decision", relatedRequestId: 71 }),
+    ]));
+    expect(state.inserts).not.toEqual(expect.arrayContaining([expect.objectContaining({ recipientUserId: 29, type: "request_decision" })]));
+  });
 });

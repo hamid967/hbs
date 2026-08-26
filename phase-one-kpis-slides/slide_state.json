@@ -1,0 +1,133 @@
+{
+  "project_info": {
+    "title": "الحوكمة أولاً",
+    "created": 1787689118.833,
+    "last_updated": 1787689394.274,
+    "total_slides": 11
+  },
+  "slides": [
+    {
+      "id": "cover",
+      "state": "edited",
+      "pageNum": 1
+    },
+    {
+      "id": "why_governance",
+      "state": "edited",
+      "pageNum": 2
+    },
+    {
+      "id": "five_outputs",
+      "state": "edited",
+      "pageNum": 3
+    },
+    {
+      "id": "first_week",
+      "state": "edited",
+      "pageNum": 4
+    },
+    {
+      "id": "ownership",
+      "state": "edited",
+      "pageNum": 5
+    },
+    {
+      "id": "quality_framework",
+      "state": "edited",
+      "pageNum": 6
+    },
+    {
+      "id": "kpi_targets",
+      "state": "edited",
+      "pageNum": 7
+    },
+    {
+      "id": "traffic_lights",
+      "state": "edited",
+      "pageNum": 8
+    },
+    {
+      "id": "risk_controls",
+      "state": "edited",
+      "pageNum": 9
+    },
+    {
+      "id": "weekly_cadence",
+      "state": "edited",
+      "pageNum": 10
+    },
+    {
+      "id": "closing",
+      "state": "edited",
+      "pageNum": 11
+    }
+  ],
+  "outline": [
+    {
+      "id": "cover",
+      "title": "الحوكمة أولاً",
+      "summary": "غلاف العرض: المرحلة الأولى من خارطة حلول الغد ومؤشرات جودة المخرجات.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "why_governance",
+      "title": "مرحلة الحوكمة تحمي بقية الخارطة",
+      "summary": "دور المرحلة الأولى في تحويل الفكرة إلى برنامج قابل للإدارة والقياس.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "five_outputs",
+      "title": "خمسة مخرجات تشكل بوابة الانطلاق",
+      "summary": "عرض الميثاق وسجل القرار وRACI والنطاق والمخاطر كمنظومة مخرجات مترابطة.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "first_week",
+      "title": "أسبوع واحد يبني أساس التنفيذ",
+      "summary": "تسلسل الأيام الخمسة ومخرجات كل يوم في المرحلة الأولى.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "ownership",
+      "title": "المسؤولية الواحدة تمنع تعارض القرار",
+      "summary": "توضيح الأدوار بين مالك المنتج والتقنية وHR والعلاقات الحكومية ومالك القرار.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "quality_framework",
+      "title": "نقيس الجودة لا مجرد اكتمال المستندات",
+      "summary": "إطار قياس جودة الميثاق والملكية والنطاق والمخاطر والانتقال.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "kpi_targets",
+      "title": "أهداف KPIs تجعل الجاهزية قابلة للإثبات",
+      "summary": "أهداف رقمية رئيسية لاكتمال الميثاق والنطاق والمخاطر والقرارات.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "traffic_lights",
+      "title": "الإشارات الثلاث تحدد قرار الإدارة",
+      "summary": "قاعدة ألوان واضحة تربط أداء KPI بقرار التنفيذ أو التصعيد.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "risk_controls",
+      "title": "أربعة ضوابط تمنع المخاطر مبكراً",
+      "summary": "ضوابط النطاق والصلاحيات والقبول الحي والمخاطر الحرجة.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "weekly_cadence",
+      "title": "مراجعة أسبوعية قصيرة تقود إلى قرار واضح",
+      "summary": "إيقاع متابعة أسبوعي يركز على الأدلة والاعتماديات والالتزامات التالية.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "closing",
+      "title": "ننتقل بالدليل لا بالافتراض",
+      "summary": "إغلاق يلخص مبدأ الحوكمة القائمة على القياس والملكية والمخاطر المسيطر عليها.",
+      "image_plan": "Use a suitable image if needed"
+    }
+  ]
+}

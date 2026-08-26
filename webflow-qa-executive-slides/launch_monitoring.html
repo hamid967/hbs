@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<style>
+*{margin:0;box-sizing:border-box}.slide-container{width:1280px;min-height:720px;background:#f7f5ed;color:#123d31;font-family:Tahoma,Arial,sans-serif;direction:rtl;padding-top:72px}.head{margin-right:86px}.eyebrow{font-size:17px;color:#9a7934;font-weight:700;letter-spacing:.5px}.title{font-size:45px;font-weight:800;margin-top:12px}.lead{font-size:21px;color:#576a61;margin-top:13px}.timeline{position:relative;margin:75px 88px 0;height:238px;display:flex;justify-content:space-between}.timeline:before{content:"";position:absolute;top:57px;right:23px;left:23px;height:4px;background:#174d3c}.point{width:220px;position:relative;padding-top:86px}.point:before{content:"";position:absolute;top:35px;right:84px;width:45px;height:45px;background:#c7a450;border:7px solid #f7f5ed}.time{font-size:20px;font-weight:800;color:#174d3c}.point h2{font-size:23px;margin-top:12px}.point p{font-size:17px;line-height:1.55;color:#52655c;margin-top:8px;width:210px}.rollback{margin:15px 86px 0;min-height:146px;background:#174d3c;color:#fff;display:flex;align-items:center}.rollback .tag{width:260px;min-height:146px;background:#c7a450;color:#173f32;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:800}.rollback .copy{padding-right:33px;width:760px}.rollback .copy h2{font-size:25px}.rollback .copy p{font-size:19px;line-height:1.55;color:#e3eee7;margin-top:11px}.rollback .signal{font-size:18px;color:#d9bd77;font-weight:700;width:190px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="slide-container">
+<header class="head"><div class="eyebrow">ما بعد الإطلاق</div><div class="title">المراقبة والتراجع بعد النشر</div><div class="lead">أول 24 ساعة ليست نهاية QA؛ إنها نافذة لحماية التحويل والخصوصية بالأدلة.</div></header>
+<main class="timeline">
+<section class="point"><div class="time">0–1 ساعة</div><h2>Smoke test</h2><p>الرئيسية، CTA، النموذج، رسالة النجاح، وروابط السياسات.</p></section>
+<section class="point"><div class="time">1–4 ساعات</div><h2>التحويل</h2><p>مراقبة الإرسال والوجهة والتحليلات و404 وأي مسار متعثر.</p></section>
+<section class="point"><div class="time">4–12 ساعة</div><h2>الجمهور الفعلي</h2><p>مراجعة الهاتف والمتصفحات والمحتوى الجديد وإشارات الدعم.</p></section>
+<section class="point"><div class="time">12–24 ساعة</div><h2>قرار الاستقرار</h2><p>تقرير مختصر: مستقر، إصلاح محدود، أو تراجع موثق.</p></section>
+</main>
+<section class="rollback"><div class="tag">قرار التراجع</div><div class="copy"><h2>نتراجع أو نعطّل التكامل عند كسر رحلة التحويل أو الخصوصية</h2><p>يُحدد الإصدار المتأثر، ويُعاد نشر النسخة السابقة أو يُعطّل التكامل، ثم يوثق السبب الجذري وإجراء المنع قبل إعادة المحاولة.</p></div><div class="signal">نموذج معطّل<br>كشف محتوى حساس<br>CTA رئيسي مكسور</div></section>
+</div>
+</body>
+</html>

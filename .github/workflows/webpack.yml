@@ -1,28 +1,26 @@
-name: NodeJS with Webpack
+name: HBS Verification
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main, audit/frappe-hrms-integration]
   pull_request:
-    branches: [ "main" ]
+    branches: [main, audit/frappe-hrms-integration]
 
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x]
-
+    env:
+      DATABASE_URL: mysql://ci:ci@127.0.0.1:3306/hrhbs_ci
+      HRHBS_ADMIN_EMAIL: ci-admin@example.invalid
     steps:
-    - uses: actions/checkout@v4
-
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-
-    - name: Build
-      run: |
-        npm install
-        npx webpack
+      - uses: actions/checkout@v4
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify HBS
+        run: pnpm check && pnpm test && pnpm build

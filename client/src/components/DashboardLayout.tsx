@@ -40,7 +40,15 @@ import {
   ClipboardCheck,
   BellRing,
   BarChart3,
+  BriefcaseBusiness,
   Clock3,
+  CalendarDays,
+  BookOpenCheck,
+  Inbox,
+  FileText,
+  ListChecks,
+  Goal,
+  ChartNoAxesCombined,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -58,9 +66,22 @@ const menuItems = [
   { icon: LayoutTemplate, label: "مساحة MVP", path: "/mvp" },
   { icon: Wrench, label: "أدوات HR", path: "/hr-tools" },
   { icon: UserCog, label: "إدارة الحسابات", path: "/accounts", adminOnly: true },
+  { icon: ShieldCheck, label: "سجل التدقيق", path: "/audit", adminOnly: true },
   { icon: Building2, label: "قوالب الشركة", path: "/company-templates", adminOnly: true },
   { icon: UserRoundSearch, label: "دليل الموظفين", path: "/employees", requiresDirectoryAccess: true },
+  { icon: ClipboardCheck, label: "دورة حياة الموظف", path: "/employee-lifecycle", requiresLifecycleAccess: true },
+  { icon: FileText, label: "العقود والوثائق", path: "/contracts", requiresContractsAccess: true },
+  { icon: ListChecks, label: "إنهاء الخدمة", path: "/offboarding", requiresOffboardingAccess: true },
+  { icon: Goal, label: "الأهداف والأداء", path: "/goals", requiresGoalsAccess: true },
+  { icon: ChartNoAxesCombined, label: "لوحة المديرين", path: "/manager-dashboard", managerOnly: true },
+  { icon: BookOpenCheck, label: "التدريب الداخلي", path: "/training", requiresLifecycleAccess: true },
+  { icon: BriefcaseBusiness, label: "التوظيف والتهيئة", path: "/recruitment", requiresRecruitmentAccess: true },
+  { icon: Clock3, label: "الدوام", path: "/attendance" },
+  { icon: CalendarDays, label: "سياسات الدوام", path: "/attendance-schedules", requiresSchedulingAccess: true },
+  { icon: CalendarDays, label: "سياسات الإجازة", path: "/leave-policies", requiresSchedulingAccess: true },
   { icon: ClipboardCheck, label: "صندوق الموافقات", path: "/approvals", requiresApprovalAccess: true },
+  { icon: ShieldCheck, label: "محاكي الموافقات", path: "/approval-simulator", requiresDirectoryAccess: true },
+  { icon: Inbox, label: "صندوق العمل", path: "/workboard" },
   { icon: BellRing, label: "الإشعارات", path: "/notifications" },
   { icon: BarChart3, label: "التقارير", path: "/reports", requiresDirectoryAccess: true },
 ];
@@ -96,8 +117,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const hasOperationAccess = user.role === "admin" || Boolean(modulePermissions?.some(permission => permission.canView));
   const canManageDirectory = ["admin", "manager", "hr"].includes(user.role);
+  const canManageLifecycle = ["admin", "hr"].includes(user.role);
   const canApprove = ["admin", "manager", "hr", "government"].includes(user.role);
-  const visibleMenuItems = menuItems.filter(item => (!item.adminOnly || user.role === "admin") && (!item.requiresOperationAccess || hasOperationAccess) && (!item.requiresDirectoryAccess || canManageDirectory) && (!item.requiresApprovalAccess || canApprove));
+  const canManageRecruitment = ["admin", "hr"].includes(user.role);
+  const canManageSchedules = ["admin", "hr"].includes(user.role);
+  const canManageContracts = ["admin", "hr"].includes(user.role);
+  const canManageOffboarding = ["admin", "hr"].includes(user.role);
+  const canManageGoals = ["admin", "hr"].includes(user.role);
+  const isManager = user.role === "manager";
+  const visibleMenuItems = menuItems.filter(item => (!item.adminOnly || user.role === "admin") && (!item.requiresOperationAccess || hasOperationAccess) && (!item.requiresDirectoryAccess || canManageDirectory) && (!item.requiresLifecycleAccess || canManageLifecycle) && (!item.requiresContractsAccess || canManageContracts) && (!item.requiresOffboardingAccess || canManageOffboarding) && (!item.requiresGoalsAccess || canManageGoals) && (!item.managerOnly || isManager) && (!item.requiresRecruitmentAccess || canManageRecruitment) && (!item.requiresSchedulingAccess || canManageSchedules) && (!item.requiresApprovalAccess || canApprove));
 
   return (
     <SidebarProvider dir="rtl" className="bg-[#f8f8f5] text-[#17211c]">

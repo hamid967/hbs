@@ -1,0 +1,111 @@
+{
+  "project_info": {
+    "title": "من نفهمه نُصمم له",
+    "created": 1787691692.956,
+    "last_updated": 1787691860.691,
+    "total_slides": 9
+  },
+  "slides": [
+    {
+      "id": "cover",
+      "state": "edited",
+      "pageNum": 1
+    },
+    {
+      "id": "roles",
+      "state": "edited",
+      "pageNum": 2
+    },
+    {
+      "id": "critical_journeys",
+      "state": "edited",
+      "pageNum": 3
+    },
+    {
+      "id": "handoffs",
+      "state": "edited",
+      "pageNum": 4
+    },
+    {
+      "id": "kpis",
+      "state": "edited",
+      "pageNum": 5
+    },
+    {
+      "id": "targets",
+      "state": "edited",
+      "pageNum": 6
+    },
+    {
+      "id": "risk",
+      "state": "edited",
+      "pageNum": 7
+    },
+    {
+      "id": "gate",
+      "state": "edited",
+      "pageNum": 8
+    },
+    {
+      "id": "closing",
+      "state": "edited",
+      "pageNum": 9
+    }
+  ],
+  "outline": [
+    {
+      "id": "cover",
+      "title": "من نفهمه نُصمم له",
+      "summary": "غلاف عرض المرحلة الثالثة: شرائح المستخدمين ورحلاتهم.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "roles",
+      "title": "ثلاثة أدوار تقود التصميم",
+      "summary": "الموظف والمدير وفريق العمليات وأهدافهم التشغيلية.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "critical_journeys",
+      "title": "أربع رحلات تحدد القيمة",
+      "summary": "الطلبات والموافقة والمعالجة والمتابعة والاستثناء.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "handoffs",
+      "title": "وضوح التسليم يحمي القرار",
+      "summary": "توضيح نقطة تسليم الدور والمسؤولية والمخرج.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "kpis",
+      "title": "الجودة تقاس بعشرة KPIs",
+      "summary": "إطار قياس تغطية الشرائح والرحلات والصلاحيات والتنفيذ.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "targets",
+      "title": "الأهداف الرقمية تمنع الافتراض",
+      "summary": "قيم KPIs الأساسية للمرحلة الثالثة.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "risk",
+      "title": "المخاطر تبدأ من الفرضية",
+      "summary": "الافتراضات والخصوصية والمالك والتمثيل التشغيلي.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "gate",
+      "title": "بوابة التموضع تحتاج أدلة",
+      "summary": "شروط الانتقال من المرحلة الثالثة إلى الرابعة.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "closing",
+      "title": "كل رحلة تنتهي بقرار واضح",
+      "summary": "إغلاق حول بناء تجربة موثوقة لكل دور.",
+      "image_plan": "Use a suitable image if needed"
+    }
+  ]
+}

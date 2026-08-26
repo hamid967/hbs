@@ -24,6 +24,10 @@ describe("approval routing", () => {
     expect(approvalTransitionPlan({ stageRole: "manager", decision: "approved", requestType: "hr", companyId: 8, requestId: 41, employeeId: 6 })).toEqual({ nextTask: { companyId: 8, requestId: 41, approverRole: "hr" }, requestStatus: "in_review", historyStatus: "in_review", notification: { recipient: "unit", role: "hr", type: "approval_required" } });
   });
 
+  it("keeps a government request in its company and routes the second stage only to government relations", () => {
+    expect(approvalTransitionPlan({ stageRole: "manager", decision: "approved", requestType: "government", companyId: 8, requestId: 42, employeeId: 6 })).toEqual({ nextTask: { companyId: 8, requestId: 42, approverRole: "government" }, requestStatus: "in_review", historyStatus: "in_review", notification: { recipient: "unit", role: "government", type: "approval_required" } });
+  });
+
   it("plans the final unit decision with an employee-only notification", () => {
     expect(approvalTransitionPlan({ stageRole: "hr", decision: "approved", requestType: "hr", companyId: 8, requestId: 41, employeeId: 6 })).toEqual({ nextTask: null, requestStatus: "approved", historyStatus: "approved", notification: { recipient: "employee", employeeId: 6, type: "request_decision" } });
   });
