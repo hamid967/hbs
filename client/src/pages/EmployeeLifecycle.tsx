@@ -10,7 +10,7 @@ import { CalendarClock, Plus, ShieldAlert, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-const eventLabels = { joined: "الانضمام", profile_updated: "تحديث الملف", status_changed: "تغيير الحالة", role_changed: "تغيير الدور", department_changed: "تغيير القسم", manager_changed: "تغيير المدير", offboarding_started: "بدء إنهاء الخدمة", offboarding_completed: "إكمال إنهاء الخدمة" } as const;
+const eventLabels = { joined: "الانضمام", profile_updated: "تحديث الملف", status_changed: "تغيير الحالة", role_changed: "تغيير الدور", department_changed: "تغيير القسم", designation_changed: "تغيير المسمى المنظم", manager_changed: "تغيير المدير", offboarding_started: "بدء إنهاء الخدمة", offboarding_completed: "إكمال إنهاء الخدمة" } as const;
 type LifecycleEventType = keyof typeof eventLabels;
 
 export default function EmployeeLifecycle() {

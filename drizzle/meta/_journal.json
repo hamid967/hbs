@@ -218,6 +218,34 @@
       "when": 1787721927601,
       "tag": "0030_overjoyed_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1787724480268,
+      "tag": "0031_luxuriant_blindfold",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1787725987489,
+      "tag": "0032_futuristic_blue_blade",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1787726500817,
+      "tag": "0033_smiling_speed_demon",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "5",
+      "when": 1787727002362,
+      "tag": "0034_goofy_cyclops",
+      "breakpoints": true
     }
   ]
 }

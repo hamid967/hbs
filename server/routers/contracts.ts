@@ -33,10 +33,10 @@ export const contractsRouter = router({
     const documentsWithUrls = await Promise.all(documents.map(async document => ({ ...document, url: (await storageGet(document.storageKey)).url })));
     return { employees, contracts, documents: documentsWithUrls, allowedMimeTypes: ["application/pdf", "image/png", "image/jpeg"], maxDocumentBytes };
   }),
-  createContract: protectedProcedure.input(z.object({ employeeUserId: z.number().int().positive(), contractReference: z.string().trim().min(2).max(80), title: z.string().trim().min(2).max(160), status: contractStatus, startAt: z.date().optional(), endAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
+  createContract: protectedProcedure.input(z.object({ employeeUserId: z.number().int().positive(), contractReference: z.string().trim().min(2).max(80), title: z.string().trim().min(2).max(160), status: contractStatus, supersedesContractId: z.number().int().positive().optional(), startAt: z.date().optional(), endAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
     ensureContractsAccess(ctx.user.role);
     const contract = await createCompanyEmployeeContract({ companyId: ctx.user.companyId, createdByUserId: ctx.user.id, ...input });
-    await createCompanyEmployeeLifecycleEvent({ companyId: ctx.user.companyId, employeeUserId: input.employeeUserId, eventType: "profile_updated", effectiveAt: new Date(), note: "إضافة سجل عقد تشغيلي", createdByUserId: ctx.user.id });
+    await createCompanyEmployeeLifecycleEvent({ companyId: ctx.user.companyId, employeeUserId: input.employeeUserId, eventType: "profile_updated", effectiveAt: new Date(), note: input.supersedesContractId ? "إضافة إصدار عقد تشغيلي" : "إضافة سجل عقد تشغيلي", createdByUserId: ctx.user.id });
     return contract;
   }),
   uploadDocument: protectedProcedure.input(z.object({ employeeUserId: z.number().int().positive(), contractId: z.number().int().positive().optional(), category: documentCategory, fileName: z.string().trim().min(1).max(240), mimeType: z.string().trim().max(100), fileContentBase64: z.string().min(1).max(7_200_000) })).mutation(async ({ ctx, input }) => {

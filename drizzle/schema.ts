@@ -1,4 +1,4 @@
-import { boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar, type AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 export const companies = mysqlTable("companies", {
   id: int("id").autoincrement().primaryKey(),
@@ -92,12 +92,24 @@ export const departments = mysqlTable("departments", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("departments_company_name_unique").on(table.companyId, table.name)]);
 
+export const jobDesignations = mysqlTable("jobDesignations", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 160 }).notNull(),
+  code: varchar("code", { length: 32 }),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("jobDesignations_company_title_unique").on(table.companyId, table.title), uniqueIndex("jobDesignations_company_code_unique").on(table.companyId, table.code), index("jobDesignations_company_active_idx").on(table.companyId, table.isActive)]);
+
 export const employeeProfiles = mysqlTable("employeeProfiles", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   employeeNumber: varchar("employeeNumber", { length: 40 }),
   jobTitle: varchar("jobTitle", { length: 160 }),
+  designationId: int("designationId").references(() => jobDesignations.id, { onDelete: "set null" }),
   departmentId: int("departmentId").references(() => departments.id, { onDelete: "set null" }),
   region: varchar("region", { length: 120 }),
   workLocation: varchar("workLocation", { length: 160 }),
@@ -120,19 +132,34 @@ export const employeeEmergencyContacts = mysqlTable("employeeEmergencyContacts",
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("employeeEmergencyContacts_company_employee_unique").on(table.companyId, table.employeeUserId), index("employeeEmergencyContacts_company_employee_idx").on(table.companyId, table.employeeUserId)]);
 
+export const employeeDependents = mysqlTable("employeeDependents", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  employeeUserId: int("employeeUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  fullName: varchar("fullName", { length: 160 }).notNull(),
+  relationship: varchar("relationship", { length: 80 }).notNull(),
+  birthYear: int("birthYear"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("employeeDependents_company_employee_idx").on(table.companyId, table.employeeUserId), index("employeeDependents_company_active_idx").on(table.companyId, table.isActive)]);
+
 export const employeeContracts = mysqlTable("employeeContracts", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
   employeeUserId: int("employeeUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   contractReference: varchar("contractReference", { length: 80 }).notNull(),
   title: varchar("title", { length: 160 }).notNull(),
+  versionNumber: int("versionNumber").notNull().default(1),
+  supersedesContractId: int("supersedesContractId").references((): AnyMySqlColumn => employeeContracts.id, { onDelete: "set null" }),
   status: mysqlEnum("status", ["draft", "active", "ended", "archived"]).notNull().default("draft"),
   startAt: timestamp("startAt"),
   endAt: timestamp("endAt"),
   createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [uniqueIndex("employeeContracts_company_reference_unique").on(table.companyId, table.contractReference), index("employeeContracts_company_employee_idx").on(table.companyId, table.employeeUserId)]);
+}, table => [uniqueIndex("employeeContracts_company_reference_unique").on(table.companyId, table.contractReference), index("employeeContracts_company_employee_idx").on(table.companyId, table.employeeUserId), index("employeeContracts_company_previous_idx").on(table.companyId, table.supersedesContractId)]);
 
 export const employeeDocuments = mysqlTable("employeeDocuments", {
   id: int("id").autoincrement().primaryKey(),
@@ -147,6 +174,22 @@ export const employeeDocuments = mysqlTable("employeeDocuments", {
   uploadedByUserId: int("uploadedByUserId").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("employeeDocuments_company_employee_idx").on(table.companyId, table.employeeUserId), index("employeeDocuments_company_contract_idx").on(table.companyId, table.contractId)]);
+
+export const employeeAssets = mysqlTable("employeeAssets", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  assetName: varchar("assetName", { length: 160 }).notNull(),
+  assetTag: varchar("assetTag", { length: 80 }).notNull(),
+  assetType: varchar("assetType", { length: 80 }),
+  status: mysqlEnum("status", ["available", "assigned", "returned", "retired"]).notNull().default("available"),
+  assignedEmployeeUserId: int("assignedEmployeeUserId").references(() => users.id, { onDelete: "set null" }),
+  assignedAt: timestamp("assignedAt"),
+  returnedAt: timestamp("returnedAt"),
+  notes: varchar("notes", { length: 500 }),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("employeeAssets_company_tag_unique").on(table.companyId, table.assetTag), index("employeeAssets_company_employee_idx").on(table.companyId, table.assignedEmployeeUserId), index("employeeAssets_company_status_idx").on(table.companyId, table.status)]);
 
 export const employeeOffboardings = mysqlTable("employeeOffboardings", {
   id: int("id").autoincrement().primaryKey(),
@@ -201,7 +244,7 @@ export const employeeLifecycleEvents = mysqlTable("employeeLifecycleEvents", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
   employeeUserId: int("employeeUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
-  eventType: mysqlEnum("eventType", ["joined", "profile_updated", "status_changed", "role_changed", "department_changed", "manager_changed", "offboarding_started", "offboarding_completed"]).notNull(),
+  eventType: mysqlEnum("eventType", ["joined", "profile_updated", "status_changed", "role_changed", "department_changed", "designation_changed", "manager_changed", "offboarding_started", "offboarding_completed"]).notNull(),
   effectiveAt: timestamp("effectiveAt").notNull(),
   note: varchar("note", { length: 500 }),
   createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),

@@ -71,6 +71,7 @@ const menuItems = [
   { icon: UserRoundSearch, label: "دليل الموظفين", path: "/employees", requiresDirectoryAccess: true },
   { icon: ClipboardCheck, label: "دورة حياة الموظف", path: "/employee-lifecycle", requiresLifecycleAccess: true },
   { icon: FileText, label: "العقود والوثائق", path: "/contracts", requiresContractsAccess: true },
+  { icon: BriefcaseBusiness, label: "العهد والأجهزة", path: "/assets", requiresContractsAccess: true },
   { icon: ListChecks, label: "إنهاء الخدمة", path: "/offboarding", requiresOffboardingAccess: true },
   { icon: Goal, label: "الأهداف والأداء", path: "/goals", requiresGoalsAccess: true },
   { icon: ChartNoAxesCombined, label: "لوحة المديرين", path: "/manager-dashboard", managerOnly: true },
