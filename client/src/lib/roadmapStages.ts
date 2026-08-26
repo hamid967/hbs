@@ -65,6 +65,22 @@ export const operationalBatches: OperationalBatch[] = [
   { title: "التدريب الداخلي", summary: "مسارات تعلم وتعيينات داخل الشركة.", checkpointId: "57729040", verified: true, testCount: 112, scope: "HR Core" },
 ];
 
+export type DirectExecutionStatus = "completed" | "partial" | "blocked";
+export type DirectExecutionStage = { number: number; title: string; status: DirectExecutionStatus; detail: string; dependency?: string; retryLabel?: string };
+
+export const directExecutionStages: DirectExecutionStage[] = [
+  { number: 1, title: "سجل التدقيق", status: "completed", detail: "أحداث موجزة للتوظيف والدوام والتدريب دون محتوى حساس." },
+  { number: 2, title: "تحويل المرشح", status: "blocked", detail: "لا يتم إنشاء ملف موظف تلقائياً من المرشح المقبول.", dependency: "اعتماد حقول النقل وسياسة المستندات.", retryLabel: "مراجعة جاهزية التحويل" },
+  { number: 3, title: "سياسات الدوام", status: "completed", detail: "ورديات وصفية وتعيينات داخل الشركة مع حصر الوصول." },
+  { number: 4, title: "صندوق العمل", status: "completed", detail: "موافقات وإشعارات وتعيينات تدريب خاصة بالحساب." },
+  { number: 5, title: "الإتاحة", status: "partial", detail: "تحسينات داخلية منجزة، مع بقاء تدقيق يدوي شامل." },
+  { number: 6, title: "الإطلاق والتحسين", status: "completed", detail: "لوحة دفعات محفوظة ونقاط استعادة ومؤشرات تحقق." },
+  { number: 7, title: "الرواتب", status: "blocked", detail: "لا توجد حسابات رواتب في النطاق الحالي.", dependency: "قرار مزود الرواتب والنطاق المحاسبي.", retryLabel: "مراجعة قرار المزوّد" },
+  { number: 8, title: "الوثائق والتوقيع", status: "blocked", detail: "لا تخزين مرفقات أو توقيع في هذه الدفعة.", dependency: "سياسة المرفقات والتوقيع المعتمدة.", retryLabel: "مراجعة سياسة الوثائق" },
+  { number: 9, title: "المعرفة الذكية", status: "blocked", detail: "لا تُستورد مصادر معرفة غير مصنفة.", dependency: "مصادر معرفة مصنفة ومراجعة.", retryLabel: "مراجعة مصادر المعرفة" },
+  { number: 10, title: "التكاملات وAPI", status: "blocked", detail: "لا اتصال خارجي أو أسرار ضمن التطبيق.", dependency: "نظام مستهدف وبيانات اعتماد رسمية.", retryLabel: "مراجعة جاهزية التكامل" },
+];
+
 export function summarizeRoadmap(stages: readonly RoadmapStage[] = roadmapStages) {
   return stages.reduce<Record<RoadmapStatus, number>>((summary, stage) => {
     summary[stage.status] += 1;
