@@ -120,6 +120,34 @@ export const employeeEmergencyContacts = mysqlTable("employeeEmergencyContacts",
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("employeeEmergencyContacts_company_employee_unique").on(table.companyId, table.employeeUserId), index("employeeEmergencyContacts_company_employee_idx").on(table.companyId, table.employeeUserId)]);
 
+export const employeeContracts = mysqlTable("employeeContracts", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  employeeUserId: int("employeeUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  contractReference: varchar("contractReference", { length: 80 }).notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  status: mysqlEnum("status", ["draft", "active", "ended", "archived"]).notNull().default("draft"),
+  startAt: timestamp("startAt"),
+  endAt: timestamp("endAt"),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("employeeContracts_company_reference_unique").on(table.companyId, table.contractReference), index("employeeContracts_company_employee_idx").on(table.companyId, table.employeeUserId)]);
+
+export const employeeDocuments = mysqlTable("employeeDocuments", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  employeeUserId: int("employeeUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  contractId: int("contractId").references(() => employeeContracts.id, { onDelete: "set null" }),
+  category: mysqlEnum("category", ["contract_attachment", "employee_document", "other"]).notNull().default("employee_document"),
+  fileName: varchar("fileName", { length: 240 }).notNull(),
+  mimeType: varchar("mimeType", { length: 100 }).notNull(),
+  sizeBytes: int("sizeBytes").notNull(),
+  storageKey: varchar("storageKey", { length: 500 }).notNull(),
+  uploadedByUserId: int("uploadedByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("employeeDocuments_company_employee_idx").on(table.companyId, table.employeeUserId), index("employeeDocuments_company_contract_idx").on(table.companyId, table.contractId)]);
+
 export const employeeLifecycleEvents = mysqlTable("employeeLifecycleEvents", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -335,6 +363,8 @@ export type CompanyPermissionTemplate = typeof companyPermissionTemplates.$infer
 export type Department = typeof departments.$inferSelect;
 export type EmployeeProfile = typeof employeeProfiles.$inferSelect;
 export type EmployeeEmergencyContact = typeof employeeEmergencyContacts.$inferSelect;
+export type EmployeeContract = typeof employeeContracts.$inferSelect;
+export type EmployeeDocument = typeof employeeDocuments.$inferSelect;
 export type EmployeeLifecycleEvent = typeof employeeLifecycleEvents.$inferSelect;
 export type JobOpening = typeof jobOpenings.$inferSelect;
 export type JobCandidate = typeof jobCandidates.$inferSelect;

@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeEmergencyContacts, employeeLifecycleEvents, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeContracts, employeeDocuments, employeeEmergencyContacts, employeeLifecycleEvents, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -223,6 +223,48 @@ export async function saveCompanyEmployeeEmergencyContact(input: { companyId: nu
   const saved = (await db.select().from(employeeEmergencyContacts).where(and(eq(employeeEmergencyContacts.companyId, input.companyId), eq(employeeEmergencyContacts.employeeUserId, input.employeeUserId))).limit(1))[0];
   if (!saved) throw new Error("تعذر حفظ جهة اتصال الطوارئ");
   return saved;
+}
+
+type EmployeeContractStatus = "draft" | "active" | "ended" | "archived";
+type EmployeeDocumentCategory = "contract_attachment" | "employee_document" | "other";
+
+export async function listCompanyEmployeeContracts(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(employeeContracts).where(eq(employeeContracts.companyId, companyId)).orderBy(desc(employeeContracts.updatedAt));
+}
+
+export async function listCompanyEmployeeDocuments(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(employeeDocuments).where(eq(employeeDocuments.companyId, companyId)).orderBy(desc(employeeDocuments.createdAt));
+}
+
+export async function createCompanyEmployeeContract(input: { companyId: number; employeeUserId: number; contractReference: string; title: string; status: EmployeeContractStatus; startAt?: Date; endAt?: Date; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية");
+  if (input.startAt && input.endAt && input.endAt < input.startAt) throw new Error("تاريخ نهاية العقد يجب أن يكون بعد تاريخ البداية");
+  await db.insert(employeeContracts).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, contractReference: input.contractReference, title: input.title, status: input.status, startAt: input.startAt ?? null, endAt: input.endAt ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(employeeContracts).where(and(eq(employeeContracts.companyId, input.companyId), eq(employeeContracts.contractReference, input.contractReference))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ سجل العقد");
+  return created;
+}
+
+export async function createCompanyEmployeeDocument(input: { companyId: number; employeeUserId: number; contractId?: number; category: EmployeeDocumentCategory; fileName: string; mimeType: string; sizeBytes: number; storageKey: string; uploadedByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية");
+  if (input.contractId) {
+    const contract = (await db.select().from(employeeContracts).where(and(eq(employeeContracts.id, input.contractId), eq(employeeContracts.companyId, input.companyId), eq(employeeContracts.employeeUserId, input.employeeUserId))).limit(1))[0];
+    if (!contract) throw new Error("العقد غير موجود ضمن ملف الموظف والشركة الحالية");
+  }
+  await db.insert(employeeDocuments).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, contractId: input.contractId ?? null, category: input.category, fileName: input.fileName, mimeType: input.mimeType, sizeBytes: input.sizeBytes, storageKey: input.storageKey, uploadedByUserId: input.uploadedByUserId });
+  const created = (await db.select().from(employeeDocuments).where(and(eq(employeeDocuments.companyId, input.companyId), eq(employeeDocuments.storageKey, input.storageKey))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ بيانات الوثيقة");
+  return created;
 }
 
 type OpeningStatus = "draft" | "open" | "closed";
