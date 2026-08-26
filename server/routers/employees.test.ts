@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const dbMocks = vi.hoisted(() => ({ assignCompanyTrainingProgram: vi.fn(), createCompanyDepartment: vi.fn(), createCompanyEmployeeLifecycleEvent: vi.fn(), createCompanyTrainingProgram: vi.fn(), listCompanyDepartments: vi.fn(), listCompanyEmployeeLifecycleEvents: vi.fn(), listCompanyEmployees: vi.fn(), listCompanyTrainingAssignments: vi.fn(), listCompanyTrainingPrograms: vi.fn(), recordAuditEvent: vi.fn(), saveEmployeeProfile: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ assignCompanyTrainingProgram: vi.fn(), createCompanyDepartment: vi.fn(), createCompanyEmployeeLifecycleEvent: vi.fn(), createCompanyTrainingProgram: vi.fn(), listCompanyDepartments: vi.fn(), listCompanyEmployeeEmergencyContacts: vi.fn(), listCompanyEmployeeLifecycleEvents: vi.fn(), listCompanyEmployees: vi.fn(), listCompanyTrainingAssignments: vi.fn(), listCompanyTrainingPrograms: vi.fn(), recordAuditEvent: vi.fn(), saveCompanyEmployeeEmergencyContact: vi.fn(), saveEmployeeProfile: vi.fn() }));
 vi.mock("../db", () => dbMocks);
 
 import { employeesRouter } from "./employees";
@@ -11,7 +11,7 @@ function context(role: "user" | "hr" | "manager" | "admin" = "hr"): TrpcContext 
 }
 
 describe("employees router", () => {
-  beforeEach(() => { vi.clearAllMocks(); dbMocks.listCompanyEmployees.mockResolvedValue([]); dbMocks.listCompanyDepartments.mockResolvedValue([]); dbMocks.listCompanyEmployeeLifecycleEvents.mockResolvedValue([]); dbMocks.listCompanyTrainingPrograms.mockResolvedValue([]); dbMocks.listCompanyTrainingAssignments.mockResolvedValue([]); dbMocks.recordAuditEvent.mockResolvedValue(undefined); dbMocks.createCompanyDepartment.mockResolvedValue({ id: 3, companyId: 1, name: "العمليات" }); dbMocks.createCompanyEmployeeLifecycleEvent.mockResolvedValue({ id: 5, companyId: 1, employeeUserId: 20 }); dbMocks.createCompanyTrainingProgram.mockResolvedValue({ id: 6, companyId: 1 }); dbMocks.assignCompanyTrainingProgram.mockResolvedValue({ id: 7, companyId: 1 }); dbMocks.saveEmployeeProfile.mockResolvedValue({ id: 4, companyId: 1, userId: 20 }); });
+  beforeEach(() => { vi.clearAllMocks(); dbMocks.listCompanyEmployees.mockResolvedValue([]); dbMocks.listCompanyDepartments.mockResolvedValue([]); dbMocks.listCompanyEmployeeEmergencyContacts.mockResolvedValue([]); dbMocks.listCompanyEmployeeLifecycleEvents.mockResolvedValue([]); dbMocks.listCompanyTrainingPrograms.mockResolvedValue([]); dbMocks.listCompanyTrainingAssignments.mockResolvedValue([]); dbMocks.recordAuditEvent.mockResolvedValue(undefined); dbMocks.createCompanyDepartment.mockResolvedValue({ id: 3, companyId: 1, name: "العمليات" }); dbMocks.createCompanyEmployeeLifecycleEvent.mockResolvedValue({ id: 5, companyId: 1, employeeUserId: 20 }); dbMocks.createCompanyTrainingProgram.mockResolvedValue({ id: 6, companyId: 1 }); dbMocks.assignCompanyTrainingProgram.mockResolvedValue({ id: 7, companyId: 1 }); dbMocks.saveCompanyEmployeeEmergencyContact.mockResolvedValue({ id: 9, companyId: 1, employeeUserId: 20 }); dbMocks.saveEmployeeProfile.mockResolvedValue({ id: 4, companyId: 1, userId: 20 }); });
 
   it("lists employees only within the current company for directory roles", async () => {
     const caller = employeesRouter.createCaller(context("manager"));
@@ -40,6 +40,22 @@ describe("employees router", () => {
     const caller = employeesRouter.createCaller(context("hr"));
     await caller.saveProfile({ userId: 20, region: "الرياض", employmentStatus: "active" });
     expect(dbMocks.saveEmployeeProfile).toHaveBeenCalledWith({ companyId: 1, userId: 20, region: "الرياض", employmentStatus: "active" });
+  });
+
+  it("saves work location within the active company context", async () => {
+    const caller = employeesRouter.createCaller(context("hr"));
+    await caller.saveProfile({ userId: 20, workLocation: "المقر الرئيسي", employmentStatus: "active" });
+    expect(dbMocks.saveEmployeeProfile).toHaveBeenCalledWith({ companyId: 1, userId: 20, workLocation: "المقر الرئيسي", employmentStatus: "active" });
+  });
+
+  it("limits emergency contacts to HR and admins while recording a generic profile event", async () => {
+    const caller = employeesRouter.createCaller(context("hr"));
+    await expect(caller.emergencyContacts()).resolves.toEqual([]);
+    await caller.saveEmergencyContact({ employeeUserId: 20, contactName: "سارة أحمد", relationship: "قريبة", phone: "0500000000" });
+    expect(dbMocks.listCompanyEmployeeEmergencyContacts).toHaveBeenCalledWith(1);
+    expect(dbMocks.saveCompanyEmployeeEmergencyContact).toHaveBeenCalledWith({ companyId: 1, createdByUserId: 8, employeeUserId: 20, contactName: "سارة أحمد", relationship: "قريبة", phone: "0500000000" });
+    expect(dbMocks.createCompanyEmployeeLifecycleEvent).toHaveBeenCalledWith(expect.objectContaining({ companyId: 1, employeeUserId: 20, eventType: "profile_updated", note: "تحديث بيانات ملف الموظف" }));
+    await expect(employeesRouter.createCaller(context("manager")).emergencyContacts()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("loads and records lifecycle events within the HR company context", async () => {

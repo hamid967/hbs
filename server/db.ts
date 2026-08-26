@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeLifecycleEvents, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeEmergencyContacts, employeeLifecycleEvents, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, jobCandidates, jobInterviews, jobOffers, jobOpenings, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -157,7 +157,7 @@ export async function listCompanyEmployees(companyId: number) {
   return rows.map(row => ({ ...row.user, profile: row.profile, department: row.department ? { id: row.department.id, name: row.department.name, code: row.department.code } : null }));
 }
 
-export async function saveEmployeeProfile(input: { companyId: number; userId: number; employeeNumber?: string; jobTitle?: string; departmentId?: number; region?: string; managerUserId?: number; employmentStatus: "active" | "on_leave" | "inactive"; joinedAt?: Date }) {
+export async function saveEmployeeProfile(input: { companyId: number; userId: number; employeeNumber?: string; jobTitle?: string; departmentId?: number; region?: string; workLocation?: string; managerUserId?: number; employmentStatus: "active" | "on_leave" | "inactive"; joinedAt?: Date }) {
   const db = await getDb();
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
   const user = (await db.select().from(users).where(and(eq(users.id, input.userId), eq(users.companyId, input.companyId))).limit(1))[0];
@@ -170,12 +170,12 @@ export async function saveEmployeeProfile(input: { companyId: number; userId: nu
     const manager = (await db.select().from(users).where(and(eq(users.id, input.managerUserId), eq(users.companyId, input.companyId))).limit(1))[0];
     if (!manager) throw new Error("المدير غير موجود ضمن الشركة الحالية");
   }
-  const values = { companyId: input.companyId, userId: input.userId, employeeNumber: input.employeeNumber ?? null, jobTitle: input.jobTitle ?? null, departmentId: input.departmentId ?? null, region: input.region ?? null, managerUserId: input.managerUserId ?? null, employmentStatus: input.employmentStatus, joinedAt: input.joinedAt ?? null };
-  await db.insert(employeeProfiles).values(values).onDuplicateKeyUpdate({ set: { employeeNumber: values.employeeNumber, jobTitle: values.jobTitle, departmentId: values.departmentId, region: values.region, managerUserId: values.managerUserId, employmentStatus: values.employmentStatus, joinedAt: values.joinedAt } });
+  const values = { companyId: input.companyId, userId: input.userId, employeeNumber: input.employeeNumber ?? null, jobTitle: input.jobTitle ?? null, departmentId: input.departmentId ?? null, region: input.region ?? null, workLocation: input.workLocation ?? null, managerUserId: input.managerUserId ?? null, employmentStatus: input.employmentStatus, joinedAt: input.joinedAt ?? null };
+  await db.insert(employeeProfiles).values(values).onDuplicateKeyUpdate({ set: { employeeNumber: values.employeeNumber, jobTitle: values.jobTitle, departmentId: values.departmentId, region: values.region, workLocation: values.workLocation, managerUserId: values.managerUserId, employmentStatus: values.employmentStatus, joinedAt: values.joinedAt } });
   return (await db.select().from(employeeProfiles).where(eq(employeeProfiles.userId, input.userId)).limit(1))[0];
 }
 
-type EmployeeLifecycleEventType = "joined" | "status_changed" | "role_changed" | "department_changed" | "manager_changed" | "offboarding_started" | "offboarding_completed";
+type EmployeeLifecycleEventType = "joined" | "profile_updated" | "status_changed" | "role_changed" | "department_changed" | "manager_changed" | "offboarding_started" | "offboarding_completed";
 
 export async function listCompanyEmployeeLifecycleEvents(companyId: number) {
   const db = await getDb();
@@ -192,6 +192,24 @@ export async function createCompanyEmployeeLifecycleEvent(input: { companyId: nu
   const created = (await db.select().from(employeeLifecycleEvents).where(and(eq(employeeLifecycleEvents.companyId, input.companyId), eq(employeeLifecycleEvents.employeeUserId, input.employeeUserId), eq(employeeLifecycleEvents.eventType, input.eventType), eq(employeeLifecycleEvents.effectiveAt, input.effectiveAt))).orderBy(desc(employeeLifecycleEvents.id)).limit(1))[0];
   if (!created) throw new Error("تعذر حفظ حدث دورة الحياة");
   return created;
+}
+
+export async function listCompanyEmployeeEmergencyContacts(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(employeeEmergencyContacts).where(eq(employeeEmergencyContacts.companyId, companyId)).orderBy(desc(employeeEmergencyContacts.updatedAt));
+}
+
+export async function saveCompanyEmployeeEmergencyContact(input: { companyId: number; employeeUserId: number; contactName: string; relationship: string; phone: string; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية");
+  const values = { companyId: input.companyId, employeeUserId: input.employeeUserId, contactName: input.contactName, relationship: input.relationship, phone: input.phone, createdByUserId: input.createdByUserId };
+  await db.insert(employeeEmergencyContacts).values(values).onDuplicateKeyUpdate({ set: { contactName: values.contactName, relationship: values.relationship, phone: values.phone, createdByUserId: values.createdByUserId } });
+  const saved = (await db.select().from(employeeEmergencyContacts).where(and(eq(employeeEmergencyContacts.companyId, input.companyId), eq(employeeEmergencyContacts.employeeUserId, input.employeeUserId))).limit(1))[0];
+  if (!saved) throw new Error("تعذر حفظ جهة اتصال الطوارئ");
+  return saved;
 }
 
 type OpeningStatus = "draft" | "open" | "closed";
