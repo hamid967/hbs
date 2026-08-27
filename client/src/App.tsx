@@ -4,6 +4,7 @@ import { lazy, Suspense } from "react";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { useI18n } from "./i18n";
 
 const Home = lazy(() => import("./pages/Home"));
 const AssistantIntake = lazy(() => import("./pages/AssistantIntake"));
@@ -46,7 +47,7 @@ const OAuthAcceptanceReadiness = lazy(() => import("./pages/OAuthAcceptanceReadi
 const InternalMessaging = lazy(() => import("./pages/InternalMessaging"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-function RouteFallback() { return <main dir="rtl" className="flex min-h-screen items-center justify-center bg-[#f8faf8] px-6" role="status" aria-live="polite"><div className="text-center"><span className="mx-auto block size-10 animate-spin rounded-full border-4 border-[#d7e8da] border-t-[#256645]" /><p className="mt-4 text-sm font-bold text-[#315440]">جارٍ تحميل الصفحة…</p></div></main>; }
+function RouteFallback() { const { direction, t } = useI18n(); return <main dir={direction} className="flex min-h-screen items-center justify-center bg-[#f8faf8] px-6" role="status" aria-live="polite"><div className="text-center"><span className="mx-auto block size-10 animate-spin rounded-full border-4 border-[#d7e8da] border-t-[#256645]" /><p className="mt-4 text-sm font-bold text-[#315440]">{t("common.loading")}</p></div></main>; }
 
 function Router() {
   return <Suspense fallback={<RouteFallback />}><Switch>
