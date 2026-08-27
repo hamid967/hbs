@@ -15,7 +15,12 @@ describe("audit router", () => {
 
   it("lists audit events only in the administrator company", async () => {
     await expect(auditRouter.createCaller(context()).list({ limit: 50 })).resolves.toEqual([]);
-    expect(dbMocks.listCompanyAuditEvents).toHaveBeenCalledWith(12, 50);
+    expect(dbMocks.listCompanyAuditEvents).toHaveBeenCalledWith(12, { limit: 50 });
+  });
+
+  it("passes a validated category filter to the company-scoped data helper", async () => {
+    await expect(auditRouter.createCaller(context()).list({ category: "document" })).resolves.toEqual([]);
+    expect(dbMocks.listCompanyAuditEvents).toHaveBeenCalledWith(12, { category: "document" });
   });
 
   it("rejects audit access for non-administrator roles", async () => {
