@@ -153,6 +153,10 @@ function vitePluginManusDebugCollector(): Plugin {
 
 const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
 
+// Ensure Radix and the app resolve hooks from the same React runtime in Vite.
+export const reactRuntimeDedupe = ["react", "react-dom"] as const;
+export const reactPrebundleDependencies = ["react", "react-dom", "@radix-ui/react-dropdown-menu"] as const;
+
 function readBuildRevision() {
   try {
     return execFileSync("git", ["rev-parse", "--short=12", "HEAD"], { cwd: PROJECT_ROOT, encoding: "utf-8" }).trim();
@@ -174,6 +178,7 @@ export default defineConfig({
     __HBS_RELEASE_INFO__: JSON.stringify(releaseInfo),
   },
   resolve: {
+    dedupe: [...reactRuntimeDedupe],
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),
@@ -183,6 +188,9 @@ export default defineConfig({
   envDir: path.resolve(import.meta.dirname),
   root: path.resolve(import.meta.dirname, "client"),
   publicDir: path.resolve(import.meta.dirname, "client", "public"),
+  optimizeDeps: {
+    include: [...reactPrebundleDependencies],
+  },
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
