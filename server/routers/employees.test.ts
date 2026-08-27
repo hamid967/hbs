@@ -26,14 +26,17 @@ describe("employees router", () => {
 
   it("limits a manager directory result to the manager and direct reports", async () => {
     dbMocks.listCompanyEmployees.mockResolvedValue([
-      { id: 8, profile: null },
-      { id: 20, profile: { managerUserId: 8 } },
-      { id: 21, profile: { managerUserId: 30 } },
+      { id: 8, name: "المدير", email: "manager@example.com", openId: "manager", role: "manager", profile: null, department: null, designation: null },
+      { id: 20, name: "موظف مباشر", email: "employee@example.com", openId: "employee", role: "user", profile: { employeeNumber: "EMP-20", jobTitle: "منسق", designationId: null, departmentId: null, region: null, workLocation: null, managerUserId: 8, employmentStatus: "active", joinedAt: new Date("2025-01-01T00:00:00Z") }, department: null, designation: null },
+      { id: 21, name: "موظف خارج النطاق", email: "other@example.com", openId: "other", role: "user", profile: { employeeNumber: "EMP-21", jobTitle: "منسق", designationId: null, departmentId: null, region: null, workLocation: null, managerUserId: 30, employmentStatus: "active", joinedAt: new Date("2025-01-01T00:00:00Z") }, department: null, designation: null },
     ]);
 
     const result = await employeesRouter.createCaller(context("manager")).list();
 
     expect(result.map(employee => employee.id)).toEqual([8, 20]);
+    expect(result[1]).not.toHaveProperty("email");
+    expect(result[1]).not.toHaveProperty("openId");
+    expect(result[1]?.profile).toMatchObject({ employeeNumber: null, joinedAt: null, jobTitle: "منسق" });
   });
 
   it("creates departments within the directory manager company", async () => {
