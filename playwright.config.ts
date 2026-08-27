@@ -23,6 +23,8 @@ export default defineConfig({
     env: {
       VITE_OAUTH_PORTAL_URL: "https://oauth.test",
       VITE_APP_ID: "e2e-test-app",
+      VITE_ANALYTICS_ENDPOINT: "",
+      VITE_ANALYTICS_WEBSITE_ID: "",
     },
   },
   projects: [
