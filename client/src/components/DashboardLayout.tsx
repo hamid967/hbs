@@ -106,16 +106,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!user) {
     return (
-      <div dir="rtl" className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f8f8f5] px-5 text-[#17211c]">
-        <div className="absolute -right-28 -top-32 size-[28rem] rounded-full bg-[#dbe8d7] blur-3xl" />
-        <div className="absolute -bottom-40 -left-24 size-[30rem] rounded-full bg-[#f1dec4] opacity-80 blur-3xl" />
-        <section className="relative w-full max-w-md rounded-[2rem] border border-white/70 bg-white/85 p-8 text-center shadow-[0_24px_80px_rgba(28,48,38,0.12)] backdrop-blur sm:p-10">
-          <div className="mx-auto mb-7 flex size-16 items-center justify-center rounded-3xl bg-[#1f5b45] text-xl font-bold text-white shadow-lg shadow-[#1f5b45]/25">هـ</div>
-          <p className="mb-3 text-xs font-semibold tracking-[0.2em] text-[#638071]">HR HBS</p>
-          <h1 className="text-3xl font-bold tracking-tight text-[#173e30]">حلول الغد</h1>
-          <p className="mt-4 text-sm leading-7 text-[#64726a]">منصة داخلية منظمة لتقديم ومتابعة طلبات الموارد البشرية والعلاقات الحكومية.</p>
-          <Button onClick={() => startLogin()} size="lg" className="mt-8 h-12 w-full rounded-2xl bg-[#1f5b45] text-base hover:bg-[#174735]">تسجيل الدخول للمنصة</Button>
-          <p className="mt-5 text-xs leading-6 text-[#89938d]">هذه المنصة مخصصة للموظفين والفرق المخولة فقط. بعد أول دخول موحد، يراجع المسؤول طلب التفعيل قبل إتاحة الخدمات.</p>
+      <div dir="rtl" className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#071a1a] px-5 text-[#071a1a]">
+        <div className="premium-grid absolute inset-0 opacity-70" />
+        <div className="absolute -right-28 -top-32 size-[28rem] rounded-full bg-[#18b982]/15 blur-3xl" />
+        <div className="absolute -bottom-40 -left-24 size-[30rem] rounded-full bg-[#c8a66a]/10 blur-3xl" />
+        <section className="relative w-full max-w-md rounded-[2rem] border border-white/20 bg-[#f4f0e8]/95 p-8 text-center shadow-[0_24px_80px_rgba(0,0,0,.28)] backdrop-blur sm:p-10">
+          <div className="mx-auto mb-7 flex size-16 items-center justify-center rounded-3xl bg-[#18b982] text-xl font-bold text-[#071a1a] shadow-lg shadow-[#18b982]/20">هـ</div>
+          <p className="mb-3 text-xs font-semibold tracking-[0.2em] text-[#637a77]">HR HBS</p>
+          <h1 className="premium-wordmark text-3xl font-bold tracking-tight text-[#092a28]">حلول الغد</h1>
+          <p className="mt-4 text-sm leading-7 text-[#526b69]">منصة داخلية منظمة لتقديم ومتابعة طلبات الموارد البشرية والعلاقات الحكومية.</p>
+          <Button onClick={() => startLogin()} size="lg" className="pressable mt-8 h-12 w-full rounded-2xl bg-[#18b982] text-base font-bold text-[#06201a] hover:bg-[#4bd6aa]">تسجيل الدخول للمنصة</Button>
+          <p className="mt-5 text-xs leading-6 text-[#71817f]">هذه المنصة مخصصة للموظفين والفرق المخولة فقط. بعد أول دخول موحد، يراجع المسؤول طلب التفعيل قبل إتاحة الخدمات.</p>
           <div className="mt-5 flex justify-center"><BuildInfoStamp compact /></div>
         </section>
       </div>
@@ -125,7 +126,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (user.accountStatus && user.accountStatus !== "active") {
     const isRejected = user.accountStatus === "rejected";
     const isSuspended = user.accountStatus === "suspended";
-    return <div dir="rtl" className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f8f8f5] px-5 text-[#17211c]"><div className="absolute -right-28 -top-32 size-[28rem] rounded-full bg-[#dbe8d7] blur-3xl" /><section className="relative w-full max-w-md rounded-[2rem] border border-white/70 bg-white/90 p-8 text-center shadow-[0_24px_80px_rgba(28,48,38,.12)]"><span className={`mx-auto flex size-16 items-center justify-center rounded-3xl ${isRejected || isSuspended ? "bg-[#fdeceb] text-[#aa514b]" : "bg-[#e6f2e8] text-[#347b53]"}`}><Clock3 className="size-7" /></span><p className="mt-7 text-xs font-bold tracking-[.18em] text-[#658171]">HR HBS</p><h1 className="mt-3 text-2xl font-bold text-[#173e30]">{isRejected ? "تعذر تفعيل الحساب" : isSuspended ? "الحساب موقوف مؤقتاً" : "الحساب بانتظار التفعيل"}</h1><p className="mt-4 text-sm leading-7 text-[#64726a]">{isRejected || isSuspended ? "يرجى التواصل مع مسؤول المنصة لمعرفة الخطوة التالية." : "تم تسجيل طلب الانضمام بعد دخولك الموحد. سيصلك الوصول بعد مراجعة المسؤول وتحديد الدور المناسب."}</p><Button onClick={logout} variant="outline" className="mt-7 rounded-xl border-[#d3e0d5] text-[#396f51]">تسجيل الخروج</Button></section></div>;
+    return <div dir="rtl" className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#071a1a] px-5 text-[#071a1a]"><div className="premium-grid absolute inset-0 opacity-70" /><div className="absolute -right-28 -top-32 size-[28rem] rounded-full bg-[#18b982]/15 blur-3xl" /><section className="relative w-full max-w-md rounded-[2rem] border border-white/20 bg-[#f4f0e8]/95 p-8 text-center shadow-[0_24px_80px_rgba(0,0,0,.28)]"><span className={`mx-auto flex size-16 items-center justify-center rounded-3xl ${isRejected || isSuspended ? "bg-[#fdeceb] text-[#aa514b]" : "bg-[#dff5eb] text-[#087a5c]"}`}><Clock3 className="size-7" /></span><p className="mt-7 text-xs font-bold tracking-[.18em] text-[#637a77]">HR HBS</p><h1 className="premium-wordmark mt-3 text-2xl font-bold text-[#092a28]">{isRejected ? "تعذر تفعيل الحساب" : isSuspended ? "الحساب موقوف مؤقتاً" : "الحساب بانتظار التفعيل"}</h1><p className="mt-4 text-sm leading-7 text-[#526b69]">{isRejected || isSuspended ? "يرجى التواصل مع مسؤول المنصة لمعرفة الخطوة التالية." : "تم تسجيل طلب الانضمام بعد دخولك الموحد. سيصلك الوصول بعد مراجعة المسؤول وتحديد الدور المناسب."}</p><Button onClick={logout} variant="outline" className="pressable mt-7 rounded-xl border-[#b8c9c2] text-[#075c47]">تسجيل الخروج</Button></section></div>;
   }
 
   const hasOperationAccess = user.role === "admin" || Boolean(modulePermissions?.some(permission => permission.canView));
@@ -141,20 +142,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const visibleMenuItems = menuItems.filter(item => (!item.adminOnly || user.role === "admin") && (!item.requiresOperationAccess || hasOperationAccess) && (!item.requiresDirectoryAccess || canManageDirectory) && (!item.requiresLifecycleAccess || canManageLifecycle) && (!item.requiresContractsAccess || canManageContracts) && (!item.requiresOffboardingAccess || canManageOffboarding) && (!item.requiresGoalsAccess || canManageGoals) && (!item.managerOnly || isManager) && (!item.requiresRecruitmentAccess || canManageRecruitment) && (!item.requiresSchedulingAccess || canManageSchedules) && (!item.requiresApprovalAccess || canApprove));
 
   return (
-    <SidebarProvider dir="rtl" className="bg-[#f8f8f5] text-[#17211c]">
-      <Sidebar side="right" collapsible="icon" className="border-l border-[#dbe3dc] bg-[#173e30] text-white">
+    <SidebarProvider dir="rtl" className="bg-[#f4f0e8] text-[#071a1a]">
+      <Sidebar side="right" collapsible="icon" className="border-l border-white/10 bg-[#071a1a] text-white">
         <SidebarHeader className="h-[88px] justify-center px-4">
           <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#e5c59a] text-base font-bold text-[#173e30]">هـ</div>
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#18b982] text-base font-bold text-[#071a1a]">هـ</div>
             <div className="min-w-0 group-data-[collapsible=icon]:hidden">
               <p className="text-base font-bold tracking-tight">حلول الغد</p>
-              <p className="mt-0.5 text-[10px] font-medium tracking-[0.18em] text-[#b5cbbd]">HR HBS</p>
+              <p className="mt-0.5 text-[10px] font-medium tracking-[0.18em] text-[#9bc3bd]">HR HBS</p>
             </div>
           </div>
         </SidebarHeader>
 
         <SidebarContent className="px-3 pt-6">
-          <p className="px-3 pb-3 text-[10px] font-semibold tracking-[0.16em] text-[#9ab4a5] group-data-[collapsible=icon]:hidden">مساحة العمل</p>
+          <p className="px-3 pb-3 text-[10px] font-semibold tracking-[0.16em] text-[#9bc3bd] group-data-[collapsible=icon]:hidden">مساحة العمل</p>
           <SidebarMenu className="gap-2">
             {visibleMenuItems.map(item => <NavigationItem key={item.path} {...item} />)}
           </SidebarMenu>
@@ -163,17 +164,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <SidebarFooter className="p-3">
           <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 p-3 group-data-[collapsible=icon]:hidden">
             <p className="text-xs font-semibold">هل تحتاج إلى مساعدة؟</p>
-            <p className="mt-1 text-[11px] leading-5 text-[#b5cbbd]">تواصل مع فريق الموارد البشرية عند الحاجة.</p>
+            <p className="mt-1 text-[11px] leading-5 text-[#9bc3bd]">تواصل مع فريق الموارد البشرية عند الحاجة.</p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex w-full items-center gap-3 rounded-2xl p-2 text-right transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e5c59a] group-data-[collapsible=icon]:justify-center">
+              <button className="pressable flex w-full items-center gap-3 rounded-2xl p-2 text-right hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#c8a66a] group-data-[collapsible=icon]:justify-center">
                 <Avatar className="size-9 border border-white/15">
-                  <AvatarFallback className="bg-[#2a5a46] text-xs font-bold text-[#f7ebd9]">{user.name?.charAt(0).toUpperCase() || "م"}</AvatarFallback>
+                  <AvatarFallback className="bg-[#0c4a42] text-xs font-bold text-[#f4f0e8]">{user.name?.charAt(0).toUpperCase() || "م"}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
                   <p className="truncate text-sm font-semibold">{user.name || "موظف حلول الغد"}</p>
-                  <p className="mt-0.5 truncate text-[11px] text-[#b5cbbd]">{user.email || "حساب موظف"}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-[#9bc3bd]">{user.email || "حساب موظف"}</p>
                 </div>
               </button>
             </DropdownMenuTrigger>
@@ -188,7 +189,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset className="min-h-svh bg-[#f8f8f5]">
+      <SidebarInset className="min-h-svh bg-[#f4f0e8]">
         <TopBar />
         <main className="flex-1 overflow-x-hidden px-4 py-5 md:px-8 md:py-8">{children}</main>
       </SidebarInset>
@@ -205,7 +206,7 @@ function NavigationItem({ icon: Icon, label, path }: (typeof menuItems)[number])
         isActive={isActive}
         onClick={() => setLocation(path)}
         tooltip={label}
-        className="h-11 rounded-xl px-3 text-sm text-[#d8e7dc] hover:bg-white/10 hover:text-white data-[active=true]:bg-[#e5c59a] data-[active=true]:font-bold data-[active=true]:text-[#173e30]"
+        className="pressable h-11 rounded-xl px-3 text-sm text-[#c8dbd7] hover:bg-white/10 hover:text-white data-[active=true]:bg-[#18b982] data-[active=true]:font-bold data-[active=true]:text-[#06201a]"
       >
         <Icon className="size-[18px]" />
         <span>{label}</span>
@@ -220,16 +221,16 @@ function TopBar() {
   const item = menuItems.find(entry => entry.path === location) ?? menuItems.find(entry => location.startsWith(entry.path));
 
   return (
-    <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-[#e4e9e3] bg-[#f8f8f5]/90 px-4 backdrop-blur md:px-8">
+    <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-[#d9e2dc] bg-[#f4f0e8]/90 px-4 backdrop-blur md:px-8">
       <div className="flex items-center gap-3">
-        {isMobile ? <SidebarTrigger className="size-9 rounded-xl bg-white shadow-sm" /> : <PanelRight className="size-5 text-[#789083]" />}
+        {isMobile ? <SidebarTrigger className="size-9 rounded-xl bg-white shadow-sm" /> : <PanelRight className="size-5 text-[#63807b]" />}
         <div>
-          <p className="text-sm font-bold text-[#173e30]">{item?.label || "حلول الغد"}</p>
-          <p className="hidden text-[11px] text-[#7c8981] sm:block">إدارة سلسة لطلباتك الداخلية</p>
+          <p className="premium-wordmark text-sm font-bold text-[#092a28]">{item?.label || "حلول الغد"}</p>
+          <p className="hidden text-[11px] text-[#637a77] sm:block">إدارة منضبطة لطلباتك الداخلية</p>
         </div>
       </div>
-      <div className="flex items-center gap-2 rounded-full border border-[#dce5dd] bg-white px-3 py-1.5 text-xs font-medium text-[#567060]">
-        <span className="size-2 rounded-full bg-[#3c9b6a]" />
+      <div className="flex items-center gap-2 rounded-full border border-[#cbd9d1] bg-white/75 px-3 py-1.5 text-xs font-medium text-[#526b69]">
+        <span className="size-2 rounded-full bg-[#18b982]" />
         المنصة متاحة
       </div>
     </header>

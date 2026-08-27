@@ -43,156 +43,126 @@
 }
 
 :root {
-  --primary: oklch(0.39 0.09 151);
-  --primary-foreground: oklch(0.98 0.01 145);
-  --sidebar-primary: oklch(0.39 0.09 151);
-  --sidebar-primary-foreground: oklch(0.98 0.01 145);
-  --chart-1: oklch(0.68 0.11 151);
-  --chart-2: oklch(0.56 0.1 151);
-  --chart-3: oklch(0.39 0.09 151);
-  --chart-4: oklch(0.71 0.09 78);
-  --chart-5: oklch(0.62 0.12 45);
-  --radius: 0.9rem;
-  --background: oklch(0.982 0.008 130);
-  --foreground: oklch(0.27 0.035 152);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.27 0.035 152);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.27 0.035 152);
-  --secondary: oklch(0.95 0.018 140);
-  --secondary-foreground: oklch(0.35 0.05 152);
-  --muted: oklch(0.957 0.012 137);
-  --muted-foreground: oklch(0.54 0.025 148);
-  --accent: oklch(0.94 0.025 140);
-  --accent-foreground: oklch(0.3 0.055 151);
+  --radius: 1rem;
+  --background: oklch(0.975 0.008 95);
+  --foreground: oklch(0.205 0.027 174);
+  --card: oklch(0.995 0.004 100);
+  --card-foreground: oklch(0.205 0.027 174);
+  --popover: oklch(0.995 0.004 100);
+  --popover-foreground: oklch(0.205 0.027 174);
+  --primary: oklch(0.62 0.135 162);
+  --primary-foreground: oklch(0.99 0.008 160);
+  --secondary: oklch(0.938 0.017 164);
+  --secondary-foreground: oklch(0.27 0.044 168);
+  --muted: oklch(0.947 0.009 154);
+  --muted-foreground: oklch(0.49 0.027 168);
+  --accent: oklch(0.86 0.075 85);
+  --accent-foreground: oklch(0.31 0.05 82);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.91 0.015 140);
-  --input: oklch(0.91 0.015 140);
-  --ring: oklch(0.47 0.1 151);
-  --sidebar: oklch(0.27 0.06 152);
-  --sidebar-foreground: oklch(0.96 0.015 145);
-  --sidebar-accent: oklch(0.34 0.07 151);
-  --sidebar-accent-foreground: oklch(0.98 0.01 145);
-  --sidebar-border: oklch(0.35 0.055 152);
-  --sidebar-ring: oklch(0.71 0.09 78);
+  --border: oklch(0.89 0.013 161);
+  --input: oklch(0.89 0.013 161);
+  --ring: oklch(0.62 0.135 162);
+  --chart-1: oklch(0.62 0.135 162);
+  --chart-2: oklch(0.71 0.085 84);
+  --chart-3: oklch(0.42 0.078 173);
+  --chart-4: oklch(0.77 0.07 146);
+  --chart-5: oklch(0.58 0.11 44);
+  --sidebar: oklch(0.175 0.034 177);
+  --sidebar-foreground: oklch(0.95 0.015 101);
+  --sidebar-primary: oklch(0.68 0.145 162);
+  --sidebar-primary-foreground: oklch(0.18 0.034 177);
+  --sidebar-accent: oklch(0.25 0.052 174);
+  --sidebar-accent-foreground: oklch(0.97 0.012 105);
+  --sidebar-border: oklch(0.39 0.046 171);
+  --sidebar-ring: oklch(0.71 0.085 84);
+  --premium-ink: #071a1a;
+  --premium-deep: #0c2d2d;
+  --premium-ivory: #f4f0e8;
+  --premium-emerald: #18b982;
+  --premium-gold: #c8a66a;
+  --premium-mist: #b7d1d4;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 .dark {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.85 0.005 65);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.85 0.005 65);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.85 0.005 65);
-  --secondary: oklch(0.24 0.006 286.033);
-  --secondary-foreground: oklch(0.7 0.005 65);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground:  oklch(0.92 0.005 65);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.85 0.005 65);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground:  oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.488 0.243 264.376);
+  --background: oklch(0.175 0.034 177);
+  --foreground: oklch(0.95 0.015 101);
+  --card: oklch(0.215 0.038 175);
+  --card-foreground: oklch(0.95 0.015 101);
+  --popover: oklch(0.215 0.038 175);
+  --popover-foreground: oklch(0.95 0.015 101);
+  --primary: oklch(0.7 0.14 162);
+  --primary-foreground: oklch(0.175 0.034 177);
+  --secondary: oklch(0.28 0.047 174);
+  --secondary-foreground: oklch(0.9 0.025 160);
+  --muted: oklch(0.28 0.035 174);
+  --muted-foreground: oklch(0.71 0.022 162);
+  --accent: oklch(0.72 0.085 84);
+  --accent-foreground: oklch(0.24 0.04 174);
+  --border: oklch(0.38 0.042 174);
+  --input: oklch(0.38 0.042 174);
+  --ring: oklch(0.7 0.14 162);
+  --chart-1: oklch(0.7 0.14 162);
+  --chart-2: oklch(0.76 0.09 84);
+  --chart-3: oklch(0.64 0.09 199);
+  --chart-4: oklch(0.73 0.075 146);
+  --chart-5: oklch(0.68 0.12 44);
+  --sidebar: oklch(0.175 0.034 177);
+  --sidebar-foreground: oklch(0.95 0.015 101);
+  --sidebar-primary: oklch(0.7 0.14 162);
+  --sidebar-primary-foreground: oklch(0.175 0.034 177);
+  --sidebar-accent: oklch(0.25 0.052 174);
+  --sidebar-accent-foreground: oklch(0.97 0.012 105);
+  --sidebar-border: oklch(0.39 0.046 171);
+  --sidebar-ring: oklch(0.76 0.09 84);
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
+  * { @apply border-border outline-ring/50; }
   body {
     @apply bg-background text-foreground;
-    font-family: "Tajawal", sans-serif;
+    font-family: "IBM Plex Sans Arabic", "Tajawal", system-ui, sans-serif;
   }
-  :focus-visible {
-    outline: 3px solid var(--ring);
-    outline-offset: 3px;
-  }
-  button:not(:disabled),
-  [role="button"]:not([aria-disabled="true"]),
-  [type="button"]:not(:disabled),
-  [type="submit"]:not(:disabled),
-  [type="reset"]:not(:disabled),
-  a[href],
-  select:not(:disabled),
-  input[type="checkbox"]:not(:disabled),
-  input[type="radio"]:not(:disabled) {
-    @apply cursor-pointer;
-  }
+  :focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
+  button:not(:disabled), [role="button"]:not([aria-disabled="true"]), [type="button"]:not(:disabled), [type="submit"]:not(:disabled), [type="reset"]:not(:disabled), a[href], select:not(:disabled), input[type="checkbox"]:not(:disabled), input[type="radio"]:not(:disabled) { @apply cursor-pointer; }
 }
 
 @layer components {
-  .hero-depth { perspective: 1100px; }
-  .hero-console { transform: rotateY(-8deg) rotateX(4deg); animation: hero-float 5s ease-in-out infinite; }
-  .hero-orbit { animation: orbit-drift 12s linear infinite; }
-  .hero-orbit-reverse { animation: orbit-drift 10s linear infinite reverse; }
-  .intro-orbit { animation: intro-arrive 1.5s cubic-bezier(.23,1,.32,1) both; }
+  .premium-grid {
+    background-image: linear-gradient(rgba(183, 209, 212, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(183, 209, 212, 0.08) 1px, transparent 1px);
+    background-size: 46px 46px;
+  }
+  .premium-glass {
+    border: 1px solid rgba(244, 240, 232, 0.15);
+    background: linear-gradient(135deg, rgba(244, 240, 232, 0.13), rgba(244, 240, 232, 0.035));
+    backdrop-filter: blur(18px);
+  }
+  .premium-hairline { background: linear-gradient(90deg, transparent, rgba(200, 166, 106, 0.76), transparent); }
+  .premium-shine { background: radial-gradient(circle at 76% 18%, rgba(24, 185, 130, 0.18), transparent 28%), radial-gradient(circle at 12% 76%, rgba(200, 166, 106, 0.12), transparent 26%); }
+  .premium-wordmark { letter-spacing: -0.035em; }
+  .pressable { transition: transform 160ms var(--ease-out), box-shadow 180ms var(--ease-out), background-color 180ms var(--ease-out), border-color 180ms var(--ease-out); }
+  .pressable:active { transform: scale(0.97); }
 
-  @keyframes hero-float { 0%,100% { transform: rotateY(-8deg) rotateX(4deg) translateY(0); } 50% { transform: rotateY(-5deg) rotateX(7deg) translateY(-12px); } }
-  @keyframes orbit-drift { from { transform: rotateZ(0deg) translateX(12px); } to { transform: rotateZ(360deg) translateX(12px); } }
-  @keyframes intro-arrive { from { opacity: 0; transform: scale(.92) rotateY(-24deg); } to { opacity: 1; transform: scale(1) rotateY(0); } }
+  @media (prefers-reduced-motion: no-preference) {
+    .intro-emerge { animation: intro-emerge 560ms var(--ease-out) both; }
+    .intro-emerge-delay { animation: intro-emerge 620ms var(--ease-out) 90ms both; }
+    .intro-emerge-late { animation: intro-emerge 680ms var(--ease-out) 160ms both; }
+    .float-soft { animation: float-soft 7s var(--ease-in-out) infinite; }
+    .signal-breathe { animation: signal-breathe 2.8s var(--ease-in-out) infinite; }
+  }
+
+  @keyframes intro-emerge { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes float-soft { 0%, 100% { transform: translateY(0) rotate(0.001deg); } 50% { transform: translateY(-8px) rotate(0.001deg); } }
+  @keyframes signal-breathe { 0%, 100% { opacity: 0.5; transform: scale(0.97); } 50% { opacity: 0.88; transform: scale(1); } }
 
   @media (prefers-reduced-motion: reduce) {
-    .hero-console, .hero-orbit, .hero-orbit-reverse, .intro-orbit { animation: none; }
-    .hero-console { transform: none; }
     *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
   }
 
-  /**
-   * Custom container utility that centers content and adds responsive padding.
-   *
-   * This overrides Tailwind's default container behavior to:
-   * - Auto-center content (mx-auto)
-   * - Add responsive horizontal padding
-   * - Set max-width for large screens
-   *
-   * Usage: <div className="container">...</div>
-   *
-   * For custom widths, use max-w-* utilities directly:
-   * <div className="max-w-6xl mx-auto px-4">...</div>
-   */
-  .container {
-    width: 100%;
-    margin-left: auto;
-    margin-right: auto;
-    padding-left: 1rem; /* 16px - mobile padding */
-    padding-right: 1rem;
-  }
-
-  .flex {
-    min-height: 0;
-    min-width: 0;
-  }
-
-  @media (min-width: 640px) {
-    .container {
-      padding-left: 1.5rem; /* 24px - tablet padding */
-      padding-right: 1.5rem;
-    }
-  }
-
-  @media (min-width: 1024px) {
-    .container {
-      padding-left: 2rem; /* 32px - desktop padding */
-      padding-right: 2rem;
-      max-width: 1280px; /* Standard content width */
-    }
-  }
+  .container { width: 100%; margin-left: auto; margin-right: auto; padding-left: 1rem; padding-right: 1rem; }
+  .flex { min-height: 0; min-width: 0; }
+  @media (min-width: 640px) { .container { padding-left: 1.5rem; padding-right: 1.5rem; } }
+  @media (min-width: 1024px) { .container { padding-left: 2rem; padding-right: 2rem; max-width: 1280px; } }
 }
