@@ -1,0 +1,3 @@
+[build]
+  command = "corepack pnpm install --frozen-lockfile --prod=false && corepack pnpm run build"
+  publish = "dist"
