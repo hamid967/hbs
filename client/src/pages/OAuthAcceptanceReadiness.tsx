@@ -1,0 +1,16 @@
+import { KeyRound, RefreshCw, ShieldAlert, UserCheck, UsersRound } from "lucide-react";
+
+import DashboardLayout from "@/components/DashboardLayout";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { trpc } from "@/lib/trpc";
+
+export default function OAuthAcceptanceReadiness() {
+  const { data, isLoading, isError, error, refetch, isFetching } = trpc.system.oauthAcceptanceReadiness.useQuery();
+
+  return <DashboardLayout><div dir="rtl" className="mx-auto max-w-5xl">
+    <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold text-[#5e8970]">بوابة القبول الحي</p><h1 className="mt-2 text-3xl font-bold text-[#173e30]">جاهزية قبول OAuth</h1><p className="mt-3 max-w-2xl text-sm leading-7 text-[#748279]">مؤشرات مجمّعة للمسؤول للتأكد من توفر أدوار الاختبار والارتباط المباشر، من دون عرض أسماء أو عناوين أو إنشاء جلسات بديلة.</p></div><Button variant="outline" onClick={() => refetch()} disabled={isFetching} className="h-10 rounded-xl border-[#d6e2d8] text-[#2f694e]"><RefreshCw className={`ml-2 size-4 ${isFetching ? "animate-spin" : ""}`} />تحديث المؤشرات</Button></div>
+    {isLoading ? <div className="mt-8 grid gap-4 md:grid-cols-4">{[1, 2, 3, 4].map(item => <Skeleton key={item} className="h-44 rounded-3xl" />)}</div> : isError ? <section className="mt-8 rounded-3xl border border-[#f1d4d1] bg-[#fff8f7] p-7 text-center"><ShieldAlert className="mx-auto size-9 text-[#b2514d]" /><h2 className="mt-4 text-lg font-bold text-[#6f332f]">تعذر قراءة جاهزية القبول</h2><p className="mt-2 text-sm text-[#855a55]">{error.message}</p></section> : data ? <><div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-y border-[#dfe8e0] py-4"><div className="flex items-center gap-3"><span className={`size-3 rounded-full ${data.overall === "ready" ? "bg-[#3c9b6a]" : "bg-[#c88d36]"}`} /><strong className="text-lg text-[#244334]">{data.overall === "ready" ? "جاهزة لتنفيذ القبول الحي" : "بانتظار استكمال الجاهزية"}</strong></div><span className="text-xs text-[#78867e]">آخر فحص: {new Date(data.checkedAt).toLocaleString("ar-SA")}</span></div><div className="mt-6 grid gap-4 md:grid-cols-4">{data.checks.map(check => <article key={check.id} className="rounded-3xl border border-[#e3e9e3] bg-white p-6 shadow-sm"><div className="flex items-start justify-between"><span className={`flex size-10 items-center justify-center rounded-2xl ${check.ready ? "bg-[#e7f3eb] text-[#317a53]" : "bg-[#fff0d9] text-[#a66b20]"}`}>{check.id === "relationship" ? <UsersRound className="size-5" /> : check.id === "specialist" ? <KeyRound className="size-5" /> : <UserCheck className="size-5" />}</span><Badge className={check.ready ? "bg-[#e7f3eb] text-[#317a53] hover:bg-[#e7f3eb]" : "bg-[#fff0d9] text-[#a66b20] hover:bg-[#fff0d9]"}>{check.ready ? "متاح" : "مطلوب"}</Badge></div><h2 className="mt-6 font-bold text-[#294435]">{check.label}</h2><p className="mt-2 text-sm leading-6 text-[#6d7c73]">{check.detail}</p></article>)}</div><p className="mt-6 rounded-2xl bg-[#f4f7f4] px-5 py-4 text-sm leading-7 text-[#617269]">هذه الصفحة لا تنفذ قبولاً تلقائياً ولا تفعّل حسابات أو تغيّر أدواراً. عند اكتمال المؤشرات، يظل الاختبار الحي يدوياً وبجلسات OAuth مستقلة.</p></> : null}
+  </div></DashboardLayout>;
+}
