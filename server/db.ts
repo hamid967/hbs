@@ -197,6 +197,12 @@ export async function listCompanyEmployees(companyId: number) {
   return rows.map(row => ({ ...row.user, profile: row.profile, department: row.department ? { id: row.department.id, name: row.department.name, code: row.department.code } : null, designation: row.designation ? { id: row.designation.id, title: row.designation.title, code: row.designation.code, isActive: row.designation.isActive } : null }));
 }
 
+export async function getCompanyEmployeeAccessRef(companyId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  return (await db.select({ companyId: users.companyId, userId: users.id, managerUserId: employeeProfiles.managerUserId }).from(users).leftJoin(employeeProfiles, eq(employeeProfiles.userId, users.id)).where(and(eq(users.id, userId), eq(users.companyId, companyId))).limit(1))[0];
+}
+
 export async function listCompanyJobDesignations(companyId: number) {
   const db = await getDb();
   if (!db) return [];
