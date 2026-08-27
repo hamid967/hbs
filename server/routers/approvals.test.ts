@@ -48,4 +48,10 @@ describe("approvals router", () => {
     await expect(caller.decide({ id: 13, decision: "approved", note: "مستند مكتمل" })).resolves.toEqual({ success: true });
     expect(dbMocks.decideApprovalTask).toHaveBeenCalledWith({ id: 13, decision: "approved", note: "مستند مكتمل", companyId: 1, actorId: 9, allowedRoles: ["government"] });
   });
+
+  it("blocks an unapproved user from deciding and never reaches the data layer", async () => {
+    const caller = approvalsRouter.createCaller(context("user"));
+    await expect(caller.decide({ id: 13, decision: "approved" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(dbMocks.decideApprovalTask).not.toHaveBeenCalled();
+  });
 });
