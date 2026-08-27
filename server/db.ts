@@ -470,6 +470,12 @@ export async function listCompanyEmployeeDocuments(companyId: number) {
   return db.select().from(employeeDocuments).where(eq(employeeDocuments.companyId, companyId)).orderBy(desc(employeeDocuments.createdAt));
 }
 
+export async function getCompanyEmployeeDocumentAccessRef(companyId: number, documentId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  return (await db.select({ id: employeeDocuments.id, companyId: employeeDocuments.companyId, employeeUserId: employeeDocuments.employeeUserId, managerUserId: employeeProfiles.managerUserId, storageKey: employeeDocuments.storageKey, mimeType: employeeDocuments.mimeType, fileName: employeeDocuments.fileName }).from(employeeDocuments).leftJoin(employeeProfiles, and(eq(employeeProfiles.companyId, employeeDocuments.companyId), eq(employeeProfiles.userId, employeeDocuments.employeeUserId))).where(and(eq(employeeDocuments.id, documentId), eq(employeeDocuments.companyId, companyId))).limit(1))[0];
+}
+
 export async function createCompanyEmployeeContract(input: { companyId: number; employeeUserId: number; contractReference: string; title: string; status: EmployeeContractStatus; supersedesContractId?: number; startAt?: Date; endAt?: Date; createdByUserId: number }) {
   const db = await getDb();
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
@@ -915,7 +921,7 @@ export async function requestExecutionRetry(input: { companyId: number; stageNum
 export async function createCompanyTrainingProgram(input: { companyId: number; title: string; description?: string; durationMinutes: number; createdByUserId: number }) { const db = await getDb(); if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً"); await db.insert(trainingPrograms).values({ companyId: input.companyId, title: input.title, description: input.description ?? null, durationMinutes: input.durationMinutes, createdByUserId: input.createdByUserId }); const created = (await db.select().from(trainingPrograms).where(and(eq(trainingPrograms.companyId, input.companyId), eq(trainingPrograms.title, input.title))).limit(1))[0]; if (!created) throw new Error("تعذر حفظ مسار التدريب"); return created; }
 export async function assignCompanyTrainingProgram(input: { companyId: number; employeeUserId: number; trainingProgramId: number; dueAt?: Date; assignedByUserId: number }) { const db = await getDb(); if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً"); const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"))).limit(1))[0]; if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية أو غير مفعّل"); const program = (await db.select().from(trainingPrograms).where(and(eq(trainingPrograms.id, input.trainingProgramId), eq(trainingPrograms.companyId, input.companyId), eq(trainingPrograms.isActive, true))).limit(1))[0]; if (!program) throw new Error("مسار التدريب غير موجود ضمن الشركة الحالية أو غير مفعّل"); await db.insert(employeeTrainingAssignments).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, trainingProgramId: input.trainingProgramId, dueAt: input.dueAt ?? null, assignedByUserId: input.assignedByUserId }); const created = (await db.select().from(employeeTrainingAssignments).where(and(eq(employeeTrainingAssignments.companyId, input.companyId), eq(employeeTrainingAssignments.employeeUserId, input.employeeUserId), eq(employeeTrainingAssignments.trainingProgramId, input.trainingProgramId))).limit(1))[0]; if (!created) throw new Error("تعذر تعيين مسار التدريب"); return created; }
 
-type AuditCategory = "recruitment" | "attendance" | "training" | "approval" | "account" | "permission" | "leave";
+type AuditCategory = "recruitment" | "attendance" | "training" | "approval" | "account" | "permission" | "leave" | "document";
 
 export async function recordAuditEvent(input: { companyId: number; actorUserId?: number; category: AuditCategory; action: string; entityType: string; entityId?: number; summary: string }) {
   const db = await getDb();
