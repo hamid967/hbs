@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { buildDataInventorySnapshot } from "../dataInventory";
 import { probeDatabaseConnection } from "../db";
 import { buildOperationalHealthSnapshot } from "../operationalHealth";
 import { notifyOwner } from "./notification";
@@ -16,6 +17,8 @@ export const systemRouter = router({
     })),
 
   operationalStatus: adminProcedure.query(async () => buildOperationalHealthSnapshot({ databaseReachable: await probeDatabaseConnection() })),
+
+  dataInventory: adminProcedure.query(() => buildDataInventorySnapshot()),
 
   notifyOwner: adminProcedure
     .input(
