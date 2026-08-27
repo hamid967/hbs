@@ -921,7 +921,7 @@ export async function requestExecutionRetry(input: { companyId: number; stageNum
 export async function createCompanyTrainingProgram(input: { companyId: number; title: string; description?: string; durationMinutes: number; createdByUserId: number }) { const db = await getDb(); if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً"); await db.insert(trainingPrograms).values({ companyId: input.companyId, title: input.title, description: input.description ?? null, durationMinutes: input.durationMinutes, createdByUserId: input.createdByUserId }); const created = (await db.select().from(trainingPrograms).where(and(eq(trainingPrograms.companyId, input.companyId), eq(trainingPrograms.title, input.title))).limit(1))[0]; if (!created) throw new Error("تعذر حفظ مسار التدريب"); return created; }
 export async function assignCompanyTrainingProgram(input: { companyId: number; employeeUserId: number; trainingProgramId: number; dueAt?: Date; assignedByUserId: number }) { const db = await getDb(); if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً"); const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"))).limit(1))[0]; if (!employee) throw new Error("الموظف غير موجود ضمن الشركة الحالية أو غير مفعّل"); const program = (await db.select().from(trainingPrograms).where(and(eq(trainingPrograms.id, input.trainingProgramId), eq(trainingPrograms.companyId, input.companyId), eq(trainingPrograms.isActive, true))).limit(1))[0]; if (!program) throw new Error("مسار التدريب غير موجود ضمن الشركة الحالية أو غير مفعّل"); await db.insert(employeeTrainingAssignments).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, trainingProgramId: input.trainingProgramId, dueAt: input.dueAt ?? null, assignedByUserId: input.assignedByUserId }); const created = (await db.select().from(employeeTrainingAssignments).where(and(eq(employeeTrainingAssignments.companyId, input.companyId), eq(employeeTrainingAssignments.employeeUserId, input.employeeUserId), eq(employeeTrainingAssignments.trainingProgramId, input.trainingProgramId))).limit(1))[0]; if (!created) throw new Error("تعذر تعيين مسار التدريب"); return created; }
 
-type AuditCategory = "recruitment" | "attendance" | "training" | "approval" | "account" | "permission" | "leave" | "document";
+export type AuditCategory = "recruitment" | "attendance" | "training" | "approval" | "account" | "permission" | "leave" | "document";
 
 export async function recordAuditEvent(input: { companyId: number; actorUserId?: number; category: AuditCategory; action: string; entityType: string; entityId?: number; summary: string }) {
   const db = await getDb();
@@ -929,10 +929,13 @@ export async function recordAuditEvent(input: { companyId: number; actorUserId?:
   await db.insert(auditEvents).values({ companyId: input.companyId, actorUserId: input.actorUserId ?? null, category: input.category, action: input.action, entityType: input.entityType, entityId: input.entityId ?? null, summary: input.summary });
 }
 
-export async function listCompanyAuditEvents(companyId: number, limit = 100) {
+export async function listCompanyAuditEvents(companyId: number, input: { limit?: number; category?: AuditCategory } = {}) {
   const db = await getDb();
   if (!db) return [];
-  return db.select({ event: auditEvents, actor: users }).from(auditEvents).leftJoin(users, eq(auditEvents.actorUserId, users.id)).where(eq(auditEvents.companyId, companyId)).orderBy(desc(auditEvents.createdAt)).limit(Math.min(Math.max(limit, 1), 200));
+  const limit = Math.min(Math.max(input.limit ?? 25, 1), 100);
+  const conditions = [eq(auditEvents.companyId, companyId)];
+  if (input.category) conditions.push(eq(auditEvents.category, input.category));
+  return db.select({ event: auditEvents, actor: { id: users.id, name: users.name } }).from(auditEvents).leftJoin(users, eq(auditEvents.actorUserId, users.id)).where(and(...conditions)).orderBy(desc(auditEvents.createdAt)).limit(limit);
 }
 
 export async function createRequestWithHistory(input: {
