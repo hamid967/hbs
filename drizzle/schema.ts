@@ -88,9 +88,104 @@ export const departments = mysqlTable("departments", {
   name: varchar("name", { length: 120 }).notNull(),
   code: varchar("code", { length: 32 }),
   managerUserId: int("managerUserId").references(() => users.id, { onDelete: "set null" }),
+  parentDepartmentId: int("parentDepartmentId").references((): AnyMySqlColumn => departments.id, { onDelete: "restrict" }),
+  effectiveFrom: timestamp("effectiveFrom"),
+  effectiveTo: timestamp("effectiveTo"),
+  archivedAt: timestamp("archivedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [uniqueIndex("departments_company_name_unique").on(table.companyId, table.name)]);
+}, table => [uniqueIndex("departments_company_name_unique").on(table.companyId, table.name), index("departments_company_parent_idx").on(table.companyId, table.parentDepartmentId), index("departments_company_archived_idx").on(table.companyId, table.archivedAt)]);
+
+export const legalEntities = mysqlTable("legalEntities", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 160 }).notNull(),
+  code: varchar("code", { length: 32 }),
+  registrationLabel: varchar("registrationLabel", { length: 80 }),
+  registrationNumber: varchar("registrationNumber", { length: 80 }),
+  status: mysqlEnum("status", ["active", "archived"]).notNull().default("active"),
+  archivedAt: timestamp("archivedAt"),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("legalEntities_company_name_unique").on(table.companyId, table.name), uniqueIndex("legalEntities_company_code_unique").on(table.companyId, table.code), index("legalEntities_company_status_idx").on(table.companyId, table.status)]);
+
+export const organizationBranches = mysqlTable("organizationBranches", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  legalEntityId: int("legalEntityId").references(() => legalEntities.id, { onDelete: "set null" }),
+  name: varchar("name", { length: 160 }).notNull(),
+  code: varchar("code", { length: 32 }),
+  city: varchar("city", { length: 120 }),
+  region: varchar("region", { length: 120 }),
+  managerUserId: int("managerUserId").references(() => users.id, { onDelete: "set null" }),
+  status: mysqlEnum("status", ["active", "archived"]).notNull().default("active"),
+  archivedAt: timestamp("archivedAt"),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("organizationBranches_company_name_unique").on(table.companyId, table.name), uniqueIndex("organizationBranches_company_code_unique").on(table.companyId, table.code), index("organizationBranches_company_entity_idx").on(table.companyId, table.legalEntityId), index("organizationBranches_company_status_idx").on(table.companyId, table.status)]);
+
+export const organizationTeams = mysqlTable("organizationTeams", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  departmentId: int("departmentId").references(() => departments.id, { onDelete: "set null" }),
+  branchId: int("branchId").references(() => organizationBranches.id, { onDelete: "set null" }),
+  name: varchar("name", { length: 160 }).notNull(),
+  code: varchar("code", { length: 32 }),
+  managerUserId: int("managerUserId").references(() => users.id, { onDelete: "set null" }),
+  status: mysqlEnum("status", ["active", "archived"]).notNull().default("active"),
+  archivedAt: timestamp("archivedAt"),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("organizationTeams_company_name_unique").on(table.companyId, table.name), uniqueIndex("organizationTeams_company_code_unique").on(table.companyId, table.code), index("organizationTeams_company_department_idx").on(table.companyId, table.departmentId), index("organizationTeams_company_branch_idx").on(table.companyId, table.branchId), index("organizationTeams_company_status_idx").on(table.companyId, table.status)]);
+
+export const costCenters = mysqlTable("costCenters", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 160 }).notNull(),
+  code: varchar("code", { length: 32 }).notNull(),
+  status: mysqlEnum("status", ["active", "archived"]).notNull().default("active"),
+  archivedAt: timestamp("archivedAt"),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("costCenters_company_code_unique").on(table.companyId, table.code), uniqueIndex("costCenters_company_name_unique").on(table.companyId, table.name), index("costCenters_company_status_idx").on(table.companyId, table.status)]);
+
+export const workLocations = mysqlTable("workLocations", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  branchId: int("branchId").references(() => organizationBranches.id, { onDelete: "set null" }),
+  name: varchar("name", { length: 160 }).notNull(),
+  code: varchar("code", { length: 32 }),
+  city: varchar("city", { length: 120 }),
+  region: varchar("region", { length: 120 }),
+  status: mysqlEnum("status", ["active", "archived"]).notNull().default("active"),
+  archivedAt: timestamp("archivedAt"),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("workLocations_company_name_unique").on(table.companyId, table.name), uniqueIndex("workLocations_company_code_unique").on(table.companyId, table.code), index("workLocations_company_branch_idx").on(table.companyId, table.branchId), index("workLocations_company_status_idx").on(table.companyId, table.status)]);
+
+export const organizationAssignments = mysqlTable("organizationAssignments", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  employeeUserId: int("employeeUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  legalEntityId: int("legalEntityId").references(() => legalEntities.id, { onDelete: "set null" }),
+  branchId: int("branchId").references(() => organizationBranches.id, { onDelete: "set null" }),
+  departmentId: int("departmentId").references(() => departments.id, { onDelete: "set null" }),
+  teamId: int("teamId").references(() => organizationTeams.id, { onDelete: "set null" }),
+  costCenterId: int("costCenterId").references(() => costCenters.id, { onDelete: "set null" }),
+  workLocationId: int("workLocationId").references(() => workLocations.id, { onDelete: "set null" }),
+  effectiveFrom: timestamp("effectiveFrom").notNull(),
+  effectiveTo: timestamp("effectiveTo"),
+  status: mysqlEnum("status", ["active", "archived"]).notNull().default("active"),
+  archivedAt: timestamp("archivedAt"),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("organizationAssignments_company_employee_idx").on(table.companyId, table.employeeUserId), index("organizationAssignments_company_status_idx").on(table.companyId, table.status), index("organizationAssignments_company_department_idx").on(table.companyId, table.departmentId), index("organizationAssignments_company_effective_idx").on(table.companyId, table.effectiveFrom, table.effectiveTo)]);
 
 export const jobDesignations = mysqlTable("jobDesignations", {
   id: int("id").autoincrement().primaryKey(),

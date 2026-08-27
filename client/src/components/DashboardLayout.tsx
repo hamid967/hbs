@@ -55,6 +55,7 @@ import {
   Database,
   KeyRound,
   MessagesSquare,
+  Network,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -79,6 +80,7 @@ const menuItems = [
   { icon: Database, label: "جرد البيانات", path: "/data-inventory", adminOnly: true },
   { icon: KeyRound, label: "جاهزية OAuth", path: "/oauth-acceptance-readiness", adminOnly: true },
   { icon: Building2, label: "قوالب الشركة", path: "/company-templates", adminOnly: true },
+  { icon: Network, label: "البنية التنظيمية", path: "/organization", requiresDirectoryAccess: true },
   { icon: UserRoundSearch, label: "دليل الموظفين", path: "/employees", requiresDirectoryAccess: true },
   { icon: ClipboardCheck, label: "دورة حياة الموظف", path: "/employee-lifecycle", requiresLifecycleAccess: true },
   { icon: FileText, label: "العقود والوثائق", path: "/contracts", requiresContractsAccess: true },
