@@ -43,6 +43,7 @@ const OperationalHealth = lazy(() => import("./pages/OperationalHealth"));
 const DataRetentionPolicies = lazy(() => import("./pages/DataRetentionPolicies"));
 const DataInventory = lazy(() => import("./pages/DataInventory"));
 const OAuthAcceptanceReadiness = lazy(() => import("./pages/OAuthAcceptanceReadiness"));
+const InternalMessaging = lazy(() => import("./pages/InternalMessaging"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 function RouteFallback() { return <main dir="rtl" className="flex min-h-screen items-center justify-center bg-[#f8faf8] px-6" role="status" aria-live="polite"><div className="text-center"><span className="mx-auto block size-10 animate-spin rounded-full border-4 border-[#d7e8da] border-t-[#256645]" /><p className="mt-4 text-sm font-bold text-[#315440]">جارٍ تحميل الصفحة…</p></div></main>; }
@@ -58,7 +59,7 @@ function Router() {
     <Route path="/contracts" component={ContractsDocuments} /><Route path="/assets" component={Assets} /><Route path="/offboarding" component={Offboarding} /><Route path="/goals" component={GoalsPerformance} />
     <Route path="/manager-dashboard" component={ManagerDashboard} /><Route path="/approval-simulator" component={ApprovalSimulator} /><Route path="/training" component={Training} /><Route path="/recruitment" component={RecruitmentOnboarding} />
     <Route path="/attendance" component={Attendance} /><Route path="/attendance-schedules" component={AttendanceSchedules} /><Route path="/audit" component={AuditLog} /><Route path="/workboard" component={Workboard} />
-    <Route path="/approvals" component={ApprovalsInbox} /><Route path="/notifications" component={NotificationsCenter} /><Route path="/reports" component={HrReports} /><Route path="/404" component={NotFound} /><Route component={NotFound} />
+    <Route path="/approvals" component={ApprovalsInbox} /><Route path="/notifications" component={NotificationsCenter} /><Route path="/messaging" component={InternalMessaging} /><Route path="/reports" component={HrReports} /><Route path="/404" component={NotFound} /><Route component={NotFound} />
   </Switch></Suspense>;
 }
 

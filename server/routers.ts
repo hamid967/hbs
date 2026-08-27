@@ -23,6 +23,7 @@ import { managerDashboardRouter } from "./routers/managerDashboard";
 import { leavesRouter } from "./routers/leaves";
 import { assetsRouter } from "./routers/assets";
 import { dataGovernanceRouter } from "./routers/dataGovernance";
+import { messagingRouter } from "./routers/messaging";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -58,6 +59,7 @@ export const appRouter = router({
   leaves: leavesRouter,
   assets: assetsRouter,
   dataGovernance: dataGovernanceRouter,
+  messaging: messagingRouter,
 });
 
 export type AppRouter = typeof appRouter;
