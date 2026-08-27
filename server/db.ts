@@ -8,6 +8,7 @@ import { defaultModulePermissionsForRole, normalizeModulePermissions, type Modul
 import { isCandidateStatusTransitionAllowed, isInterviewStatusTransitionAllowed, isOfferStatusTransitionAllowed, type CandidateStatus, type InterviewStatus, type OfferStatus } from "./recruitmentRules";
 import { calculateLeaveBalance, countInclusiveLeaveDays, dateRangesOverlap, getLeaveRequestYear, type LeaveType } from "./leavePolicy";
 import { dataRetentionPolicies } from "../drizzle/schema";
+import { buildOAuthAcceptanceReadinessSnapshot } from "./oauthAcceptanceReadiness";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -65,6 +66,18 @@ export async function getUserModulePermissions(userId: number, role: UserRole): 
   if (!db) return defaultModulePermissionsForRole(role);
   const rows = await db.select().from(userModulePermissions).where(eq(userModulePermissions.userId, userId));
   return rows.length ? normalizeModulePermissions(rows) : defaultModulePermissionsForRole(role);
+}
+
+export async function getOAuthAcceptanceReadiness(companyId: number) {
+  const db = await getDb();
+  if (!db) return buildOAuthAcceptanceReadinessSnapshot({ activeEmployees: 0, activeManagers: 0, activeSpecialists: 0, linkedEmployeeManagers: 0 });
+  const activeAccounts = await db.select({ id: users.id, role: users.role }).from(users).where(and(eq(users.companyId, companyId), eq(users.accountStatus, "active")));
+  const employeeIds = new Set(activeAccounts.filter(account => account.role === "user").map(account => account.id));
+  const managerIds = new Set(activeAccounts.filter(account => account.role === "manager").map(account => account.id));
+  const activeSpecialists = activeAccounts.filter(account => account.role === "hr" || account.role === "government").length;
+  const profiles = await db.select({ userId: employeeProfiles.userId, managerUserId: employeeProfiles.managerUserId }).from(employeeProfiles).where(eq(employeeProfiles.companyId, companyId));
+  const linkedEmployeeManagers = profiles.filter(profile => employeeIds.has(profile.userId) && profile.managerUserId !== null && managerIds.has(profile.managerUserId)).length;
+  return buildOAuthAcceptanceReadinessSnapshot({ activeEmployees: employeeIds.size, activeManagers: managerIds.size, activeSpecialists, linkedEmployeeManagers });
 }
 
 export async function listUserAccounts(status?: "pending" | "active" | "suspended" | "rejected", companyId?: number) {

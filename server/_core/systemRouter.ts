@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { buildDataInventorySnapshot } from "../dataInventory";
-import { probeDatabaseConnection } from "../db";
+import { getOAuthAcceptanceReadiness, probeDatabaseConnection } from "../db";
 import { buildOperationalHealthSnapshot } from "../operationalHealth";
 import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, router } from "./trpc";
@@ -19,6 +19,8 @@ export const systemRouter = router({
   operationalStatus: adminProcedure.query(async () => buildOperationalHealthSnapshot({ databaseReachable: await probeDatabaseConnection() })),
 
   dataInventory: adminProcedure.query(() => buildDataInventorySnapshot()),
+
+  oauthAcceptanceReadiness: adminProcedure.query(async ({ ctx }) => getOAuthAcceptanceReadiness(ctx.user.companyId)),
 
   notifyOwner: adminProcedure
     .input(
