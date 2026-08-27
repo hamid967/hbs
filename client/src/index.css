@@ -84,6 +84,12 @@
   --premium-mist: #b7d1d4;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ds-space-1: 0.25rem;
+  --ds-space-2: 0.5rem;
+  --ds-space-3: 0.75rem;
+  --ds-space-4: 1rem;
+  --ds-space-6: 1.5rem;
+  --ds-space-8: 2rem;
 }
 
 .dark {
@@ -142,6 +148,16 @@
   .premium-hairline { background: linear-gradient(90deg, transparent, rgba(200, 166, 106, 0.76), transparent); }
   .premium-shine { background: radial-gradient(circle at 76% 18%, rgba(24, 185, 130, 0.18), transparent 28%), radial-gradient(circle at 12% 76%, rgba(200, 166, 106, 0.12), transparent 26%); }
   .premium-wordmark { letter-spacing: -0.035em; }
+  .ds-surface { border: 1px solid color-mix(in oklab, var(--border) 82%, transparent); border-radius: var(--radius-xl); background: color-mix(in oklab, var(--card) 93%, transparent); padding: var(--ds-space-6); }
+  .ds-page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ds-space-6); margin-bottom: var(--ds-space-8); }
+  .ds-eyebrow { margin-bottom: var(--ds-space-2); color: var(--primary); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .ds-page-title { color: var(--foreground); font-size: clamp(1.5rem, 2vw, 2rem); font-weight: 800; letter-spacing: -0.025em; line-height: 1.2; }
+  .ds-page-description { max-width: 48rem; margin-top: var(--ds-space-3); color: var(--muted-foreground); font-size: 0.9375rem; line-height: 1.75; }
+  .ds-kpi-card { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ds-space-4); }
+  .ds-kpi-label { color: var(--muted-foreground); font-size: 0.8125rem; font-weight: 700; }
+  .ds-kpi-value { margin-top: var(--ds-space-2); color: var(--foreground); font-size: 1.875rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+  .ds-kpi-detail { margin-top: var(--ds-space-3); color: var(--muted-foreground); font-size: 0.75rem; }
+  .ds-state-notice { text-align: start; }
   .pressable { transition: transform 160ms var(--ease-out), box-shadow 180ms var(--ease-out), background-color 180ms var(--ease-out), border-color 180ms var(--ease-out); }
   .pressable:active { transform: scale(0.97); }
 
