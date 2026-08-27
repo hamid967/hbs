@@ -1152,11 +1152,16 @@ async function requireMessagingChannelMembership(db: any, input: { companyId: nu
 export async function listInternalMessagingChannelsForUser(input: { companyId: number; userId: number }) {
   const db = await getDb();
   if (!db) return [];
-  const rows = await db.select({ channel: internalMessagingChannels }).from(internalMessagingChannels).innerJoin(internalMessagingChannelMembers, eq(internalMessagingChannelMembers.channelId, internalMessagingChannels.id)).where(and(eq(internalMessagingChannels.companyId, input.companyId), eq(internalMessagingChannelMembers.companyId, input.companyId), eq(internalMessagingChannelMembers.userId, input.userId), eq(internalMessagingChannels.status, "active"))).orderBy(desc(internalMessagingChannels.updatedAt));
+  const rows = await db.select({ channel: internalMessagingChannels, lastReadAt: internalMessagingChannelMembers.lastReadAt }).from(internalMessagingChannels).innerJoin(internalMessagingChannelMembers, eq(internalMessagingChannelMembers.channelId, internalMessagingChannels.id)).where(and(eq(internalMessagingChannels.companyId, input.companyId), eq(internalMessagingChannelMembers.companyId, input.companyId), eq(internalMessagingChannelMembers.userId, input.userId), eq(internalMessagingChannels.status, "active"))).orderBy(desc(internalMessagingChannels.updatedAt));
   const channelIds = rows.map(row => row.channel.id);
   if (!channelIds.length) return [];
   const members = await db.select({ channelId: internalMessagingChannelMembers.channelId }).from(internalMessagingChannelMembers).where(and(eq(internalMessagingChannelMembers.companyId, input.companyId), inArray(internalMessagingChannelMembers.channelId, channelIds)));
-  return rows.map(row => ({ ...row.channel, memberCount: members.filter(member => member.channelId === row.channel.id).length }));
+  const messageTimestamps = await db.select({ channelId: internalMessagingMessages.channelId, senderUserId: internalMessagingMessages.senderUserId, createdAt: internalMessagingMessages.createdAt }).from(internalMessagingMessages).where(and(eq(internalMessagingMessages.companyId, input.companyId), inArray(internalMessagingMessages.channelId, channelIds)));
+  return rows.map(row => ({
+    ...row.channel,
+    memberCount: members.filter(member => member.channelId === row.channel.id).length,
+    unreadCount: messageTimestamps.filter(message => message.channelId === row.channel.id && message.senderUserId !== input.userId && (!row.lastReadAt || message.createdAt > row.lastReadAt)).length,
+  }));
 }
 
 export async function listInternalMessagingChannelsForAdmin(companyId: number) {
@@ -1202,7 +1207,8 @@ export async function createInternalMessagingChannel(input: { companyId: number;
     await tx.insert(internalMessagingChannels).values({ companyId: input.companyId, name: input.name, description: input.description ?? null, status: "active", createdByUserId: input.createdByUserId });
     const channel = (await tx.select().from(internalMessagingChannels).where(and(eq(internalMessagingChannels.companyId, input.companyId), eq(internalMessagingChannels.name, input.name))).limit(1))[0];
     if (!channel) throw new Error("تعذر إنشاء قناة المراسلات");
-    await tx.insert(internalMessagingChannelMembers).values(memberUserIds.map(userId => ({ companyId: input.companyId, channelId: channel.id, userId, addedByUserId: input.createdByUserId })));
+    const joinedAt = new Date();
+    await tx.insert(internalMessagingChannelMembers).values(memberUserIds.map(userId => ({ companyId: input.companyId, channelId: channel.id, userId, addedByUserId: input.createdByUserId, lastReadAt: joinedAt })));
     return channel;
   });
 }
@@ -1216,7 +1222,8 @@ export async function replaceInternalMessagingChannelMembers(input: { companyId:
     if (!channel) throw new Error("القناة غير موجودة أو مؤرشفة ضمن الشركة الحالية");
     await requireActiveCompanyMessagingMembers(tx, input.companyId, memberUserIds);
     await tx.delete(internalMessagingChannelMembers).where(and(eq(internalMessagingChannelMembers.companyId, input.companyId), eq(internalMessagingChannelMembers.channelId, input.channelId)));
-    await tx.insert(internalMessagingChannelMembers).values(memberUserIds.map(userId => ({ companyId: input.companyId, channelId: input.channelId, userId, addedByUserId: input.actorUserId })));
+    const joinedAt = new Date();
+    await tx.insert(internalMessagingChannelMembers).values(memberUserIds.map(userId => ({ companyId: input.companyId, channelId: input.channelId, userId, addedByUserId: input.actorUserId, lastReadAt: joinedAt })));
     await tx.update(internalMessagingChannels).set({ updatedAt: new Date() }).where(and(eq(internalMessagingChannels.id, input.channelId), eq(internalMessagingChannels.companyId, input.companyId)));
     return channel;
   });
@@ -1238,6 +1245,16 @@ export async function sendInternalMessagingMessage(input: { companyId: number; c
     await requireMessagingChannelMembership(tx, { companyId: input.companyId, channelId: input.channelId, userId: input.senderUserId });
     await tx.insert(internalMessagingMessages).values({ companyId: input.companyId, channelId: input.channelId, senderUserId: input.senderUserId, body: input.body });
     await tx.update(internalMessagingChannels).set({ updatedAt: new Date() }).where(and(eq(internalMessagingChannels.id, input.channelId), eq(internalMessagingChannels.companyId, input.companyId)));
+    return { success: true } as const;
+  });
+}
+
+export async function markInternalMessagingChannelRead(input: { companyId: number; channelId: number; userId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  return db.transaction(async tx => {
+    await requireMessagingChannelMembership(tx, input);
+    await tx.update(internalMessagingChannelMembers).set({ lastReadAt: new Date() }).where(and(eq(internalMessagingChannelMembers.companyId, input.companyId), eq(internalMessagingChannelMembers.channelId, input.channelId), eq(internalMessagingChannelMembers.userId, input.userId)));
     return { success: true } as const;
   });
 }

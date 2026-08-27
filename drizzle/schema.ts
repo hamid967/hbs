@@ -625,11 +625,13 @@ export const internalMessagingChannelMembers = mysqlTable("internalMessagingChan
   channelId: int("channelId").notNull().references(() => internalMessagingChannels.id, { onDelete: "cascade" }),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   addedByUserId: int("addedByUserId").notNull().references(() => users.id, { onDelete: "restrict" }),
+  lastReadAt: timestamp("lastReadAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [
   uniqueIndex("internalMessagingChannelMembers_channel_user_unique").on(table.channelId, table.userId),
   index("internalMessagingChannelMembers_company_user_idx").on(table.companyId, table.userId),
   index("internalMessagingChannelMembers_company_channel_idx").on(table.companyId, table.channelId),
+  index("internalMessagingChannelMembers_company_user_read_idx").on(table.companyId, table.userId, table.lastReadAt),
 ]);
 
 export const internalMessagingMessages = mysqlTable("internalMessagingMessages", {

@@ -8,6 +8,7 @@ import {
   listInternalMessagingChannelsForAdmin,
   listInternalMessagingChannelsForUser,
   listInternalMessagingMessages,
+  markInternalMessagingChannelRead,
   replaceInternalMessagingChannelMembers,
   sendInternalMessagingMessage,
 } from "../db";
@@ -20,6 +21,7 @@ export const messagingRouter = router({
   myChannels: protectedProcedure.query(({ ctx }) => listInternalMessagingChannelsForUser({ companyId: ctx.user.companyId, userId: ctx.user.id })),
   channel: protectedProcedure.input(z.object({ channelId })).query(({ ctx, input }) => getInternalMessagingChannelDetail({ companyId: ctx.user.companyId, channelId: input.channelId, userId: ctx.user.id })),
   messages: protectedProcedure.input(z.object({ channelId })).query(({ ctx, input }) => listInternalMessagingMessages({ companyId: ctx.user.companyId, channelId: input.channelId, userId: ctx.user.id })),
+  markRead: protectedProcedure.input(z.object({ channelId })).mutation(({ ctx, input }) => markInternalMessagingChannelRead({ companyId: ctx.user.companyId, channelId: input.channelId, userId: ctx.user.id })),
   send: protectedProcedure.input(z.object({ channelId, body: z.string().trim().min(1, "اكتب رسالة قبل الإرسال").max(3000, "الرسالة طويلة جداً") })).mutation(({ ctx, input }) => sendInternalMessagingMessage({ companyId: ctx.user.companyId, channelId: input.channelId, senderUserId: ctx.user.id, body: input.body })),
   management: router({
     channels: adminProcedure.query(({ ctx }) => listInternalMessagingChannelsForAdmin(ctx.user.companyId)),

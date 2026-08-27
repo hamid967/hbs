@@ -1,0 +1,2 @@
+ALTER TABLE `internalMessagingChannelMembers` ADD `lastReadAt` timestamp;--> statement-breakpoint
+CREATE INDEX `internalMessagingChannelMembers_company_user_read_idx` ON `internalMessagingChannelMembers` (`companyId`,`userId`,`lastReadAt`);
