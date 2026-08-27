@@ -20,6 +20,7 @@ export default function EmployeeDirectory() {
   const { data: departments } = trpc.employees.departments.useQuery();
   const { data: designations } = trpc.employees.designations.useQuery();
   const canManageSensitiveProfile = user?.role === "admin" || user?.role === "hr";
+  const canManageEmployeeProfile = user?.role === "admin" || user?.role === "hr";
   const { data: emergencyContacts } = trpc.employees.emergencyContacts.useQuery(undefined, { enabled: canManageSensitiveProfile });
   const { data: dependents } = trpc.employees.dependents.useQuery(undefined, { enabled: canManageSensitiveProfile });
   const [departmentOpen, setDepartmentOpen] = useState(false);
@@ -75,6 +76,7 @@ export default function EmployeeDirectory() {
 
   const selected = employees?.find(item => item.id === selectedId);
   const openProfile = (employee: NonNullable<typeof employees>[number]) => {
+    if (!canManageEmployeeProfile) { toast.error("لا تملك صلاحية إدارة ملف الموظف"); return; }
     const contact = emergencyContacts?.find(item => item.employeeUserId === employee.id);
     setSelectedId(employee.id);
     setEmployeeNumber(employee.profile?.employeeNumber || "");

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const dbMocks = vi.hoisted(() => ({ assignCompanyTrainingProgram: vi.fn(), createCompanyDepartment: vi.fn(), createCompanyEmployeeLifecycleEvent: vi.fn(), createCompanyJobDesignation: vi.fn(), createCompanyTrainingProgram: vi.fn(), listCompanyDepartments: vi.fn(), listCompanyEmployeeDependents: vi.fn(), listCompanyEmployeeEmergencyContacts: vi.fn(), listCompanyEmployeeLifecycleEvents: vi.fn(), listCompanyEmployees: vi.fn(), listCompanyJobDesignations: vi.fn(), listCompanyTrainingAssignments: vi.fn(), listCompanyTrainingPrograms: vi.fn(), recordAuditEvent: vi.fn(), saveCompanyDepartmentManager: vi.fn(), saveCompanyEmployeeDependent: vi.fn(), saveCompanyEmployeeEmergencyContact: vi.fn(), saveEmployeeProfile: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ assignCompanyTrainingProgram: vi.fn(), createCompanyDepartment: vi.fn(), createCompanyEmployeeLifecycleEvent: vi.fn(), createCompanyJobDesignation: vi.fn(), createCompanyTrainingProgram: vi.fn(), getCompanyEmployeeAccessRef: vi.fn(), listCompanyDepartments: vi.fn(), listCompanyEmployeeDependents: vi.fn(), listCompanyEmployeeEmergencyContacts: vi.fn(), listCompanyEmployeeLifecycleEvents: vi.fn(), listCompanyEmployees: vi.fn(), listCompanyJobDesignations: vi.fn(), listCompanyTrainingAssignments: vi.fn(), listCompanyTrainingPrograms: vi.fn(), recordAuditEvent: vi.fn(), saveCompanyDepartmentManager: vi.fn(), saveCompanyEmployeeDependent: vi.fn(), saveCompanyEmployeeEmergencyContact: vi.fn(), saveEmployeeProfile: vi.fn() }));
 vi.mock("../db", () => dbMocks);
 
 import { employeesRouter } from "./employees";
@@ -11,7 +11,7 @@ function context(role: "user" | "hr" | "manager" | "admin" = "hr"): TrpcContext 
 }
 
 describe("employees router", () => {
-  beforeEach(() => { vi.clearAllMocks(); dbMocks.listCompanyEmployees.mockResolvedValue([]); dbMocks.listCompanyDepartments.mockResolvedValue([]); dbMocks.listCompanyJobDesignations.mockResolvedValue([]); dbMocks.listCompanyEmployeeDependents.mockResolvedValue([]); dbMocks.listCompanyEmployeeEmergencyContacts.mockResolvedValue([]); dbMocks.listCompanyEmployeeLifecycleEvents.mockResolvedValue([]); dbMocks.listCompanyTrainingPrograms.mockResolvedValue([]); dbMocks.listCompanyTrainingAssignments.mockResolvedValue([]); dbMocks.recordAuditEvent.mockResolvedValue(undefined); dbMocks.createCompanyDepartment.mockResolvedValue({ id: 3, companyId: 1, name: "العمليات" }); dbMocks.createCompanyJobDesignation.mockResolvedValue({ id: 4, companyId: 1, title: "أخصائي موارد بشرية" }); dbMocks.createCompanyEmployeeLifecycleEvent.mockResolvedValue({ id: 5, companyId: 1, employeeUserId: 20 }); dbMocks.createCompanyTrainingProgram.mockResolvedValue({ id: 6, companyId: 1 }); dbMocks.assignCompanyTrainingProgram.mockResolvedValue({ id: 7, companyId: 1 }); dbMocks.saveCompanyDepartmentManager.mockResolvedValue({ id: 3, companyId: 1, managerUserId: 20 }); dbMocks.saveCompanyEmployeeDependent.mockResolvedValue({ id: 10, companyId: 1, employeeUserId: 20 }); dbMocks.saveCompanyEmployeeEmergencyContact.mockResolvedValue({ id: 9, companyId: 1, employeeUserId: 20 }); dbMocks.saveEmployeeProfile.mockResolvedValue({ id: 4, companyId: 1, userId: 20 }); });
+  beforeEach(() => { vi.clearAllMocks(); dbMocks.listCompanyEmployees.mockResolvedValue([]); dbMocks.getCompanyEmployeeAccessRef.mockResolvedValue({ companyId: 1, userId: 20, managerUserId: 8 }); dbMocks.listCompanyDepartments.mockResolvedValue([]); dbMocks.listCompanyJobDesignations.mockResolvedValue([]); dbMocks.listCompanyEmployeeDependents.mockResolvedValue([]); dbMocks.listCompanyEmployeeEmergencyContacts.mockResolvedValue([]); dbMocks.listCompanyEmployeeLifecycleEvents.mockResolvedValue([]); dbMocks.listCompanyTrainingPrograms.mockResolvedValue([]); dbMocks.listCompanyTrainingAssignments.mockResolvedValue([]); dbMocks.recordAuditEvent.mockResolvedValue(undefined); dbMocks.createCompanyDepartment.mockResolvedValue({ id: 3, companyId: 1, name: "العمليات" }); dbMocks.createCompanyJobDesignation.mockResolvedValue({ id: 4, companyId: 1, title: "أخصائي موارد بشرية" }); dbMocks.createCompanyEmployeeLifecycleEvent.mockResolvedValue({ id: 5, companyId: 1, employeeUserId: 20 }); dbMocks.createCompanyTrainingProgram.mockResolvedValue({ id: 6, companyId: 1 }); dbMocks.assignCompanyTrainingProgram.mockResolvedValue({ id: 7, companyId: 1 }); dbMocks.saveCompanyDepartmentManager.mockResolvedValue({ id: 3, companyId: 1, managerUserId: 20 }); dbMocks.saveCompanyEmployeeDependent.mockResolvedValue({ id: 10, companyId: 1, employeeUserId: 20 }); dbMocks.saveCompanyEmployeeEmergencyContact.mockResolvedValue({ id: 9, companyId: 1, employeeUserId: 20 }); dbMocks.saveEmployeeProfile.mockResolvedValue({ id: 4, companyId: 1, userId: 20 }); });
 
   it("lists employees only within the current company for directory roles", async () => {
     const caller = employeesRouter.createCaller(context("manager"));
@@ -22,6 +22,21 @@ describe("employees router", () => {
   it("prevents an ordinary employee from opening the company directory", async () => {
     const caller = employeesRouter.createCaller(context("user"));
     await expect(caller.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("limits a manager directory result to the manager and direct reports", async () => {
+    dbMocks.listCompanyEmployees.mockResolvedValue([
+      { id: 8, name: "المدير", email: "manager@example.com", openId: "manager", role: "manager", profile: null, department: null, designation: null },
+      { id: 20, name: "موظف مباشر", email: "employee@example.com", openId: "employee", role: "user", profile: { employeeNumber: "EMP-20", jobTitle: "منسق", designationId: null, departmentId: null, region: null, workLocation: null, managerUserId: 8, employmentStatus: "active", joinedAt: new Date("2025-01-01T00:00:00Z") }, department: null, designation: null },
+      { id: 21, name: "موظف خارج النطاق", email: "other@example.com", openId: "other", role: "user", profile: { employeeNumber: "EMP-21", jobTitle: "منسق", designationId: null, departmentId: null, region: null, workLocation: null, managerUserId: 30, employmentStatus: "active", joinedAt: new Date("2025-01-01T00:00:00Z") }, department: null, designation: null },
+    ]);
+
+    const result = await employeesRouter.createCaller(context("manager")).list();
+
+    expect(result.map(employee => employee.id)).toEqual([8, 20]);
+    expect(result[1]).not.toHaveProperty("email");
+    expect(result[1]).not.toHaveProperty("openId");
+    expect(result[1]?.profile).toMatchObject({ employeeNumber: null, joinedAt: null, jobTitle: "منسق" });
   });
 
   it("creates departments within the directory manager company", async () => {
@@ -50,6 +65,15 @@ describe("employees router", () => {
     const caller = employeesRouter.createCaller(context("admin"));
     await expect(caller.saveProfile({ userId: 20, jobTitle: "منسق عمليات", employmentStatus: "active" })).resolves.toMatchObject({ userId: 20 });
     expect(dbMocks.saveEmployeeProfile).toHaveBeenCalledWith({ companyId: 1, updatedByUserId: 8, userId: 20, jobTitle: "منسق عمليات", employmentStatus: "active" });
+    expect(dbMocks.getCompanyEmployeeAccessRef).toHaveBeenCalledWith(1, 20);
+  });
+
+  it("does not mutate a foreign or missing employee identifier", async () => {
+    dbMocks.getCompanyEmployeeAccessRef.mockResolvedValue(undefined);
+    const caller = employeesRouter.createCaller(context("hr"));
+
+    await expect(caller.saveProfile({ userId: 999, employmentStatus: "active" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(dbMocks.saveEmployeeProfile).not.toHaveBeenCalled();
   });
 
   it("saves an employee region within the active company context", async () => {

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
+import { useI18n } from "@/i18n";
 import { trpc } from "@/lib/trpc";
 import {
   ClipboardList,
@@ -54,6 +55,7 @@ import {
   Database,
   KeyRound,
   MessagesSquare,
+  Network,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -78,6 +80,7 @@ const menuItems = [
   { icon: Database, label: "جرد البيانات", path: "/data-inventory", adminOnly: true },
   { icon: KeyRound, label: "جاهزية OAuth", path: "/oauth-acceptance-readiness", adminOnly: true },
   { icon: Building2, label: "قوالب الشركة", path: "/company-templates", adminOnly: true },
+  { icon: Network, label: "البنية التنظيمية", path: "/organization", requiresDirectoryAccess: true },
   { icon: UserRoundSearch, label: "دليل الموظفين", path: "/employees", requiresDirectoryAccess: true },
   { icon: ClipboardCheck, label: "دورة حياة الموظف", path: "/employee-lifecycle", requiresLifecycleAccess: true },
   { icon: FileText, label: "العقود والوثائق", path: "/contracts", requiresContractsAccess: true },
@@ -100,13 +103,14 @@ const menuItems = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { loading, user, logout } = useAuth();
+  const { direction, t } = useI18n();
   const { data: modulePermissions } = trpc.accounts.myModulePermissions.useQuery(undefined, { enabled: Boolean(user && (!user.accountStatus || user.accountStatus === "active")) });
 
   if (loading) return <DashboardLayoutSkeleton />;
 
   if (!user) {
     return (
-      <div dir="rtl" className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#071a1a] px-5 text-[#071a1a]">
+      <div dir={direction} className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#071a1a] px-5 text-[#071a1a]">
         <div className="premium-grid absolute inset-0 opacity-70" />
         <div className="absolute -right-28 -top-32 size-[28rem] rounded-full bg-[#18b982]/15 blur-3xl" />
         <div className="absolute -bottom-40 -left-24 size-[30rem] rounded-full bg-[#c8a66a]/10 blur-3xl" />
@@ -126,7 +130,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (user.accountStatus && user.accountStatus !== "active") {
     const isRejected = user.accountStatus === "rejected";
     const isSuspended = user.accountStatus === "suspended";
-    return <div dir="rtl" className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#071a1a] px-5 text-[#071a1a]"><div className="premium-grid absolute inset-0 opacity-70" /><div className="absolute -right-28 -top-32 size-[28rem] rounded-full bg-[#18b982]/15 blur-3xl" /><section className="relative w-full max-w-md rounded-[2rem] border border-white/20 bg-[#f4f0e8]/95 p-8 text-center shadow-[0_24px_80px_rgba(0,0,0,.28)]"><span className={`mx-auto flex size-16 items-center justify-center rounded-3xl ${isRejected || isSuspended ? "bg-[#fdeceb] text-[#aa514b]" : "bg-[#dff5eb] text-[#087a5c]"}`}><Clock3 className="size-7" /></span><p className="mt-7 text-xs font-bold tracking-[.18em] text-[#637a77]">HR HBS</p><h1 className="premium-wordmark mt-3 text-2xl font-bold text-[#092a28]">{isRejected ? "تعذر تفعيل الحساب" : isSuspended ? "الحساب موقوف مؤقتاً" : "الحساب بانتظار التفعيل"}</h1><p className="mt-4 text-sm leading-7 text-[#526b69]">{isRejected || isSuspended ? "يرجى التواصل مع مسؤول المنصة لمعرفة الخطوة التالية." : "تم تسجيل طلب الانضمام بعد دخولك الموحد. سيصلك الوصول بعد مراجعة المسؤول وتحديد الدور المناسب."}</p><Button onClick={logout} variant="outline" className="pressable mt-7 rounded-xl border-[#b8c9c2] text-[#075c47]">تسجيل الخروج</Button></section></div>;
+    return <div dir={direction} className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#071a1a] px-5 text-[#071a1a]"><div className="premium-grid absolute inset-0 opacity-70" /><div className="absolute -right-28 -top-32 size-[28rem] rounded-full bg-[#18b982]/15 blur-3xl" /><section className="relative w-full max-w-md rounded-[2rem] border border-white/20 bg-[#f4f0e8]/95 p-8 text-center shadow-[0_24px_80px_rgba(0,0,0,.28)]"><span className={`mx-auto flex size-16 items-center justify-center rounded-3xl ${isRejected || isSuspended ? "bg-[#fdeceb] text-[#aa514b]" : "bg-[#dff5eb] text-[#087a5c]"}`}><Clock3 className="size-7" /></span><p className="mt-7 text-xs font-bold tracking-[.18em] text-[#637a77]">HR HBS</p><h1 className="premium-wordmark mt-3 text-2xl font-bold text-[#092a28]">{isRejected ? "تعذر تفعيل الحساب" : isSuspended ? "الحساب موقوف مؤقتاً" : "الحساب بانتظار التفعيل"}</h1><p className="mt-4 text-sm leading-7 text-[#526b69]">{isRejected || isSuspended ? "يرجى التواصل مع مسؤول المنصة لمعرفة الخطوة التالية." : "تم تسجيل طلب الانضمام بعد دخولك الموحد. سيصلك الوصول بعد مراجعة المسؤول وتحديد الدور المناسب."}</p><Button onClick={logout} variant="outline" className="pressable mt-7 rounded-xl border-[#b8c9c2] text-[#075c47]">تسجيل الخروج</Button></section></div>;
   }
 
   const hasOperationAccess = user.role === "admin" || Boolean(modulePermissions?.some(permission => permission.canView));
@@ -142,7 +146,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const visibleMenuItems = menuItems.filter(item => (!item.adminOnly || user.role === "admin") && (!item.requiresOperationAccess || hasOperationAccess) && (!item.requiresDirectoryAccess || canManageDirectory) && (!item.requiresLifecycleAccess || canManageLifecycle) && (!item.requiresContractsAccess || canManageContracts) && (!item.requiresOffboardingAccess || canManageOffboarding) && (!item.requiresGoalsAccess || canManageGoals) && (!item.managerOnly || isManager) && (!item.requiresRecruitmentAccess || canManageRecruitment) && (!item.requiresSchedulingAccess || canManageSchedules) && (!item.requiresApprovalAccess || canApprove));
 
   return (
-    <SidebarProvider dir="rtl" className="bg-[#f4f0e8] text-[#071a1a]">
+    <SidebarProvider dir={direction} className="bg-[#f4f0e8] text-[#071a1a]">
       <Sidebar side="right" collapsible="icon" className="border-l border-white/10 bg-[#071a1a] text-white">
         <SidebarHeader className="h-[88px] justify-center px-4">
           <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
@@ -190,7 +194,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </Sidebar>
 
       <SidebarInset className="min-h-svh bg-[#f4f0e8]">
-        <TopBar />
+        <TopBar availabilityLabel={t("common.available")} />
         <main className="flex-1 overflow-x-hidden px-4 py-5 md:px-8 md:py-8">{children}</main>
       </SidebarInset>
     </SidebarProvider>
@@ -215,7 +219,7 @@ function NavigationItem({ icon: Icon, label, path }: (typeof menuItems)[number])
   );
 }
 
-function TopBar() {
+function TopBar({ availabilityLabel }: { availabilityLabel: string }) {
   const isMobile = useIsMobile();
   const [location] = useLocation();
   const item = menuItems.find(entry => entry.path === location) ?? menuItems.find(entry => location.startsWith(entry.path));
@@ -231,7 +235,7 @@ function TopBar() {
       </div>
       <div className="flex items-center gap-2 rounded-full border border-[#cbd9d1] bg-white/75 px-3 py-1.5 text-xs font-medium text-[#526b69]">
         <span className="size-2 rounded-full bg-[#18b982]" />
-        المنصة متاحة
+        {availabilityLabel}
       </div>
     </header>
   );

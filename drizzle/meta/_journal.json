@@ -281,6 +281,20 @@
       "when": 1787807820603,
       "tag": "0039_abnormal_captain_britain",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1787822881374,
+      "tag": "0040_lazy_guardian",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1787824020674,
+      "tag": "0041_jazzy_cloak",
+      "breakpoints": true
     }
   ]
 }
