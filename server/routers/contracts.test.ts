@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const dbMocks = vi.hoisted(() => ({ createCompanyEmployeeContract: vi.fn(), createCompanyEmployeeDocument: vi.fn(), createCompanyEmployeeLifecycleEvent: vi.fn(), listCompanyEmployeeContracts: vi.fn(), listCompanyEmployeeDocuments: vi.fn(), listCompanyEmployees: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ createCompanyEmployeeContract: vi.fn(), createCompanyEmployeeDocument: vi.fn(), createCompanyEmployeeLifecycleEvent: vi.fn(), getCompanyEmployeeAccessRef: vi.fn(), getCompanyEmployeeDocumentAccessRef: vi.fn(), listCompanyEmployeeContracts: vi.fn(), listCompanyEmployeeDocuments: vi.fn(), listCompanyEmployees: vi.fn(), recordAuditEvent: vi.fn() }));
 const storageMocks = vi.hoisted(() => ({ storageGet: vi.fn(), storagePut: vi.fn() }));
 vi.mock("../db", () => dbMocks);
 vi.mock("../storage", () => storageMocks);
@@ -20,7 +20,10 @@ describe("contracts router", () => {
     dbMocks.listCompanyEmployeeDocuments.mockResolvedValue([]);
     dbMocks.createCompanyEmployeeContract.mockResolvedValue({ id: 4, companyId: 1, employeeUserId: 20, contractReference: "CTR-001" });
     dbMocks.createCompanyEmployeeDocument.mockResolvedValue({ id: 6, companyId: 1, employeeUserId: 20, storageKey: "companies/1/employee-documents/20/file.pdf" });
+    dbMocks.getCompanyEmployeeAccessRef.mockResolvedValue({ companyId: 1, userId: 20, managerUserId: 8 });
+    dbMocks.getCompanyEmployeeDocumentAccessRef.mockResolvedValue({ id: 6, companyId: 1, employeeUserId: 20, managerUserId: 8, storageKey: "companies/1/employee-documents/20/file.pdf", mimeType: "application/pdf", fileName: "document.pdf" });
     dbMocks.createCompanyEmployeeLifecycleEvent.mockResolvedValue({ id: 7 });
+    dbMocks.recordAuditEvent.mockResolvedValue(undefined);
     storageMocks.storageGet.mockResolvedValue({ key: "stored-key", url: "/manus-storage/stored-key" });
     storageMocks.storagePut.mockResolvedValue({ key: "companies/1/employee-documents/20/file.pdf", url: "/manus-storage/file.pdf" });
   });
@@ -57,5 +60,19 @@ describe("contracts router", () => {
     expect(storageMocks.storagePut).toHaveBeenCalledWith(expect.stringContaining("companies/1/employee-documents/20/"), expect.any(Buffer), "application/pdf");
     expect(dbMocks.createCompanyEmployeeDocument).toHaveBeenCalledWith(expect.objectContaining({ companyId: 1, employeeUserId: 20, uploadedByUserId: 8, mimeType: "application/pdf", sizeBytes: 9 }));
     await expect(caller.uploadDocument({ employeeUserId: 20, category: "employee_document", fileName: "notes.txt", mimeType: "text/plain", fileContentBase64: "dGVzdA==" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("creates a storage URL only after document authorization and records the access", async () => {
+    const caller = contractsRouter.createCaller(context("hr"));
+    await expect(caller.openDocument({ documentId: 6 })).resolves.toMatchObject({ documentId: 6, url: "/manus-storage/stored-key" });
+    expect(dbMocks.getCompanyEmployeeDocumentAccessRef).toHaveBeenCalledWith(1, 6);
+    expect(storageMocks.storageGet).toHaveBeenCalledWith("companies/1/employee-documents/20/file.pdf");
+    expect(dbMocks.recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ companyId: 1, actorUserId: 8, action: "employee_document_opened", entityId: 6 }));
+  });
+
+  it("does not issue a storage URL for a missing or foreign document reference", async () => {
+    dbMocks.getCompanyEmployeeDocumentAccessRef.mockResolvedValue(undefined);
+    await expect(contractsRouter.createCaller(context("hr")).openDocument({ documentId: 999 })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(storageMocks.storageGet).not.toHaveBeenCalled();
   });
 });
