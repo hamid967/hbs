@@ -11,8 +11,14 @@ name: Deno
 on:
   push:
     branches: ["main"]
+    paths:
+      - "deno/**"
+      - ".github/workflows/deno.yml"
   pull_request:
     branches: ["main"]
+    paths:
+      - "deno/**"
+      - ".github/workflows/deno.yml"
 
 permissions:
   contents: read
@@ -31,12 +37,22 @@ jobs:
         with:
           deno-version: v1.x
 
-      # Uncomment this step to verify the use of 'deno fmt' on each commit.
-      # - name: Verify formatting
-      #   run: deno fmt --check
+      - name: Run Deno linter on Deno sources only
+        shell: bash
+        run: |
+          mapfile -t deno_sources < <(find deno -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' \) -print 2>/dev/null || true)
+          if [ "${#deno_sources[@]}" -eq 0 ]; then
+            echo "No Deno source files found; Node/TypeScript sources are intentionally verified by the Node CI workflow."
+            exit 0
+          fi
+          deno lint "${deno_sources[@]}"
 
-      - name: Run linter
-        run: deno lint
-
-      - name: Run tests
-        run: deno test -A
+      - name: Run Deno tests on Deno sources only
+        shell: bash
+        run: |
+          mapfile -t deno_tests < <(find deno -type f \( -name '*_test.ts' -o -name '*.test.ts' -o -name '*_test.tsx' -o -name '*.test.tsx' \) -print 2>/dev/null || true)
+          if [ "${#deno_tests[@]}" -eq 0 ]; then
+            echo "No Deno tests found; Node/TypeScript tests are intentionally verified by the Node CI workflow."
+            exit 0
+          fi
+          deno test -A "${deno_tests[@]}"
