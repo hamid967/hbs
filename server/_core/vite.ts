@@ -6,6 +6,9 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
+// Express 5 requires a named wildcard. Braces retain the root path in the SPA fallback.
+export const spaFallbackRoute = "/{*splat}";
+
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
@@ -21,7 +24,7 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
+  app.use(spaFallbackRoute, async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
@@ -61,7 +64,7 @@ export function serveStatic(app: Express) {
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  app.use(spaFallbackRoute, (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
