@@ -604,6 +604,46 @@ export const chatMessages = mysqlTable("chatMessages", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/** Mراسلات الموظفين منفصلة عن محادثة مساعد الطلبات، ومقيدة بالشركة وعضوية القناة. */
+export const internalMessagingChannels = mysqlTable("internalMessagingChannels", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 120 }).notNull(),
+  description: varchar("description", { length: 360 }),
+  status: mysqlEnum("status", ["active", "archived"]).notNull().default("active"),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id, { onDelete: "restrict" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [
+  uniqueIndex("internalMessagingChannels_company_name_unique").on(table.companyId, table.name),
+  index("internalMessagingChannels_company_status_idx").on(table.companyId, table.status),
+]);
+
+export const internalMessagingChannelMembers = mysqlTable("internalMessagingChannelMembers", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  channelId: int("channelId").notNull().references(() => internalMessagingChannels.id, { onDelete: "cascade" }),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  addedByUserId: int("addedByUserId").notNull().references(() => users.id, { onDelete: "restrict" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [
+  uniqueIndex("internalMessagingChannelMembers_channel_user_unique").on(table.channelId, table.userId),
+  index("internalMessagingChannelMembers_company_user_idx").on(table.companyId, table.userId),
+  index("internalMessagingChannelMembers_company_channel_idx").on(table.companyId, table.channelId),
+]);
+
+export const internalMessagingMessages = mysqlTable("internalMessagingMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  channelId: int("channelId").notNull().references(() => internalMessagingChannels.id, { onDelete: "cascade" }),
+  senderUserId: int("senderUserId").notNull().references(() => users.id, { onDelete: "restrict" }),
+  body: text("body").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [
+  index("internalMessagingMessages_company_channel_created_idx").on(table.companyId, table.channelId, table.createdAt),
+  index("internalMessagingMessages_company_sender_created_idx").on(table.companyId, table.senderUserId, table.createdAt),
+]);
+
 export const hrSystemPlans = mysqlTable("hrSystemPlans", {
   id: int("id").autoincrement().primaryKey(),
   employeeId: int("employeeId").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -640,5 +680,8 @@ export type ServiceRequest = typeof serviceRequests.$inferSelect;
 export type InsertServiceRequest = typeof serviceRequests.$inferInsert;
 export type RequestHistoryEntry = typeof requestHistory.$inferSelect;
 export type ChatSession = typeof chatSessions.$inferSelect;
+export type InternalMessagingChannel = typeof internalMessagingChannels.$inferSelect;
+export type InternalMessagingChannelMember = typeof internalMessagingChannelMembers.$inferSelect;
+export type InternalMessagingMessage = typeof internalMessagingMessages.$inferSelect;
 export type HrSystemPlan = typeof hrSystemPlans.$inferSelect;
 export type DemoRequest = typeof demoRequests.$inferSelect;

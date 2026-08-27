@@ -53,6 +53,7 @@ import {
   ArchiveRestore,
   Database,
   KeyRound,
+  MessagesSquare,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -93,6 +94,7 @@ const menuItems = [
   { icon: ShieldCheck, label: "محاكي الموافقات", path: "/approval-simulator", requiresDirectoryAccess: true },
   { icon: Inbox, label: "صندوق العمل", path: "/workboard" },
   { icon: BellRing, label: "الإشعارات", path: "/notifications" },
+  { icon: MessagesSquare, label: "المراسلات الداخلية", path: "/messaging" },
   { icon: BarChart3, label: "التقارير", path: "/reports", requiresDirectoryAccess: true },
 ];
 
