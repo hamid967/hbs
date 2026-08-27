@@ -3,7 +3,7 @@ import { z } from "zod";
 import { canAccessResource, type AccountRole, type ResourceAction } from "../../shared/moduleAccess";
 import { assertSameCompany } from "../_core/tenancy";
 import { assignCompanyTrainingProgram, createCompanyDepartment, createCompanyEmployeeLifecycleEvent, createCompanyJobDesignation, createCompanyTrainingProgram, getCompanyEmployeeAccessRef, listCompanyDepartments, listCompanyEmployeeDependents, listCompanyEmployeeEmergencyContacts, listCompanyEmployeeLifecycleEvents, listCompanyEmployees, listCompanyJobDesignations, listCompanyTrainingAssignments, listCompanyTrainingPrograms, recordAuditEvent, saveCompanyDepartmentManager, saveCompanyEmployeeDependent, saveCompanyEmployeeEmergencyContact, saveEmployeeProfile } from "../db";
-import { canReadEmployee, canUpdateEmployee, policyContextFromUser } from "../policies";
+import { canReadEmployee, canUpdateEmployee, policyContextFromUser, projectEmployeeDirectoryRecord } from "../policies";
 import { protectedProcedure, router } from "../_core/trpc";
 
 const employeeStatus = z.enum(["active", "on_leave", "inactive"]);
@@ -30,11 +30,17 @@ export const employeesRouter = router({
     ensureEmployeeResourceAccess(ctx.user.role, "employee_directory");
     const policyContext = policyContextFromUser(ctx.user);
     const employees = await listCompanyEmployees(ctx.user.companyId);
-    return employees.filter(employee => canReadEmployee(policyContext, {
-      companyId: ctx.user.companyId,
-      userId: employee.id,
-      managerUserId: employee.profile?.managerUserId,
-    }));
+    return employees
+      .filter(employee => canReadEmployee(policyContext, {
+        companyId: ctx.user.companyId,
+        userId: employee.id,
+        managerUserId: employee.profile?.managerUserId,
+      }))
+      .map(employee => projectEmployeeDirectoryRecord(policyContext, {
+        ...employee,
+        companyId: ctx.user.companyId,
+        userId: employee.id,
+      }));
   }),
   departments: protectedProcedure.query(async ({ ctx }) => { ensureEmployeeResourceAccess(ctx.user.role, "employee_directory"); return listCompanyDepartments(ctx.user.companyId); }),
   designations: protectedProcedure.query(async ({ ctx }) => { ensureEmployeeResourceAccess(ctx.user.role, "employee_directory"); return listCompanyJobDesignations(ctx.user.companyId); }),
