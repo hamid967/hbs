@@ -15,6 +15,7 @@ import {
   canReadEmployee,
   canReadSensitiveEmployeeFields,
   policyContextFromUser,
+  projectEmployeeDirectoryRecord,
 } from "./index";
 
 const employee = { companyId: 4, userId: 50, managerUserId: 20 };
@@ -66,6 +67,12 @@ describe("tenant and record policy boundaries", () => {
     expect(canReadSensitiveEmployeeFields(context("user", 50), employee)).toBe(false);
     expect(canReadCompensation(context("admin", 1), contract)).toBe(true);
     expect(canReadCompensation(context("hr", 10), contract)).toBe(false);
+  });
+
+  it("redacts sensitive directory fields for a direct manager", () => {
+    const record = { ...employee, id: 50, name: "موظف مباشر", role: "user", profile: { employeeNumber: "EMP-50", jobTitle: "منسق", designationId: null, departmentId: 2, region: "الرياض", workLocation: "المقر", managerUserId: 20, employmentStatus: "active" as const, joinedAt: new Date("2025-01-01T00:00:00Z") }, department: { id: 2, name: "العمليات", code: "OPS" }, designation: null };
+    expect(projectEmployeeDirectoryRecord(context("manager", 20), record).profile).toMatchObject({ employeeNumber: null, joinedAt: null, jobTitle: "منسق" });
+    expect(projectEmployeeDirectoryRecord(context("hr", 10), record).profile).toMatchObject({ employeeNumber: "EMP-50", joinedAt: new Date("2025-01-01T00:00:00Z") });
   });
 
   it("requires a direct manager relationship for contract and document access", () => {
