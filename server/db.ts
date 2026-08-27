@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, demoRequests, departments, employeeAssets, employeeContracts, employeeDependents, employeeDocuments, employeeEmergencyContacts, employeeExitInterviews, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, internalMessagingChannelMembers, internalMessagingChannels, internalMessagingMessages, jobCandidates, jobDesignations, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, onboardingTaskTemplates, onboardingTasks, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users } from "../drizzle/schema";
+import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, costCenters, demoRequests, departments, employeeAssets, employeeContracts, employeeDependents, employeeDocuments, employeeEmergencyContacts, employeeExitInterviews, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, internalMessagingChannelMembers, internalMessagingChannels, internalMessagingMessages, jobCandidates, jobDesignations, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, legalEntities, onboardingTaskTemplates, onboardingTasks, organizationAssignments, organizationBranches, organizationTeams, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users, workLocations } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -188,6 +188,111 @@ export async function saveCompanyDepartmentManager(input: { companyId: number; d
   }
   await db.update(departments).set({ managerUserId: input.managerUserId ?? null }).where(and(eq(departments.id, input.departmentId), eq(departments.companyId, input.companyId)));
   return (await db.select().from(departments).where(and(eq(departments.id, input.departmentId), eq(departments.companyId, input.companyId))).limit(1))[0];
+}
+
+export async function listCompanyOrganization(companyId: number) {
+  const db = await getDb();
+  if (!db) return { legalEntities: [], branches: [], teams: [], costCenters: [], workLocations: [], assignments: [] };
+  const [entities, branches, teams, centers, locations, assignments] = await Promise.all([
+    db.select().from(legalEntities).where(eq(legalEntities.companyId, companyId)).orderBy(desc(legalEntities.updatedAt)),
+    db.select().from(organizationBranches).where(eq(organizationBranches.companyId, companyId)).orderBy(desc(organizationBranches.updatedAt)),
+    db.select().from(organizationTeams).where(eq(organizationTeams.companyId, companyId)).orderBy(desc(organizationTeams.updatedAt)),
+    db.select().from(costCenters).where(eq(costCenters.companyId, companyId)).orderBy(desc(costCenters.updatedAt)),
+    db.select().from(workLocations).where(eq(workLocations.companyId, companyId)).orderBy(desc(workLocations.updatedAt)),
+    db.select().from(organizationAssignments).where(eq(organizationAssignments.companyId, companyId)).orderBy(desc(organizationAssignments.effectiveFrom), desc(organizationAssignments.createdAt)),
+  ]);
+  return { legalEntities: entities, branches, teams, costCenters: centers, workLocations: locations, assignments };
+}
+
+export async function createCompanyLegalEntity(input: { companyId: number; name: string; code?: string; registrationLabel?: string; registrationNumber?: string; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await db.insert(legalEntities).values({ companyId: input.companyId, name: input.name, code: input.code ?? null, registrationLabel: input.registrationLabel ?? null, registrationNumber: input.registrationNumber ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(legalEntities).where(and(eq(legalEntities.companyId, input.companyId), eq(legalEntities.name, input.name))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ الكيان النظامي");
+  return created;
+}
+
+export async function createCompanyOrganizationBranch(input: { companyId: number; legalEntityId?: number; name: string; code?: string; city?: string; region?: string; managerUserId?: number; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  if (input.legalEntityId) {
+    const entity = (await db.select().from(legalEntities).where(and(eq(legalEntities.id, input.legalEntityId), eq(legalEntities.companyId, input.companyId), eq(legalEntities.status, "active"))).limit(1))[0];
+    if (!entity) throw new Error("الكيان النظامي غير موجود أو غير نشط ضمن الشركة الحالية");
+  }
+  if (input.managerUserId) {
+    const manager = (await db.select().from(users).where(and(eq(users.id, input.managerUserId), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"))).limit(1))[0];
+    if (!manager) throw new Error("مدير الفرع غير موجود أو غير مفعّل ضمن الشركة الحالية");
+  }
+  await db.insert(organizationBranches).values({ companyId: input.companyId, legalEntityId: input.legalEntityId ?? null, name: input.name, code: input.code ?? null, city: input.city ?? null, region: input.region ?? null, managerUserId: input.managerUserId ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(organizationBranches).where(and(eq(organizationBranches.companyId, input.companyId), eq(organizationBranches.name, input.name))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ الفرع التنظيمي");
+  return created;
+}
+
+export async function createCompanyOrganizationTeam(input: { companyId: number; departmentId?: number; branchId?: number; name: string; code?: string; managerUserId?: number; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  if (input.departmentId) {
+    const department = (await db.select().from(departments).where(and(eq(departments.id, input.departmentId), eq(departments.companyId, input.companyId), sql`${departments.archivedAt} is null`)).limit(1))[0];
+    if (!department) throw new Error("القسم غير موجود أو مؤرشف ضمن الشركة الحالية");
+  }
+  if (input.branchId) {
+    const branch = (await db.select().from(organizationBranches).where(and(eq(organizationBranches.id, input.branchId), eq(organizationBranches.companyId, input.companyId), eq(organizationBranches.status, "active"))).limit(1))[0];
+    if (!branch) throw new Error("الفرع غير موجود أو غير نشط ضمن الشركة الحالية");
+  }
+  if (input.managerUserId) {
+    const manager = (await db.select().from(users).where(and(eq(users.id, input.managerUserId), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"))).limit(1))[0];
+    if (!manager) throw new Error("مدير الفريق غير موجود أو غير مفعّل ضمن الشركة الحالية");
+  }
+  await db.insert(organizationTeams).values({ companyId: input.companyId, departmentId: input.departmentId ?? null, branchId: input.branchId ?? null, name: input.name, code: input.code ?? null, managerUserId: input.managerUserId ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(organizationTeams).where(and(eq(organizationTeams.companyId, input.companyId), eq(organizationTeams.name, input.name))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ الفريق التنظيمي");
+  return created;
+}
+
+export async function createCompanyCostCenter(input: { companyId: number; name: string; code: string; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  await db.insert(costCenters).values({ companyId: input.companyId, name: input.name, code: input.code, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(costCenters).where(and(eq(costCenters.companyId, input.companyId), eq(costCenters.code, input.code))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ مركز التكلفة");
+  return created;
+}
+
+export async function createCompanyWorkLocation(input: { companyId: number; branchId?: number; name: string; code?: string; city?: string; region?: string; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  if (input.branchId) {
+    const branch = (await db.select().from(organizationBranches).where(and(eq(organizationBranches.id, input.branchId), eq(organizationBranches.companyId, input.companyId), eq(organizationBranches.status, "active"))).limit(1))[0];
+    if (!branch) throw new Error("الفرع غير موجود أو غير نشط ضمن الشركة الحالية");
+  }
+  await db.insert(workLocations).values({ companyId: input.companyId, branchId: input.branchId ?? null, name: input.name, code: input.code ?? null, city: input.city ?? null, region: input.region ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(workLocations).where(and(eq(workLocations.companyId, input.companyId), eq(workLocations.name, input.name))).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ موقع العمل");
+  return created;
+}
+
+export async function createCompanyOrganizationAssignment(input: { companyId: number; employeeUserId: number; legalEntityId?: number; branchId?: number; departmentId?: number; teamId?: number; costCenterId?: number; workLocationId?: number; effectiveFrom: Date; effectiveTo?: Date; createdByUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const employee = (await db.select().from(users).where(and(eq(users.id, input.employeeUserId), eq(users.companyId, input.companyId), eq(users.accountStatus, "active"))).limit(1))[0];
+  if (!employee) throw new Error("الموظف غير موجود أو غير مفعّل ضمن الشركة الحالية");
+  if (input.effectiveTo && input.effectiveTo < input.effectiveFrom) throw new Error("تاريخ نهاية التعيين التنظيمي لا يسبق تاريخ البداية");
+  const [entity, branch, department, team, center, location] = await Promise.all([
+    input.legalEntityId ? db.select().from(legalEntities).where(and(eq(legalEntities.id, input.legalEntityId), eq(legalEntities.companyId, input.companyId), eq(legalEntities.status, "active"))).limit(1) : Promise.resolve([]),
+    input.branchId ? db.select().from(organizationBranches).where(and(eq(organizationBranches.id, input.branchId), eq(organizationBranches.companyId, input.companyId), eq(organizationBranches.status, "active"))).limit(1) : Promise.resolve([]),
+    input.departmentId ? db.select().from(departments).where(and(eq(departments.id, input.departmentId), eq(departments.companyId, input.companyId), sql`${departments.archivedAt} is null`)).limit(1) : Promise.resolve([]),
+    input.teamId ? db.select().from(organizationTeams).where(and(eq(organizationTeams.id, input.teamId), eq(organizationTeams.companyId, input.companyId), eq(organizationTeams.status, "active"))).limit(1) : Promise.resolve([]),
+    input.costCenterId ? db.select().from(costCenters).where(and(eq(costCenters.id, input.costCenterId), eq(costCenters.companyId, input.companyId), eq(costCenters.status, "active"))).limit(1) : Promise.resolve([]),
+    input.workLocationId ? db.select().from(workLocations).where(and(eq(workLocations.id, input.workLocationId), eq(workLocations.companyId, input.companyId), eq(workLocations.status, "active"))).limit(1) : Promise.resolve([]),
+  ]);
+  if ((input.legalEntityId && !entity[0]) || (input.branchId && !branch[0]) || (input.departmentId && !department[0]) || (input.teamId && !team[0]) || (input.costCenterId && !center[0]) || (input.workLocationId && !location[0])) throw new Error("أحد مراجع التعيين التنظيمي غير صالح ضمن الشركة الحالية");
+  await db.update(organizationAssignments).set({ status: "archived", archivedAt: new Date(), effectiveTo: input.effectiveFrom }).where(and(eq(organizationAssignments.companyId, input.companyId), eq(organizationAssignments.employeeUserId, input.employeeUserId), eq(organizationAssignments.status, "active")));
+  await db.insert(organizationAssignments).values({ companyId: input.companyId, employeeUserId: input.employeeUserId, legalEntityId: input.legalEntityId ?? null, branchId: input.branchId ?? null, departmentId: input.departmentId ?? null, teamId: input.teamId ?? null, costCenterId: input.costCenterId ?? null, workLocationId: input.workLocationId ?? null, effectiveFrom: input.effectiveFrom, effectiveTo: input.effectiveTo ?? null, createdByUserId: input.createdByUserId });
+  const created = (await db.select().from(organizationAssignments).where(and(eq(organizationAssignments.companyId, input.companyId), eq(organizationAssignments.employeeUserId, input.employeeUserId), eq(organizationAssignments.status, "active"))).orderBy(desc(organizationAssignments.createdAt)).limit(1))[0];
+  if (!created) throw new Error("تعذر حفظ التعيين التنظيمي");
+  return created;
 }
 
 export async function listCompanyEmployees(companyId: number) {
