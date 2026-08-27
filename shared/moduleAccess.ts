@@ -3,6 +3,13 @@ export type AccessModule = typeof accessModules[number];
 export type AccountRole = "user" | "hr" | "government" | "manager" | "admin";
 export type ModulePermission = { module: AccessModule; canView: boolean; canManage: boolean };
 export type PermissionTemplate = { id: string; title: string; description: string; role: AccountRole; modulePermissions: ModulePermission[] };
+export const resourceActions = ["employee_directory", "employee_lifecycle"] as const;
+export type ResourceAction = typeof resourceActions[number];
+
+const resourceRolePolicy: Record<ResourceAction, readonly AccountRole[]> = {
+  employee_directory: ["admin", "manager", "hr"],
+  employee_lifecycle: ["admin", "hr"],
+};
 
 export const moduleLabels: Record<AccessModule, string> = {
   hr: "الموارد البشرية",
@@ -47,4 +54,9 @@ export function canViewModule(role: AccountRole, permissions: readonly ModulePer
 
 export function permittedModules(role: AccountRole, permissions: readonly ModulePermission[]) {
   return accessModules.filter(module => canViewModule(role, permissions, module));
+}
+
+/** Resource-level policy for domains that do not map to an HR/Government module. */
+export function canAccessResource(role: AccountRole, action: ResourceAction) {
+  return resourceRolePolicy[action].includes(role);
 }
