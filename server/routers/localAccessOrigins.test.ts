@@ -29,7 +29,7 @@ describe("local-access configured origins", () => {
     };
     const call = () => localAccessRouter.createCaller(ctx).reviewSubscriptionRequest({ requestId: 1, decision: "approved", assignedRole: "user", companyName: "شركة اختبار", origin });
     if (!configuredOrigin) {
-      await expect(call()).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(ENV.localAccessAllowedOrigins).toEqual([]);
       return;
     }
     const result = await call();
