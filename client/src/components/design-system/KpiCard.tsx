@@ -1,21 +1,39 @@
 import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
+import { toneOf, type DsTone } from "./tone";
 
 type KpiCardProps = {
   label: string;
   value: ReactNode;
   detail?: string;
   visual?: ReactNode;
+  tone?: DsTone;
+  className?: string;
 };
 
-export function KpiCard({ label, value, detail, visual }: KpiCardProps) {
+/** بطاقة مؤشر — الرقم الواحد الذي يتصدّر لوحات التحكم. */
+export function KpiCard({
+  label,
+  value,
+  detail,
+  visual,
+  tone,
+  className,
+}: KpiCardProps) {
+  const classes = tone ? toneOf(tone) : undefined;
   return (
-    <section className="ds-surface ds-kpi-card" aria-label={label}>
+    <section
+      className={cn("ds-surface ds-kpi-card", className)}
+      aria-label={label}
+    >
       <div className="min-w-0">
         <p className="ds-kpi-label">{label}</p>
-        <p className="ds-kpi-value">{value}</p>
+        <p className={cn("ds-kpi-value", classes?.text)}>{value}</p>
         {detail ? <p className="ds-kpi-detail">{detail}</p> : null}
       </div>
-      {visual ? <div className="shrink-0">{visual}</div> : null}
+      {visual ? (
+        <div className={cn("shrink-0", classes?.icon)}>{visual}</div>
+      ) : null}
     </section>
   );
 }

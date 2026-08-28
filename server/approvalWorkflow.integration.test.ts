@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// The database layer only builds a client when DATABASE_URL is present, so the
+// suite declares its own value before importing ./db. The drizzle driver itself
+// is mocked below, so no server is contacted.
+vi.hoisted(() => { process.env.DATABASE_URL ||= "mysql://test:test@127.0.0.1:3306/hrhbs_test"; });
+
 const state = vi.hoisted(() => ({ selectQueue: [] as unknown[][], inserts: [] as unknown[], updates: [] as unknown[] }));
 function query(value: unknown[]) {
   const promise = Promise.resolve(value);

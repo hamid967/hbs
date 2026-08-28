@@ -1,3 +1,5 @@
+import { toneOf, type DsTone } from "@/components/design-system/tone";
+
 export type RoadmapStatus = "completed" | "validation" | "partial" | "planned";
 
 export type RoadmapStage = {
@@ -42,12 +44,19 @@ export const roadmapStages: RoadmapStage[] = [
   { number: 30, title: "الإطلاق والتحسين", detail: "قياس النتائج والتحسين المستمر.", track: "الاستعداد", status: "partial", dependency: "النشر متاح؛ الإغلاق يعتمد على اجتياز مراحل القبول السابقة." },
 ];
 
-export const roadmapStatusMeta: Record<RoadmapStatus, { label: string; className: string }> = {
-  completed: { label: "مكتملة", className: "bg-[#e6f4e8] text-[#347950]" },
-  validation: { label: "بانتظار تحقق حي", className: "bg-[#fff1de] text-[#a46723]" },
-  partial: { label: "منفذة جزئياً", className: "bg-[#e9eef8] text-[#446b98]" },
-  planned: { label: "مخططة", className: "bg-[#f1f2f1] text-[#66736a]" },
+const statusTone: Record<RoadmapStatus, DsTone> = { completed: "success", validation: "warning", partial: "info", planned: "neutral" };
+
+export const roadmapStatusMeta: Record<RoadmapStatus, { label: string; className: string; tone: DsTone }> = {
+  completed: { label: "مكتملة", tone: statusTone.completed, className: statusClassName("completed") },
+  validation: { label: "بانتظار تحقق حي", tone: statusTone.validation, className: statusClassName("validation") },
+  partial: { label: "منفذة جزئياً", tone: statusTone.partial, className: statusClassName("partial") },
+  planned: { label: "مخططة", tone: statusTone.planned, className: statusClassName("planned") },
 };
+
+function statusClassName(status: RoadmapStatus) {
+  const classes = toneOf(statusTone[status]);
+  return `${classes.surface} ${classes.text}`;
+}
 
 export type OperationalBatch = {
   title: string;
