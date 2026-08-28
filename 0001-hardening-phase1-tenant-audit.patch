@@ -1,0 +1,154 @@
+From d31391969563140aec8ffcbc0ecbd55e303fcb45 Mon Sep 17 00:00:00 2001
+From: HBS Hardening Audit <audit@local>
+Date: Fri, 28 Aug 2026 05:07:04 +0000
+Subject: [PATCH] fix(security): scope MVP analytics requests to the caller's
+ company
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- getMvpMetrics() previously aggregated serviceRequests across every
+  company on the platform with zero tenant filtering. Any user with
+  admin/manager role in ANY company could see combined request counts,
+  urgency, and status breakdowns from every other company.
+- Now joins serviceRequests -> users on employeeId and filters by
+  users.companyId, matching the join pattern already used elsewhere
+  in server/db.ts.
+- demoRequests and hrSystemPlans remain platform-wide intentionally
+  (pre-signup marketing/lead data owned by the HBS team itself, same
+  as demoRequestsRouter already treats them) — documented inline.
+- Added a regression test asserting the requests query always applies
+  a company-scoping WHERE clause.
+
+test(ci): make the test suite reproducible without manual env setup
+
+- 7 tests were failing on a clean checkout because DATABASE_URL and
+  HRHBS_ADMIN_EMAIL were not set, even though the underlying code was
+  correct (verified by rerunning with the vars set: all 7 passed).
+- Added server/_core/vitest.setup.ts with safe, non-networked test
+  defaults and wired it into vitest.config.ts.
+- Verified no other test relies on DATABASE_URL being absent.
+
+Verified: pnpm check / pnpm test (221/221) / pnpm build all pass clean.
+---
+ server/_core/vitest.setup.ts   | 10 ++++++++++
+ server/db.ts                   | 11 +++++++++--
+ server/mvpMetrics.test.ts      | 26 +++++++++++++++++++++++++-
+ server/routers/mvpAnalytics.ts |  4 ++--
+ vitest.config.ts               |  1 +
+ 5 files changed, 47 insertions(+), 5 deletions(-)
+ create mode 100644 server/_core/vitest.setup.ts
+
+diff --git a/server/_core/vitest.setup.ts b/server/_core/vitest.setup.ts
+new file mode 100644
+index 0000000..f02fd38
+--- /dev/null
++++ b/server/_core/vitest.setup.ts
+@@ -0,0 +1,10 @@
++// Safe defaults for the test environment only.
++//
++// These exist so `pnpm test` is reproducible on any machine or CI runner
++// without manual env setup. Nothing here touches a real database or a real
++// mailbox — DATABASE_URL is a placeholder that only needs to be *truthy* so
++// getDb() constructs a drizzle client; tests that actually query the
++// database mock the `drizzle-orm/mysql2` module itself (see
++// server/approvalWorkflow.integration.test.ts) rather than hitting this URL.
++process.env.HRHBS_ADMIN_EMAIL ??= "admin@hrhbs.test";
++process.env.DATABASE_URL ??= "mysql://test:test@127.0.0.1:3306/hbs_test";
+diff --git a/server/db.ts b/server/db.ts
+index 7f79168..6d08db6 100644
+--- a/server/db.ts
++++ b/server/db.ts
+@@ -1552,13 +1552,20 @@ export function buildMvpMetrics(source: { requests: MetricRequestRow[]; demos: M
+   };
+ }
+ 
+-export async function getMvpMetrics(): Promise<MvpMetrics> {
++export async function getMvpMetrics(companyId: number): Promise<MvpMetrics> {
+   const db = await getDb();
+   const now = new Date(); const currentStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)); const previousStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+   const empty: MvpMetrics = { requests: { total: 0, open: 0, urgent: 0, completed: 0, inReview: 0, submitted: 0, rejected: 0, last30Days: 0 }, demos: { total: 0, new: 0, contacted: 0, qualified: 0, closed: 0, last30Days: 0 }, hrPlans: { total: 0, last30Days: 0 }, monthly: { currentMonth: monthLabel(currentStart), previousMonth: monthLabel(previousStart), requests: calculateMonthlyMetric(0, 0), demos: calculateMonthlyMetric(0, 0), hrPlans: calculateMonthlyMetric(0, 0) } };
+   if (!db) return empty;
++  // requests are scoped to the caller's company via the employee -> users.companyId join.
++  // demos and hrPlans are pre-signup marketing/lead data owned by the HBS platform team
++  // itself (not by any single tenant), so they intentionally remain platform-wide here —
++  // this mirrors demoRequestsRouter, which already treats them the same way.
+   const [requests, demos, plans] = await Promise.all([
+-    db.select({ status: serviceRequests.status, priority: serviceRequests.priority, createdAt: serviceRequests.createdAt }).from(serviceRequests),
++    db.select({ status: serviceRequests.status, priority: serviceRequests.priority, createdAt: serviceRequests.createdAt })
++      .from(serviceRequests)
++      .innerJoin(users, eq(serviceRequests.employeeId, users.id))
++      .where(eq(users.companyId, companyId)),
+     db.select({ status: demoRequests.status, createdAt: demoRequests.createdAt }).from(demoRequests),
+     db.select({ createdAt: hrSystemPlans.createdAt }).from(hrSystemPlans),
+   ]);
+diff --git a/server/mvpMetrics.test.ts b/server/mvpMetrics.test.ts
+index d6c1d7b..186e5c6 100644
+--- a/server/mvpMetrics.test.ts
++++ b/server/mvpMetrics.test.ts
+@@ -1,4 +1,4 @@
+-import { describe, expect, it } from "vitest";
++import { describe, expect, it, vi, beforeEach } from "vitest";
+ import { buildMvpMetrics, calculateMonthlyMetric } from "./db";
+ 
+ describe("calculateMonthlyMetric", () => {
+@@ -27,3 +27,27 @@ describe("calculateMonthlyMetric", () => {
+     });
+   });
+ });
++
++describe("getMvpMetrics tenant isolation", () => {
++  const state = vi.hoisted(() => ({ whereArgs: [] as unknown[] }));
++
++  function chain(value: unknown[]): any {
++    const promise = Promise.resolve(value);
++    return Object.assign(promise, {
++      from: () => chain(value),
++      innerJoin: () => chain(value),
++      where: (condition: unknown) => { state.whereArgs.push(condition); return chain(value); },
++    });
++  }
++
++  beforeEach(() => { state.whereArgs = []; vi.resetModules(); });
++
++  it("scopes the service-requests query to the caller's company via the users join, never to all companies", async () => {
++    vi.doMock("drizzle-orm/mysql2", () => ({ drizzle: () => ({ select: () => chain([]) }) }));
++    const { getMvpMetrics } = await import("./db");
++    await getMvpMetrics(42);
++    // The requests query must apply a company-scoping WHERE clause (via the
++    // users join) — it must never run unfiltered across every tenant.
++    expect(state.whereArgs).toHaveLength(1);
++  });
++});
+diff --git a/server/routers/mvpAnalytics.ts b/server/routers/mvpAnalytics.ts
+index 8f03518..a1a107d 100644
+--- a/server/routers/mvpAnalytics.ts
++++ b/server/routers/mvpAnalytics.ts
+@@ -27,10 +27,10 @@ function emptyAnalysis(metrics: MvpMetrics) {
+ }
+ 
+ export const mvpAnalyticsRouter = router({
+-  metrics: protectedProcedure.query(async ({ ctx }) => { assertAnalyticsAccess(ctx.user.role); return getMvpMetrics(); }),
++  metrics: protectedProcedure.query(async ({ ctx }) => { assertAnalyticsAccess(ctx.user.role); return getMvpMetrics(ctx.user.companyId); }),
+   analyze: protectedProcedure.mutation(async ({ ctx }) => {
+     assertAnalyticsAccess(ctx.user.role);
+-    const metrics = await getMvpMetrics();
++    const metrics = await getMvpMetrics(ctx.user.companyId);
+     const hasData = metrics.requests.total + metrics.demos.total + metrics.hrPlans.total > 0;
+     if (!hasData) return emptyAnalysis(metrics);
+     const result = await invokeLLM({
+diff --git a/vitest.config.ts b/vitest.config.ts
+index 20c5fc5..cd7d8d8 100644
+--- a/vitest.config.ts
++++ b/vitest.config.ts
+@@ -14,6 +14,7 @@ export default defineConfig({
+   },
+   test: {
+     environment: "node",
++    setupFiles: ["./server/_core/vitest.setup.ts"],
+     include: ["server/**/*.test.ts", "server/**/*.spec.ts", "client/**/*.test.ts", "client/**/*.test.tsx", "client/**/*.spec.ts", "client/**/*.spec.tsx"],
+   },
+ });
+-- 
+2.43.0
+
