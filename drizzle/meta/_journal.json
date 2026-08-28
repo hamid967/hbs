@@ -302,6 +302,13 @@
       "when": 1787884827026,
       "tag": "0042_woozy_captain_flint",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "5",
+      "when": 1787897278967,
+      "tag": "0043_useful_black_knight",
+      "breakpoints": true
     }
   ]
 }

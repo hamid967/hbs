@@ -26,6 +26,8 @@ export const users = mysqlTable("users", {
   companyId: int("companyId").notNull().default(1).references(() => companies.id, { onDelete: "restrict" }),
   role: mysqlEnum("role", ["user", "hr", "government", "manager", "admin"]).default("user").notNull(),
   accountStatus: mysqlEnum("accountStatus", ["pending", "active", "suspended", "rejected"]).default("pending").notNull(),
+  /** وقت إثبات ملكية البريد. يبقى null للحسابات التي لم تتحقق بعد. */
+  emailVerifiedAt: timestamp("emailVerifiedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -81,6 +83,25 @@ export const accountInvitations = mysqlTable("accountInvitations", {
   revokedAt: timestamp("revokedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("accountInvitations_token_unique").on(table.tokenHash), index("accountInvitations_user_idx").on(table.userId), index("accountInvitations_email_expiry_idx").on(table.email, table.expiresAt)]);
+
+export const authTokenPurposes = ["email_verification", "password_reset"] as const;
+
+/**
+ * رموز المصادقة أحادية الاستخدام: تأكيد البريد واستعادة كلمة المرور.
+ *
+ * يُخزَّن تجزئة الرمز لا الرمز نفسه، فتسريب قاعدة البيانات لا يمنح أحداً رمزاً
+ * صالحاً. جدول واحد بحقل `purpose` بدل جدولين، لأن دورة الحياة متطابقة
+ * (إنشاء ← انتهاء ← استخدام مرة واحدة) والفصل كان سيكرّر المنطق.
+ */
+export const authTokens = mysqlTable("authTokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  purpose: mysqlEnum("purpose", authTokenPurposes).notNull(),
+  tokenHash: varchar("tokenHash", { length: 128 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("authTokens_token_unique").on(table.tokenHash), index("authTokens_user_purpose_idx").on(table.userId, table.purpose), index("authTokens_purpose_expiry_idx").on(table.purpose, table.expiresAt)]);
 
 export const accessModules = ["hr", "government"] as const;
 
@@ -823,3 +844,5 @@ export type InternalMessagingMessage = typeof internalMessagingMessages.$inferSe
 export type HrSystemPlan = typeof hrSystemPlans.$inferSelect;
 export type DemoRequest = typeof demoRequests.$inferSelect;
 export type SubscriptionRequest = typeof subscriptionRequests.$inferSelect;
+export type AuthToken = typeof authTokens.$inferSelect;
+export type AuthTokenPurpose = (typeof authTokenPurposes)[number];

@@ -17,6 +17,10 @@ const env = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  // ناقل البريد: خطّاف HTTP عام. بدونه تعمل المصادقة بوضع "مسوّدة" ولا تُرسل رسائل.
+  mailWebhookUrl: process.env.MAIL_WEBHOOK_URL ?? "",
+  mailWebhookToken: process.env.MAIL_WEBHOOK_TOKEN ?? "",
+  mailFromAddress: process.env.MAIL_FROM_ADDRESS ?? "no-reply@hrhbs.com",
 };
 
 export const ENV = env;

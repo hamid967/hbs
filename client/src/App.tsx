@@ -48,6 +48,10 @@ const OrganizationStructure = lazy(() => import("./pages/OrganizationStructure")
 const LocalLogin = lazy(() => import("./pages/LocalAccess").then(module => ({ default: module.LocalLogin })));
 const SubscriptionRequest = lazy(() => import("./pages/LocalAccess").then(module => ({ default: module.SubscriptionRequest })));
 const ActivateInvitation = lazy(() => import("./pages/LocalAccess").then(module => ({ default: module.ActivateInvitation })));
+const RegisterCompany = lazy(() => import("./pages/LocalAccess").then(module => ({ default: module.RegisterCompany })));
+const VerifyEmail = lazy(() => import("./pages/LocalAccess").then(module => ({ default: module.VerifyEmail })));
+const ForgotPassword = lazy(() => import("./pages/LocalAccess").then(module => ({ default: module.ForgotPassword })));
+const ResetPassword = lazy(() => import("./pages/LocalAccess").then(module => ({ default: module.ResetPassword })));
 const SubscriptionRequestsAdmin = lazy(() => import("./pages/SubscriptionRequestsAdmin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -55,7 +59,7 @@ function RouteFallback() { return <main dir="rtl" className="flex min-h-screen i
 
 function Router() {
   return <Suspense fallback={<RouteFallback />}><Switch>
-    <Route path="/" component={MarketingHome} /><Route path="/request-demo" component={RequestDemo} /><Route path="/login" component={LocalLogin} /><Route path="/subscribe" component={SubscriptionRequest} /><Route path="/activate" component={ActivateInvitation} /><Route path="/app" component={Home} />
+    <Route path="/" component={MarketingHome} /><Route path="/request-demo" component={RequestDemo} /><Route path="/login" component={LocalLogin} /><Route path="/subscribe" component={SubscriptionRequest} /><Route path="/activate" component={ActivateInvitation} /><Route path="/register" component={RegisterCompany} /><Route path="/verify-email" component={VerifyEmail} /><Route path="/forgot-password" component={ForgotPassword} /><Route path="/reset-password" component={ResetPassword} /><Route path="/app" component={Home} />
     <Route path="/assistant" component={AssistantIntake} /><Route path="/hr-system" component={HrSystemDesigner} /><Route path="/hr-tools" component={HrToolsCenter} />
     <Route path="/employee-requests" component={EmployeeRequests} /><Route path="/leave-policies" component={LeavePolicies} /><Route path="/system-health" component={OperationalHealth} /><Route path="/data-retention" component={DataRetentionPolicies} /><Route path="/data-inventory" component={DataInventory} /><Route path="/oauth-acceptance-readiness" component={OAuthAcceptanceReadiness} />
     <Route path="/requests/new" component={NewRequest} /><Route path="/requests/:id" component={RequestDetail} /><Route path="/my-requests" component={MyRequests} />
