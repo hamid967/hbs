@@ -42,6 +42,69 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* ── رموز التصميم الموحّدة (design-system/tokens.ts) ────────────────────
+   لا تُحرَّر يدوياً بمعزل عن tokens.ts؛ يتحقق designTokens.test.ts من تطابقهما. */
+@theme {
+  --color-ds-brand-50: #f2f8f3;
+  --color-ds-brand-100: #e7f3e9;
+  --color-ds-brand-200: #d5e3d7;
+  --color-ds-brand-300: #9dc7a8;
+  --color-ds-brand-400: #5d8d70;
+  --color-ds-brand-500: #4f8a63;
+  --color-ds-brand-600: #347950;
+  --color-ds-brand-700: #386f50;
+  --color-ds-brand-800: #1f5b45;
+  --color-ds-brand-900: #315440;
+  --color-ds-brand-950: #174735;
+  --color-ds-brand-1000: #173e30;
+  --color-ds-neutral-50: #f8faf8;
+  --color-ds-neutral-100: #edf1ed;
+  --color-ds-neutral-200: #dfe9e1;
+  --color-ds-neutral-300: #c8d4ce;
+  --color-ds-neutral-400: #a3aea6;
+  --color-ds-neutral-500: #89958d;
+  --color-ds-neutral-600: #748178;
+  --color-ds-neutral-700: #61756a;
+  --color-ds-neutral-800: #52675a;
+  --color-ds-neutral-900: #425449;
+  --color-ds-neutral-950: #294535;
+  --color-ds-teal-500: #637a77;
+  --color-ds-teal-600: #526b69;
+  --color-ds-teal-700: #27705e;
+  --color-ds-teal-900: #0c4a42;
+  --color-ds-ink: #092a28;
+  --color-ds-ink-strong: #071a1a;
+  --color-ds-success: #0a8060;
+  --color-ds-success-soft: #e7f3eb;
+  --color-ds-success-border: #cce5d2;
+  --color-ds-warning: #a46723;
+  --color-ds-warning-strong: #7a5a2a;
+  --color-ds-warning-soft: #fff0d9;
+  --color-ds-warning-border: #f0dcb9;
+  --color-ds-danger: #a94e48;
+  --color-ds-danger-muted: #855a55;
+  --color-ds-danger-strong: #6f332f;
+  --color-ds-danger-soft: #fdecea;
+  --color-ds-danger-border: #f1d4d1;
+  --color-ds-info: #446b98;
+  --color-ds-info-soft: #e9eef8;
+  --color-ds-info-border: #cbd8eb;
+  --color-ds-warning-tan: #7b684d;
+  --color-ds-warning-deep: #5a4326;
+  --color-ds-warning-bright: #c88d36;
+  --color-ds-danger-bright: #c26342;
+  --color-ds-violet: #7551a0;
+  --color-ds-emerald: #18b982;
+  --color-ds-emerald-bright: #4bd6aa;
+  --color-ds-emerald-soft: #7de0bd;
+  --color-ds-gold: #c8a66a;
+  --color-ds-gold-soft: #e7c89c;
+  --color-ds-ivory: #f4f0e8;
+  --color-ds-mist: #b7d1d4;
+  --color-ds-mist-strong: #9bc3bd;
+  --color-ds-white: #ffffff;
+}
+
 :root {
   --radius: 1rem;
   --background: oklch(0.975 0.008 95);

@@ -51,7 +51,7 @@ const ActivateInvitation = lazy(() => import("./pages/LocalAccess").then(module 
 const SubscriptionRequestsAdmin = lazy(() => import("./pages/SubscriptionRequestsAdmin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-function RouteFallback() { return <main dir="rtl" className="flex min-h-screen items-center justify-center bg-[#f8faf8] px-6" role="status" aria-live="polite"><div className="text-center"><span className="mx-auto block size-10 animate-spin rounded-full border-4 border-[#d7e8da] border-t-[#256645]" /><p className="mt-4 text-sm font-bold text-[#315440]">جارٍ تحميل الصفحة…</p></div></main>; }
+function RouteFallback() { return <main dir="rtl" className="flex min-h-screen items-center justify-center bg-ds-neutral-50 px-6" role="status" aria-live="polite"><div className="text-center"><span className="mx-auto block size-10 animate-spin rounded-full border-4 border-ds-brand-200 border-t-ds-brand-700" /><p className="mt-4 text-sm font-bold text-ds-brand-900">جارٍ تحميل الصفحة…</p></div></main>; }
 
 function Router() {
   return <Suspense fallback={<RouteFallback />}><Switch>
