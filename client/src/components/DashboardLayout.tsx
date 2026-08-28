@@ -18,10 +18,10 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/lib/trpc";
+import { useLocation } from "wouter";
 import {
   ClipboardList,
   BotMessageSquare,
@@ -57,7 +57,6 @@ import {
   MessagesSquare,
   Network,
 } from "lucide-react";
-import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { BuildInfoStamp } from "./BuildInfoStamp";
 import { Button } from "./ui/button";
@@ -74,6 +73,7 @@ const menuItems = [
   { icon: LayoutTemplate, label: "مساحة MVP", path: "/mvp" },
   { icon: Wrench, label: "أدوات HR", path: "/hr-tools" },
   { icon: UserCog, label: "إدارة الحسابات", path: "/accounts", adminOnly: true },
+  { icon: KeyRound, label: "طلبات الاشتراك", path: "/subscriptions", adminOnly: true },
   { icon: ShieldCheck, label: "سجل التدقيق", path: "/audit", adminOnly: true },
   { icon: Activity, label: "صحة التطبيق", path: "/system-health", adminOnly: true },
   { icon: ArchiveRestore, label: "سياسات الاحتفاظ", path: "/data-retention", adminOnly: true },
@@ -103,6 +103,7 @@ const menuItems = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { loading, user, logout } = useAuth();
+  const [, setLocation] = useLocation();
   const { direction, t } = useI18n();
   const { data: modulePermissions } = trpc.accounts.myModulePermissions.useQuery(undefined, { enabled: Boolean(user && (!user.accountStatus || user.accountStatus === "active")) });
 
@@ -119,8 +120,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <p className="mb-3 text-xs font-semibold tracking-[0.2em] text-[#637a77]">HR HBS</p>
           <h1 className="premium-wordmark text-3xl font-bold tracking-tight text-[#092a28]">حلول الغد</h1>
           <p className="mt-4 text-sm leading-7 text-[#526b69]">منصة داخلية منظمة لتقديم ومتابعة طلبات الموارد البشرية والعلاقات الحكومية.</p>
-          <Button onClick={() => startLogin()} size="lg" className="pressable mt-8 h-12 w-full rounded-2xl bg-[#18b982] text-base font-bold text-[#06201a] hover:bg-[#4bd6aa]">تسجيل الدخول للمنصة</Button>
-          <p className="mt-5 text-xs leading-6 text-[#71817f]">هذه المنصة مخصصة للموظفين والفرق المخولة فقط. بعد أول دخول موحد، يراجع المسؤول طلب التفعيل قبل إتاحة الخدمات.</p>
+          <Button onClick={() => setLocation("/login")} size="lg" className="pressable mt-8 h-12 w-full rounded-2xl bg-[#18b982] text-base font-bold text-[#06201a] hover:bg-[#4bd6aa]">الدخول بالبريد</Button>
+          <button onClick={() => setLocation("/subscribe")} className="mt-4 w-full text-sm font-bold text-[#087a5c]">طلب اشتراك جديد</button>
+          <p className="mt-5 text-xs leading-6 text-[#71817f]">بعد الموافقة يصدر المسؤول رابط دعوة آمن لإنشاء كلمة المرور. لا ترسل المنصة كلمات مرور عبر البريد.</p>
           <div className="mt-5 flex justify-center"><BuildInfoStamp compact /></div>
         </section>
       </div>

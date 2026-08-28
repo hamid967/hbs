@@ -45,19 +45,23 @@ const DataInventory = lazy(() => import("./pages/DataInventory"));
 const OAuthAcceptanceReadiness = lazy(() => import("./pages/OAuthAcceptanceReadiness"));
 const InternalMessaging = lazy(() => import("./pages/InternalMessaging"));
 const OrganizationStructure = lazy(() => import("./pages/OrganizationStructure"));
+const LocalLogin = lazy(() => import("./pages/LocalAccess").then(module => ({ default: module.LocalLogin })));
+const SubscriptionRequest = lazy(() => import("./pages/LocalAccess").then(module => ({ default: module.SubscriptionRequest })));
+const ActivateInvitation = lazy(() => import("./pages/LocalAccess").then(module => ({ default: module.ActivateInvitation })));
+const SubscriptionRequestsAdmin = lazy(() => import("./pages/SubscriptionRequestsAdmin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 function RouteFallback() { return <main dir="rtl" className="flex min-h-screen items-center justify-center bg-[#f8faf8] px-6" role="status" aria-live="polite"><div className="text-center"><span className="mx-auto block size-10 animate-spin rounded-full border-4 border-[#d7e8da] border-t-[#256645]" /><p className="mt-4 text-sm font-bold text-[#315440]">جارٍ تحميل الصفحة…</p></div></main>; }
 
 function Router() {
   return <Suspense fallback={<RouteFallback />}><Switch>
-    <Route path="/" component={MarketingHome} /><Route path="/request-demo" component={RequestDemo} /><Route path="/app" component={Home} />
+    <Route path="/" component={MarketingHome} /><Route path="/request-demo" component={RequestDemo} /><Route path="/login" component={LocalLogin} /><Route path="/subscribe" component={SubscriptionRequest} /><Route path="/activate" component={ActivateInvitation} /><Route path="/app" component={Home} />
     <Route path="/assistant" component={AssistantIntake} /><Route path="/hr-system" component={HrSystemDesigner} /><Route path="/hr-tools" component={HrToolsCenter} />
     <Route path="/employee-requests" component={EmployeeRequests} /><Route path="/leave-policies" component={LeavePolicies} /><Route path="/system-health" component={OperationalHealth} /><Route path="/data-retention" component={DataRetentionPolicies} /><Route path="/data-inventory" component={DataInventory} /><Route path="/oauth-acceptance-readiness" component={OAuthAcceptanceReadiness} />
     <Route path="/requests/new" component={NewRequest} /><Route path="/requests/:id" component={RequestDetail} /><Route path="/my-requests" component={MyRequests} />
     <Route path="/operations" component={Operations} /><Route path="/demo-requests" component={DemoRequestsAdmin} /><Route path="/roadmap" component={DeliveryRoadmap} /><Route path="/mvp" component={MvpStudio} />
     <Route path="/accounts" component={AccountManagement} /><Route path="/company-templates" component={CompanyPermissionTemplates} /><Route path="/employees" component={EmployeeDirectory} /><Route path="/employee-lifecycle" component={EmployeeLifecycle} />
-    <Route path="/organization" component={OrganizationStructure} />
+    <Route path="/organization" component={OrganizationStructure} /><Route path="/subscriptions" component={SubscriptionRequestsAdmin} />
     <Route path="/contracts" component={ContractsDocuments} /><Route path="/assets" component={Assets} /><Route path="/offboarding" component={Offboarding} /><Route path="/goals" component={GoalsPerformance} />
     <Route path="/manager-dashboard" component={ManagerDashboard} /><Route path="/approval-simulator" component={ApprovalSimulator} /><Route path="/training" component={Training} /><Route path="/recruitment" component={RecruitmentOnboarding} />
     <Route path="/attendance" component={Attendance} /><Route path="/attendance-schedules" component={AttendanceSchedules} /><Route path="/audit" component={AuditLog} /><Route path="/workboard" component={Workboard} />

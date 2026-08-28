@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { accountActivationHistory, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companyPermissionTemplates, costCenters, demoRequests, departments, employeeAssets, employeeContracts, employeeDependents, employeeDocuments, employeeEmergencyContacts, employeeExitInterviews, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, internalMessagingChannelMembers, internalMessagingChannels, internalMessagingMessages, jobCandidates, jobDesignations, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, legalEntities, onboardingTaskTemplates, onboardingTasks, organizationAssignments, organizationBranches, organizationTeams, requestHistory, serviceRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users, workLocations } from "../drizzle/schema";
+import { randomUUID } from "node:crypto";
+import { accountActivationHistory, accountInvitations, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companies, companyPermissionTemplates, costCenters, demoRequests, departments, employeeAssets, employeeContracts, employeeDependents, employeeDocuments, employeeEmergencyContacts, employeeExitInterviews, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, internalMessagingChannelMembers, internalMessagingChannels, internalMessagingMessages, jobCandidates, jobDesignations, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, legalEntities, localCredentials, onboardingTaskTemplates, onboardingTasks, organizationAssignments, organizationBranches, organizationTeams, requestHistory, serviceRequests, subscriptionRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users, workLocations } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -59,6 +60,100 @@ export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) return undefined;
   return (await db.select().from(users).where(eq(users.openId, openId)).limit(1))[0];
+}
+
+export async function createSubscriptionRequest(input: { fullName: string; email: string; companyName: string; notes?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const existing = (await db.select({ id: subscriptionRequests.id }).from(subscriptionRequests).where(and(eq(subscriptionRequests.email, input.email), eq(subscriptionRequests.status, "pending"))).limit(1))[0];
+  if (existing) return { accepted: true } as const;
+  await db.insert(subscriptionRequests).values({ ...input, notes: input.notes ?? null });
+  return { accepted: true } as const;
+}
+
+export async function listProvisionableCompanies() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ id: companies.id, name: companies.name }).from(companies).orderBy(asc(companies.name));
+}
+
+export async function listSubscriptionRequests() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(subscriptionRequests).orderBy(asc(subscriptionRequests.status), desc(subscriptionRequests.createdAt));
+}
+
+export async function approveSubscriptionRequest(input: { requestId: number; actorId: number; assignedRole: UserRole; reviewNote?: string; companyId?: number; companyName?: string; tokenHash: string; expiresAt: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  return db.transaction(async tx => {
+    const request = (await tx.select().from(subscriptionRequests).where(eq(subscriptionRequests.id, input.requestId)).limit(1))[0];
+    if (!request || request.status !== "pending") throw new Error("طلب الاشتراك غير متاح للمراجعة");
+    const existingUser = (await tx.select({ id: users.id }).from(users).where(eq(users.email, request.email)).limit(1))[0];
+    if (existingUser) throw new Error("يوجد حساب مرتبط بهذا البريد بالفعل");
+    let company = input.companyId ? (await tx.select().from(companies).where(eq(companies.id, input.companyId)).limit(1))[0] : undefined;
+    if (!company && input.companyId) throw new Error("الشركة المختارة غير موجودة");
+    if (!company) {
+      const companyName = input.companyName?.trim();
+      if (!companyName) throw new Error("اختر شركة قائمة أو اسماً قانونياً فريداً للمنشأة الجديدة");
+      const duplicate = (await tx.select({ id: companies.id }).from(companies).where(eq(companies.name, companyName)).limit(1))[0];
+      if (duplicate) throw new Error("اسم المنشأة موجود؛ اختر الشركة القائمة بالمعرّف بدلاً من ذلك");
+      await tx.insert(companies).values({ name: companyName });
+      company = (await tx.select().from(companies).where(eq(companies.name, companyName)).limit(1))[0];
+    }
+    if (!company) throw new Error("تعذر إعداد منشأة طلب الاشتراك");
+    const openId = `local:${randomUUID()}`;
+    await tx.insert(users).values({ openId, name: request.fullName, email: request.email, loginMethod: "local", companyId: company.id, role: input.assignedRole, accountStatus: "pending" });
+    const user = (await tx.select().from(users).where(eq(users.openId, openId)).limit(1))[0];
+    if (!user) throw new Error("تعذر إعداد حساب الدعوة");
+    await tx.insert(accountInvitations).values({ userId: user.id, companyId: company.id, email: request.email, tokenHash: input.tokenHash, createdByUserId: input.actorId, expiresAt: input.expiresAt });
+    await tx.update(subscriptionRequests).set({ status: "approved", reviewedByUserId: input.actorId, reviewNote: input.reviewNote ?? null, reviewedAt: new Date(), companyId: company.id }).where(eq(subscriptionRequests.id, request.id));
+    return { request, user, company };
+  });
+}
+
+export async function rejectSubscriptionRequest(input: { requestId: number; actorId: number; reviewNote?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const request = (await db.select().from(subscriptionRequests).where(eq(subscriptionRequests.id, input.requestId)).limit(1))[0];
+  if (!request || request.status !== "pending") throw new Error("طلب الاشتراك غير متاح للمراجعة");
+  await db.update(subscriptionRequests).set({ status: "rejected", reviewedByUserId: input.actorId, reviewNote: input.reviewNote ?? null, reviewedAt: new Date() }).where(eq(subscriptionRequests.id, input.requestId));
+  return { success: true } as const;
+}
+
+export async function getLocalCredentialByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  return (await db.select({ credential: localCredentials, user: users }).from(localCredentials).innerJoin(users, eq(localCredentials.userId, users.id)).where(eq(localCredentials.email, email)).limit(1))[0];
+}
+
+export async function recordLocalLoginFailure(credentialId: number, nextAttempts: number) {
+  const db = await getDb();
+  if (!db) return;
+  const lockedUntil = nextAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
+  await db.update(localCredentials).set({ failedAttempts: nextAttempts, lockedUntil }).where(eq(localCredentials.id, credentialId));
+}
+
+export async function clearLocalLoginFailures(credentialId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(localCredentials).set({ failedAttempts: 0, lockedUntil: null }).where(eq(localCredentials.id, credentialId));
+}
+
+export async function activateLocalInvitation(input: { tokenHash: string; passwordHash: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  return db.transaction(async tx => {
+    const invitation = (await tx.select().from(accountInvitations).where(eq(accountInvitations.tokenHash, input.tokenHash)).limit(1))[0];
+    if (!invitation || invitation.usedAt || invitation.revokedAt || invitation.expiresAt.getTime() <= Date.now()) throw new Error("رابط الدعوة غير صالح أو منتهٍ");
+    const user = (await tx.select().from(users).where(eq(users.id, invitation.userId)).limit(1))[0];
+    if (!user || user.accountStatus !== "pending") throw new Error("حساب الدعوة غير متاح للتفعيل");
+    await tx.insert(localCredentials).values({ userId: user.id, email: invitation.email, passwordHash: input.passwordHash });
+    await tx.update(accountInvitations).set({ usedAt: new Date() }).where(eq(accountInvitations.id, invitation.id));
+    await tx.update(users).set({ accountStatus: "active", loginMethod: "local", lastSignedIn: new Date() }).where(eq(users.id, user.id));
+    await tx.insert(accountActivationHistory).values({ userId: user.id, actorId: null, previousStatus: "pending", nextStatus: "active", assignedRole: user.role, note: "تم تفعيل الحساب عبر رابط دعوة أحادي الاستخدام" });
+    return { ...user, accountStatus: "active" as const, loginMethod: "local" };
+  });
 }
 
 export async function getUserModulePermissions(userId: number, role: UserRole): Promise<ModulePermission[]> {
