@@ -1,7 +1,7 @@
-import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { randomUUID } from "node:crypto";
-import { accountActivationHistory, accountInvitations, approvalTasks, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companies, companyPermissionTemplates, costCenters, demoRequests, departments, employeeAssets, employeeContracts, employeeDependents, employeeDocuments, employeeEmergencyContacts, employeeExitInterviews, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, internalMessagingChannelMembers, internalMessagingChannels, internalMessagingMessages, jobCandidates, jobDesignations, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, legalEntities, localCredentials, onboardingTaskTemplates, onboardingTasks, organizationAssignments, organizationBranches, organizationTeams, requestHistory, serviceRequests, subscriptionRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users, workLocations } from "../drizzle/schema";
+import { accountActivationHistory, accountInvitations, approvalTasks, authTokens, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companies, companyPermissionTemplates, costCenters, demoRequests, departments, employeeAssets, employeeContracts, employeeDependents, employeeDocuments, employeeEmergencyContacts, employeeExitInterviews, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, internalMessagingChannelMembers, internalMessagingChannels, internalMessagingMessages, jobCandidates, jobDesignations, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, legalEntities, localCredentials, onboardingTaskTemplates, onboardingTasks, organizationAssignments, organizationBranches, organizationTeams, requestHistory, serviceRequests, subscriptionRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users, workLocations } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
 import { createActivationHistoryRecord, getBootstrapAccountSettings } from "./accountPolicy";
@@ -154,6 +154,116 @@ export async function activateLocalInvitation(input: { tokenHash: string; passwo
     await tx.insert(accountActivationHistory).values({ userId: user.id, actorId: null, previousStatus: "pending", nextStatus: "active", assignedRole: user.role, note: "تم تفعيل الحساب عبر رابط دعوة أحادي الاستخدام" });
     return { ...user, accountStatus: "active" as const, loginMethod: "local" };
   });
+}
+
+/**
+ * التسجيل الذاتي: ينشئ منشأة جديدة وحساب مسؤولها وبيانات دخوله ورمز تأكيد البريد
+ * في معاملة واحدة.
+ *
+ * الحساب يبدأ `pending` وبريده غير مؤكَّد؛ لا يصير `active` إلا بعد تأكيد البريد.
+ * هذا هو ما يجعل التسجيل ذاتياً دون مراجعة أدمن، دون أن يفتح باباً لحساب فعّال
+ * ببريد لا يملكه صاحبه.
+ *
+ * اسم منشأة مستخدَم مسبقاً يُرفض عمداً: الانضمام إلى منشأة قائمة يجب أن يمرّ
+ * بدعوة من مسؤولها، وإلا صار التسجيل الذاتي طريقاً للدخول إلى بيانات الغير.
+ */
+export async function registerLocalAccount(input: { fullName: string; email: string; companyName: string; passwordHash: string; tokenHash: string; expiresAt: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  return db.transaction(async tx => {
+    const existingUser = (await tx.select({ id: users.id }).from(users).where(eq(users.email, input.email)).limit(1))[0];
+    if (existingUser) throw new Error("يوجد حساب مرتبط بهذا البريد بالفعل");
+    const companyName = input.companyName.trim();
+    const existingCompany = (await tx.select({ id: companies.id }).from(companies).where(eq(companies.name, companyName)).limit(1))[0];
+    if (existingCompany) throw new Error("اسم المنشأة مسجّل مسبقاً. اطلب دعوة من مسؤول منشأتك للانضمام إليها.");
+    await tx.insert(companies).values({ name: companyName });
+    const company = (await tx.select().from(companies).where(eq(companies.name, companyName)).limit(1))[0];
+    if (!company) throw new Error("تعذر إنشاء المنشأة");
+    const openId = `local:${randomUUID()}`;
+    await tx.insert(users).values({ openId, name: input.fullName, email: input.email, loginMethod: "local", companyId: company.id, role: "admin", accountStatus: "pending" });
+    const user = (await tx.select().from(users).where(eq(users.openId, openId)).limit(1))[0];
+    if (!user) throw new Error("تعذر إنشاء الحساب");
+    await tx.insert(localCredentials).values({ userId: user.id, email: input.email, passwordHash: input.passwordHash });
+    await tx.insert(authTokens).values({ userId: user.id, purpose: "email_verification", tokenHash: input.tokenHash, expiresAt: input.expiresAt });
+    return { user, company };
+  });
+}
+
+/** يستهلك رمز تأكيد البريد فيفعّل الحساب. الرمز صالح مرة واحدة فقط. */
+export async function verifyEmailWithToken(input: { tokenHash: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  return db.transaction(async tx => {
+    const token = (await tx.select().from(authTokens).where(and(eq(authTokens.tokenHash, input.tokenHash), eq(authTokens.purpose, "email_verification"))).limit(1))[0];
+    if (!token || token.usedAt || token.expiresAt.getTime() <= Date.now()) throw new Error("رابط التأكيد غير صالح أو منتهٍ");
+    const user = (await tx.select().from(users).where(eq(users.id, token.userId)).limit(1))[0];
+    if (!user) throw new Error("رابط التأكيد غير صالح أو منتهٍ");
+    const now = new Date();
+    await tx.update(authTokens).set({ usedAt: now }).where(eq(authTokens.id, token.id));
+    // الحساب المعلّق يصير فعّالاً؛ أما المعلّق إدارياً (موقوف أو مرفوض) فيبقى كما هو.
+    const nextStatus = user.accountStatus === "pending" ? "active" as const : user.accountStatus;
+    await tx.update(users).set({ emailVerifiedAt: now, accountStatus: nextStatus, lastSignedIn: now }).where(eq(users.id, user.id));
+    if (nextStatus !== user.accountStatus) {
+      await tx.insert(accountActivationHistory).values({ userId: user.id, actorId: null, previousStatus: user.accountStatus, nextStatus, assignedRole: user.role, note: "تفعيل ذاتي بعد تأكيد ملكية البريد" });
+    }
+    return { ...user, emailVerifiedAt: now, accountStatus: nextStatus };
+  });
+}
+
+type DatabaseClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+
+/** يبطل رموز غرض معيّن لمستخدم، حتى لا يبقى أكثر من رمز صالح في وقت واحد. */
+async function invalidateOutstandingTokens(client: DatabaseClient, userId: number, purpose: "email_verification" | "password_reset", at: Date) {
+  await client.update(authTokens).set({ usedAt: at }).where(and(eq(authTokens.userId, userId), eq(authTokens.purpose, purpose), isNull(authTokens.usedAt)));
+}
+
+/**
+ * ينشئ رمز استعادة كلمة مرور لحساب محلي فعّال.
+ * يرجع `undefined` حين لا يوجد حساب مطابق — والمستدعي يردّ الرد نفسه في الحالتين
+ * حتى لا تتحول الصفحة إلى أداة لكشف البُرد المسجّلة.
+ */
+export async function createPasswordResetToken(input: { email: string; tokenHash: string; expiresAt: Date }) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const candidate = (await db.select({ credential: localCredentials, user: users }).from(localCredentials).innerJoin(users, eq(localCredentials.userId, users.id)).where(eq(localCredentials.email, input.email)).limit(1))[0];
+  if (!candidate || candidate.user.accountStatus !== "active") return undefined;
+  const now = new Date();
+  await invalidateOutstandingTokens(db, candidate.user.id, "password_reset", now);
+  await db.insert(authTokens).values({ userId: candidate.user.id, purpose: "password_reset", tokenHash: input.tokenHash, expiresAt: input.expiresAt });
+  return { user: candidate.user };
+}
+
+/**
+ * يستبدل كلمة المرور برمز صالح، ويفكّ أي إغلاق ناتج عن محاولات فاشلة —
+ * فالمستخدم الذي نسي كلمته وأُغلق حسابه يجب أن تعيده الاستعادة إلى العمل.
+ */
+export async function resetPasswordWithToken(input: { tokenHash: string; passwordHash: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  return db.transaction(async tx => {
+    const token = (await tx.select().from(authTokens).where(and(eq(authTokens.tokenHash, input.tokenHash), eq(authTokens.purpose, "password_reset"))).limit(1))[0];
+    if (!token || token.usedAt || token.expiresAt.getTime() <= Date.now()) throw new Error("رابط الاستعادة غير صالح أو منتهٍ");
+    const credential = (await tx.select().from(localCredentials).where(eq(localCredentials.userId, token.userId)).limit(1))[0];
+    if (!credential) throw new Error("رابط الاستعادة غير صالح أو منتهٍ");
+    const now = new Date();
+    await tx.update(authTokens).set({ usedAt: now }).where(eq(authTokens.id, token.id));
+    await tx.update(localCredentials).set({ passwordHash: input.passwordHash, failedAttempts: 0, lockedUntil: null, passwordUpdatedAt: now }).where(eq(localCredentials.id, credential.id));
+    const user = (await tx.select().from(users).where(eq(users.id, token.userId)).limit(1))[0];
+    if (!user) throw new Error("رابط الاستعادة غير صالح أو منتهٍ");
+    return user;
+  });
+}
+
+/** يعيد إصدار رمز تأكيد بريد لحساب لم يُؤكَّد بعد. */
+export async function createEmailVerificationToken(input: { email: string; tokenHash: string; expiresAt: Date }) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const user = (await db.select().from(users).where(eq(users.email, input.email)).limit(1))[0];
+  if (!user || user.emailVerifiedAt || user.accountStatus !== "pending") return undefined;
+  const now = new Date();
+  await invalidateOutstandingTokens(db, user.id, "email_verification", now);
+  await db.insert(authTokens).values({ userId: user.id, purpose: "email_verification", tokenHash: input.tokenHash, expiresAt: input.expiresAt });
+  return { user };
 }
 
 export async function getUserModulePermissions(userId: number, role: UserRole): Promise<ModulePermission[]> {
