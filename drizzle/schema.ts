@@ -5,7 +5,7 @@ export const companies = mysqlTable("companies", {
   name: varchar("name", { length: 160 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, table => [uniqueIndex("companies_name_unique").on(table.name)]);
 
 /**
  * Core user table backing auth flow.
@@ -41,6 +41,46 @@ export const accountActivationHistory = mysqlTable("accountActivationHistory", {
   note: text("note"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+export const subscriptionRequests = mysqlTable("subscriptionRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  fullName: varchar("fullName", { length: 160 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  companyName: varchar("companyName", { length: 160 }).notNull(),
+  notes: text("notes"),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  reviewedByUserId: int("reviewedByUserId").references(() => users.id, { onDelete: "set null" }),
+  reviewNote: text("reviewNote"),
+  reviewedAt: timestamp("reviewedAt"),
+  companyId: int("companyId").references(() => companies.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("subscriptionRequests_email_status_idx").on(table.email, table.status), index("subscriptionRequests_status_created_idx").on(table.status, table.createdAt)]);
+
+export const localCredentials = mysqlTable("localCredentials", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  email: varchar("email", { length: 320 }).notNull(),
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  failedAttempts: int("failedAttempts").default(0).notNull(),
+  lockedUntil: timestamp("lockedUntil"),
+  passwordUpdatedAt: timestamp("passwordUpdatedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("localCredentials_user_unique").on(table.userId), uniqueIndex("localCredentials_email_unique").on(table.email)]);
+
+export const accountInvitations = mysqlTable("accountInvitations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  email: varchar("email", { length: 320 }).notNull(),
+  tokenHash: varchar("tokenHash", { length: 128 }).notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  revokedAt: timestamp("revokedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("accountInvitations_token_unique").on(table.tokenHash), index("accountInvitations_user_idx").on(table.userId), index("accountInvitations_email_expiry_idx").on(table.email, table.expiresAt)]);
 
 export const accessModules = ["hr", "government"] as const;
 
@@ -782,3 +822,4 @@ export type InternalMessagingChannelMember = typeof internalMessagingChannelMemb
 export type InternalMessagingMessage = typeof internalMessagingMessages.$inferSelect;
 export type HrSystemPlan = typeof hrSystemPlans.$inferSelect;
 export type DemoRequest = typeof demoRequests.$inferSelect;
+export type SubscriptionRequest = typeof subscriptionRequests.$inferSelect;
