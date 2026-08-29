@@ -80,7 +80,7 @@ describe("requests router authorization and review workflow", () => {
   it("allows HR staff to update an HR request status with an auditable note", async () => {
     const caller = requestsRouter.createCaller(context("hr"));
     await expect(caller.changeStatus({ id: 44, status: "approved", note: "اكتملت المراجعة." })).resolves.toEqual({ success: true });
-    expect(dbMocks.updateRequestStatus).toHaveBeenCalledWith(44, 10, "submitted", "approved", "اكتملت المراجعة.");
+    expect(dbMocks.updateRequestStatus).toHaveBeenCalledWith(44, 1, 10, "submitted", "approved", "اكتملت المراجعة.");
   });
 
   it("prevents government-relations staff from changing an HR request", async () => {
@@ -92,6 +92,6 @@ describe("requests router authorization and review workflow", () => {
   it("records an operational note with its employee-visibility setting", async () => {
     const caller = requestsRouter.createCaller(context("hr"));
     await expect(caller.addNote({ id: 44, note: "تم طلب مستند إضافي.", visibleToEmployee: false })).resolves.toEqual({ success: true });
-    expect(dbMocks.addRequestNote).toHaveBeenCalledWith(44, 10, "تم طلب مستند إضافي.", false);
+    expect(dbMocks.addRequestNote).toHaveBeenCalledWith(44, 1, 10, "تم طلب مستند إضافي.", false);
   });
 });

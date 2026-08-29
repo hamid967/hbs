@@ -84,7 +84,7 @@ export const requestsRouter = router({
     const detail = await getRequestDetail(input.id, ctx.user.id, ctx.user.role, permissions, ctx.user.companyId);
     if (!detail) throw new TRPCError({ code: "NOT_FOUND", message: "الطلب غير موجود" });
     if (!canManageRequest(ctx.user.role, detail.request.type, permissions)) throw new TRPCError({ code: "FORBIDDEN", message: "لا تملك صلاحية مراجعة هذا الطلب" });
-    return updateRequestStatus(input.id, ctx.user.id, detail.request.status, input.status, input.note);
+    return updateRequestStatus(input.id, ctx.user.companyId, ctx.user.id, detail.request.status, input.status, input.note);
   }),
 
   addNote: protectedProcedure.input(z.object({ id: z.number().int().positive(), note: z.string().trim().min(2).max(2500), visibleToEmployee: z.boolean().default(true) })).mutation(async ({ ctx, input }) => {
@@ -92,6 +92,6 @@ export const requestsRouter = router({
     const detail = await getRequestDetail(input.id, ctx.user.id, ctx.user.role, permissions, ctx.user.companyId);
     if (!detail) throw new TRPCError({ code: "NOT_FOUND", message: "الطلب غير موجود" });
     if (!canManageRequest(ctx.user.role, detail.request.type, permissions)) throw new TRPCError({ code: "FORBIDDEN", message: "لا تملك صلاحية إضافة ملاحظة لهذا الطلب" });
-    return addRequestNote(input.id, ctx.user.id, input.note, input.visibleToEmployee);
+    return addRequestNote(input.id, ctx.user.companyId, ctx.user.id, input.note, input.visibleToEmployee);
   }),
 });
