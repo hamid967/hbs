@@ -1,4 +1,3 @@
-import axios from "axios";
 import { ENV } from "./_core/env";
 
 export type MailMessage = {
@@ -45,30 +44,37 @@ function recordDraft(message: MailMessage) {
 /**
  * يرسل رسالة عبر خطّاف HTTP عام (Resend أو Postmark أو مُرحِّل داخلي — أي خدمة
  * تقبل POST بصيغة JSON). أُختير الخطّاف العام بدل ربط مزوّد بعينه حتى لا تُقيَّد
- * المنصة بمزوّد واحد، ولأن axios متاح أصلاً فلا حاجة إلى اعتمادية جديدة.
+ * المنصة بمزوّد واحد. يستخدم fetch القياسي بدل axios فلا فرق بين Node وWorkers؛
+ * بخلاف axios، fetch لا يرمي تلقائياً عند استجابة غير ناجحة، لذا يتحقق الكود من
+ * response.ok صراحة حتى لا يُعامَل رفض الخطّاف (4xx/5xx) كنجاح إرسال.
  */
 export async function sendMail(message: MailMessage): Promise<MailResult> {
   if (!ENV.mailWebhookUrl) {
     recordDraft(message);
     return { delivered: false, transport: "draft", reason: "unconfigured" };
   }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
   try {
-    await axios.post(
-      ENV.mailWebhookUrl,
-      {
+    const response = await fetch(ENV.mailWebhookUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(ENV.mailWebhookToken
+          ? { Authorization: `Bearer ${ENV.mailWebhookToken}` }
+          : {}),
+      },
+      body: JSON.stringify({
         from: ENV.mailFromAddress,
         to: message.to,
         subject: message.subject,
         text: message.body,
         tag: message.tag,
-      },
-      {
-        timeout: 10_000,
-        headers: ENV.mailWebhookToken
-          ? { Authorization: `Bearer ${ENV.mailWebhookToken}` }
-          : undefined,
-      }
-    );
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok)
+      throw new Error(`Mail webhook responded with ${response.status}`);
     return { delivered: true, transport: "http" };
   } catch {
     // لا نُسرّب تفاصيل المزوّد إلى المستدعي؛ المسار الأعلى يقرر ماذا يخبر المستخدم.
@@ -76,6 +82,8 @@ export async function sendMail(message: MailMessage): Promise<MailResult> {
       `[Mail] فشل إرسال رسالة "${message.tag}" عبر الناقل المهيّأ.`
     );
     return { delivered: false, transport: "http", reason: "transport_error" };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

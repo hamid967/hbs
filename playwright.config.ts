@@ -15,24 +15,24 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
+  // wrangler dev يقدّم أصولاً مبنية مسبقاً من dist/public، لا خادم Vite تطويرياً
+  // حياً — لذا متغيّرات VITE_* يجب أن تُخبَز وقت vite build نفسه (تُقرأ من
+  // process.env عبر import.meta.env)، لا أن تُمرَّر لعملية wrangler dev التي لا
+  // تُعيد بناء العميل ولا تراها أصلاً. wrangler لا يقرأ PORT عاماً؛ يحتاج --port.
   webServer: {
-    command: `E2E_PORT=${e2ePort} PORT=${e2ePort} pnpm dev`,
+    command: `VITE_OAUTH_PORTAL_URL=https://oauth.test VITE_APP_ID=e2e-test-app VITE_ANALYTICS_ENDPOINT= VITE_ANALYTICS_WEBSITE_ID= pnpm build && pnpm exec wrangler dev --port ${e2ePort}`,
     url: `http://127.0.0.1:${e2ePort}`,
     reuseExistingServer: !isCi,
-    timeout: 120_000,
-    env: {
-      VITE_OAUTH_PORTAL_URL: "https://oauth.test",
-      VITE_APP_ID: "e2e-test-app",
-      VITE_ANALYTICS_ENDPOINT: "",
-      VITE_ANALYTICS_WEBSITE_ID: "",
-    },
+    timeout: 180_000,
   },
   projects: [
     {
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        launchOptions: isCi ? {} : { executablePath: "/usr/bin/chromium", args: ["--no-sandbox"] },
+        launchOptions: isCi
+          ? {}
+          : { executablePath: "/usr/bin/chromium", args: ["--no-sandbox"] },
       },
     },
   ],

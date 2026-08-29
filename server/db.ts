@@ -1,6 +1,8 @@
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { randomUUID } from "node:crypto";
+import { createConnection } from "mysql2/promise";
+import { requestContext } from "./_core/requestContext";
 import { accountActivationHistory, accountInvitations, approvalTasks, authTokens, attendanceEntries, attendancePolicies, auditEvents, chatMessages, chatSessions, companies, companyPermissionTemplates, costCenters, demoRequests, departments, employeeAssets, employeeContracts, employeeDependents, employeeDocuments, employeeEmergencyContacts, employeeExitInterviews, employeeGoalUpdates, employeeGoals, employeeLifecycleEvents, employeeOffboardings, employeeOffboardingTasks, employeeProfiles, employeeShiftAssignments, employeeTrainingAssignments, executionDependencyReviews, expenseRequests, hrSystemPlans, inAppNotifications, internalMessagingChannelMembers, internalMessagingChannels, internalMessagingMessages, jobCandidates, jobDesignations, jobInterviews, jobOffers, jobOpenings, leaveAllocations, leavePolicies, leaveRequests, legalEntities, localCredentials, onboardingTaskTemplates, onboardingTasks, organizationAssignments, organizationBranches, organizationTeams, requestHistory, serviceRequests, subscriptionRequests, trainingPrograms, type InsertUser, userModulePermissionHistory, userModulePermissions, users, workLocations } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { canManageRequest, permittedRequestTypes, type RequestType, type UserRole } from "./requestPolicy";
@@ -11,9 +13,31 @@ import { calculateLeaveBalance, countInclusiveLeaveDays, dateRangesOverlap, getL
 import { dataRetentionPolicies } from "../drizzle/schema";
 import { buildOAuthAcceptanceReadinessSnapshot } from "./oauthAcceptanceReadiness";
 
-let _db: ReturnType<typeof drizzle> | null = null;
+let _db: ReturnType<typeof drizzle> | null = null; // سقوط احتياطي: خارج نطاق طلب Workers فقط (اختبارات Node)
 
+/**
+ * داخل نطاق طلب Workers (يفتحه worker.ts عبر runWithRequestContext)، ينشئ اتصال
+ * Hyperdrive حقيقياً واحداً عند أول استدعاء ويذكّره لبقية الطلب — لا اتصال جديد
+ * لكل نداء رغم أن 145 دالة في هذا الملف تستدعي getDb() بلا وسائط، دون أي تعديل
+ * على أي منها. خارج نطاق الطلب (لا يوجد ALS، كحال اختبارات vitest التي تموّه
+ * drizzle-orm/mysql2 مباشرة) يعمل بالسلوك القديم حرفياً: متغيّر ثابت طوال عمر
+ * العملية مبني على process.env.DATABASE_URL.
+ */
 export async function getDb() {
+  const store = requestContext.getStore();
+  if (store) {
+    if (store.db !== undefined) return store.db;
+    if (!store.connectionString) { store.db = null; return null; }
+    try {
+      store.connection = await createConnection(store.connectionString);
+      store.db = drizzle(store.connection);
+    } catch (error) {
+      console.warn("[Database] Failed to connect:", error);
+      store.db = null;
+    }
+    return store.db;
+  }
+
   if (!_db && process.env.DATABASE_URL) {
     try { _db = drizzle(process.env.DATABASE_URL); } catch (error) { console.warn("[Database] Failed to connect:", error); _db = null; }
   }

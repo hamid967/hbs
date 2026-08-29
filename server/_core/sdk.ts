@@ -1,8 +1,12 @@
-import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS, decodeOAuthState } from "@shared/const";
+import {
+  AXIOS_TIMEOUT_MS,
+  COOKIE_NAME,
+  ONE_YEAR_MS,
+  decodeOAuthState,
+} from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
-import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
-import type { Request } from "express";
+import type { TrpcRequest } from "./httpTypes";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
@@ -28,10 +32,41 @@ const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
 const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
 const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
 
+/**
+ * POST JSON عبر fetch القياسي بدل axios — يعمل بلا فرق بين Node وWorkers، ولا
+ * يحتاج اعتمادية إضافية. بخلاف axios، fetch لا يرمي تلقائياً عند استجابة غير
+ * ناجحة؛ الفحص الصريح لـresponse.ok أدناه يحافظ على السلوك القديم نفسه (يرمي
+ * فيلتقطه استدعاء الطبقة الأعلى).
+ */
+async function postJson<T>(
+  baseUrl: string,
+  path: string,
+  payload: unknown
+): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AXIOS_TIMEOUT_MS);
+  try {
+    const response = await fetch(new URL(path, baseUrl), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(
+        `Request to ${path} failed with status ${response.status}`
+      );
+    }
+    return (await response.json()) as T;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 class OAuthService {
-  constructor(private client: ReturnType<typeof axios.create>) {
-    console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
-    if (!ENV.oAuthServerUrl) {
+  constructor(private baseUrl: string) {
+    console.log("[OAuth] Initialized with baseURL:", baseUrl);
+    if (!baseUrl) {
       console.error(
         "[OAuth] ERROR: OAUTH_SERVER_URL is not configured! Set OAUTH_SERVER_URL environment variable."
       );
@@ -53,41 +88,29 @@ class OAuthService {
       redirectUri: this.decodeState(state),
     };
 
-    const { data } = await this.client.post<ExchangeTokenResponse>(
+    return postJson<ExchangeTokenResponse>(
+      this.baseUrl,
       EXCHANGE_TOKEN_PATH,
       payload
     );
-
-    return data;
   }
 
   async getUserInfoByToken(
     token: ExchangeTokenResponse
   ): Promise<GetUserInfoResponse> {
-    const { data } = await this.client.post<GetUserInfoResponse>(
-      GET_USER_INFO_PATH,
-      {
-        accessToken: token.accessToken,
-      }
-    );
-
-    return data;
+    return postJson<GetUserInfoResponse>(this.baseUrl, GET_USER_INFO_PATH, {
+      accessToken: token.accessToken,
+    });
   }
 }
 
-const createOAuthHttpClient = (): AxiosInstance =>
-  axios.create({
-    baseURL: ENV.oAuthServerUrl,
-    timeout: AXIOS_TIMEOUT_MS,
-  });
-
 class SDKServer {
-  private readonly client: AxiosInstance;
+  private readonly baseUrl: string;
   private readonly oauthService: OAuthService;
 
-  constructor(client: AxiosInstance = createOAuthHttpClient()) {
-    this.client = client;
-    this.oauthService = new OAuthService(this.client);
+  constructor(baseUrl: string = ENV.oAuthServerUrl) {
+    this.baseUrl = baseUrl;
+    this.oauthService = new OAuthService(baseUrl);
   }
 
   private deriveLoginMethod(
@@ -239,7 +262,8 @@ class SDKServer {
       projectId: ENV.appId,
     };
 
-    const { data } = await this.client.post<GetUserInfoWithJwtResponse>(
+    const data = await postJson<GetUserInfoWithJwtResponse>(
+      this.baseUrl,
       GET_USER_INFO_WITH_JWT_PATH,
       payload
     );
@@ -255,7 +279,7 @@ class SDKServer {
     } as GetUserInfoWithJwtResponse;
   }
 
-  async authenticateRequest(req: Request): Promise<AuthenticatedUser> {
+  async authenticateRequest(req: TrpcRequest): Promise<AuthenticatedUser> {
     // 1. Prefer the session cookie (regular OAuth login).
     const cookies = this.parseCookies(req.headers.cookie);
     let sessionToken = cookies.get(COOKIE_NAME);

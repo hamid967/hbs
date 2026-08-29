@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hbs-hr",
+  "main": "server/_core/worker.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // يُقدَّم من dist/public (ناتج vite build). not_found_handling يبقى بلا قيمة
+  // (لا "single-page-application") عمداً — راجع التعليق في server/_core/worker.ts:
+  // تفعيله يجعل /api/* و/manus-storage/* تُقدَّم كـindex.html مباشرة فيتعطّل الـAPI.
+  "assets": {
+    "directory": "./dist/public",
+    "binding": "ASSETS",
+    "not_found_handling": "none"
+  },
+
+  // id: أنشئ بـ wrangler hyperdrive create <name> --connection-string="mysql://..."
+  // نحو مضيف MySQL الفعلي في الإنتاج، ثم ضع الناتج هنا قبل النشر الحقيقي.
+  // localConnectionString: يتيح لـ wrangler dev الاتصال مباشرة بقاعدة محلية دون
+  // لمس حساب Cloudflare إطلاقاً (تحقّقنا من هذا فعلياً محلياً) — نفس قيمة
+  // DATABASE_URL المستخدمة في CI وبيئة التطوير الحالية اليوم.
+  "hyperdrive": [
+    { "binding": "HYPERDRIVE", "id": "<من wrangler hyperdrive create>", "localConnectionString": "mysql://ci:ci@127.0.0.1:3306/hrhbs_ci" }
+  ],
+
+  // متغيّرات غير حسّاسة فقط. الأسرار (JWT_SECRET وBUILT_IN_FORGE_API_KEY
+  // وMAIL_WEBHOOK_URL وMAIL_WEBHOOK_TOKEN) تُضبَط عبر:
+  //   wrangler secret put <NAME>
+  // ولا تُكتب هنا إطلاقاً. DATABASE_URL لا حاجة له كمتغيّر Worker — الوصول
+  // للقاعدة في الإنتاج يمرّ حصرياً عبر ربط HYPERDRIVE أعلاه.
+  "vars": {
+    "NODE_ENV": "production",
+    "VITE_APP_ID": "<القيمة الحالية>",
+    "OAUTH_SERVER_URL": "<القيمة الحالية>",
+    "OWNER_OPEN_ID": "<القيمة الحالية>",
+    "LOCAL_ACCESS_ALLOWED_ORIGINS": "<أصول مفصولة بفواصل، مثل https://hrhbs.com>",
+    "BUILT_IN_FORGE_API_URL": "<القيمة الحالية>",
+    "MAIL_FROM_ADDRESS": "no-reply@hrhbs.com",
+    "HRHBS_ADMIN_EMAIL": "<القيمة الحالية>"
+  }
+}
