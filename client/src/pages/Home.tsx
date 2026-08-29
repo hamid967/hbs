@@ -1,5 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
+import CompanyOverview from "@/components/CompanyOverview";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, BotMessageSquare, Building2, ChartNoAxesCombined, ChevronLeft, Clock3, FilePlus2, Landmark, Orbit, Sparkles, WandSparkles } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -11,10 +13,15 @@ const serviceCards = [
 ];
 
 export default function Home() {
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [introVisible, setIntroVisible] = useState(true);
   const reportMonth = new Date().toISOString().slice(0, 7);
-  const { data: report, isLoading: reportLoading, isError: reportError } = trpc.reports.monthly.useQuery({ month: reportMonth });
+  const canViewReports = Boolean(user && ["admin", "hr", "manager"].includes(user.role));
+  const { data: report, isLoading: reportLoading, isError: reportError } = trpc.reports.monthly.useQuery(
+    { month: reportMonth },
+    { enabled: canViewReports, retry: false }
+  );
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setIntroVisible(false); return; }
     const timer = window.setTimeout(() => setIntroVisible(false), 1100);
@@ -33,6 +40,9 @@ export default function Home() {
           <div className="md:col-span-3 flex items-center justify-between gap-3 border-b border-ds-neutral-200 pb-3"><div><p className="text-sm font-bold text-ds-ink">نبض العمليات</p><p className="mt-1 text-xs text-ds-teal-500">مؤشرات شهرية محدثة من مركز التقارير ضمن نطاقك المصرح.</p></div><button onClick={() => setLocation("/reports")} className="pressable shrink-0 rounded-full bg-ds-brand-100 px-3 py-2 text-xs font-bold text-ds-success hover:bg-ds-success-border">عرض التقرير</button></div>
           {reportLoading ? [1, 2, 3].map(item => <div key={item} className="h-20 animate-pulse rounded-2xl bg-ds-neutral-200" />) : reportError || !report ? <div className="md:col-span-3 rounded-2xl bg-ds-neutral-100 p-4 text-center text-xs leading-6 text-ds-teal-500">لا تتوفر مؤشرات التقارير لهذا الحساب حالياً.</div> : <><QuickMetric label="أيام الإجازات" value={String(report.leaveDays.current)} detail={`فرق ${signed(report.leaveDays.delta)} عن الشهر السابق`} /><QuickMetric label="المصروفات" value={`${report.expensesSar.current.toLocaleString("ar-SA")} ر.س`} detail={`فرق ${signed(report.expensesSar.delta)} ر.س عن الشهر السابق`} /><QuickMetric label="نطاق البيانات" value={report.scope === "team" ? "فريقي" : "الشركة"} detail={`محدث لشهر ${report.selectedMonth}`} /></>}
         </section>
+
+        {/* Company Overview KPI Cards */}
+        <CompanyOverview className="mt-8" />
 
         <section className="mt-8">
           <div className="mb-4 flex items-end justify-between gap-4">

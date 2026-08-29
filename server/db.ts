@@ -266,6 +266,40 @@ export async function createEmailVerificationToken(input: { email: string; token
   return { user };
 }
 
+export async function ensureDirectAdminUser(input: { email: string; name: string; passwordHash: string; companyName: string }) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const normalized = input.email.trim().toLowerCase();
+  let candidate = (await db.select({ credential: localCredentials, user: users }).from(localCredentials).innerJoin(users, eq(localCredentials.userId, users.id)).where(eq(localCredentials.email, normalized)).limit(1))[0];
+  if (candidate) {
+    if (candidate.user.role !== "admin" || candidate.user.accountStatus !== "active") {
+      await db.update(users).set({ role: "admin", accountStatus: "active", emailVerifiedAt: new Date() }).where(eq(users.id, candidate.user.id));
+    }
+    return candidate;
+  }
+  let company = (await db.select().from(companies).where(eq(companies.name, input.companyName)).limit(1))[0];
+  if (!company) {
+    await db.insert(companies).values({ name: input.companyName });
+    company = (await db.select().from(companies).where(eq(companies.name, input.companyName)).limit(1))[0];
+  }
+  const openId = `local:${randomUUID()}`;
+  await db.insert(users).values({
+    openId,
+    name: input.name,
+    email: normalized,
+    loginMethod: "local",
+    companyId: company?.id ?? 1,
+    role: "admin",
+    accountStatus: "active",
+    emailVerifiedAt: new Date(),
+    lastSignedIn: new Date(),
+  });
+  const user = (await db.select().from(users).where(eq(users.openId, openId)).limit(1))[0];
+  if (!user) return undefined;
+  await db.insert(localCredentials).values({ userId: user.id, email: normalized, passwordHash: input.passwordHash });
+  return (await db.select({ credential: localCredentials, user: users }).from(localCredentials).innerJoin(users, eq(localCredentials.userId, users.id)).where(eq(localCredentials.email, normalized)).limit(1))[0];
+}
+
 export async function getUserModulePermissions(userId: number, role: UserRole): Promise<ModulePermission[]> {
   const db = await getDb();
   if (!db) return defaultModulePermissionsForRole(role);
@@ -1781,4 +1815,30 @@ export async function getCompanyHrOperationsReport(companyId: number, now = new 
   const month = now.toISOString().slice(0, 7);
   const report = await getHrOperationsReport(companyId, "admin", 0, month);
   return { leaveDays: report.leaveDays, expensesSar: report.expensesSar };
+}
+
+export async function getCompanyOverviewMetrics(companyId: number) {
+  const db = await getDb();
+  if (!db) {
+    return {
+      totalEmployees: 0,
+      activeRequests: 0,
+      pendingApprovals: 0,
+      companyName: "الشركة",
+    };
+  }
+
+  const [companyRow, employeesCount, activeRequestsCount, pendingApprovalsCount] = await Promise.all([
+    db.select({ name: companies.name }).from(companies).where(eq(companies.id, companyId)).limit(1),
+    db.select({ count: sql<number>`count(*)` }).from(users).where(and(eq(users.companyId, companyId), eq(users.accountStatus, "active"))),
+    db.select({ count: sql<number>`count(*)` }).from(serviceRequests).innerJoin(users, eq(serviceRequests.employeeId, users.id)).where(and(eq(users.companyId, companyId), inArray(serviceRequests.status, ["submitted", "in_review"]))),
+    db.select({ count: sql<number>`count(*)` }).from(approvalTasks).where(and(eq(approvalTasks.companyId, companyId), eq(approvalTasks.status, "pending"))),
+  ]);
+
+  return {
+    totalEmployees: Number(employeesCount[0]?.count || 0),
+    activeRequests: Number(activeRequestsCount[0]?.count || 0),
+    pendingApprovals: Number(pendingApprovalsCount[0]?.count || 0),
+    companyName: companyRow[0]?.name || "الشركة",
+  };
 }

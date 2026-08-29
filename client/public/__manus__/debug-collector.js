@@ -450,9 +450,9 @@
   // Fetch Interception
   // ==========================================================================
 
-  var originalFetch = window.fetch.bind(window);
+  var originalFetch = typeof window.fetch === "function" ? window.fetch.bind(window) : null;
 
-  window.fetch = function (input, init) {
+  var customFetch = function (input, init) {
     init = init || {};
     var startTime = Date.now();
     // Handle string, Request object, or URL object
@@ -463,7 +463,7 @@
 
     // Don't intercept internal requests
     if (url.indexOf("/__manus__/") === 0) {
-      return originalFetch(input, init);
+      return originalFetch ? originalFetch(input, init) : fetch(input, init);
     }
 
     // Safely parse headers (avoid breaking if headers format is invalid)
@@ -489,6 +489,10 @@
       duration: null,
       error: null,
     };
+
+    if (!originalFetch) {
+      return Promise.reject(new Error("originalFetch not found"));
+    }
 
     return originalFetch(input, init)
       .then(function (response) {
@@ -589,6 +593,20 @@
         throw error;
       });
   };
+
+  try {
+    Object.defineProperty(window, "fetch", {
+      value: customFetch,
+      writable: true,
+      configurable: true,
+    });
+  } catch (e) {
+    try {
+      window.fetch = customFetch;
+    } catch (_err) {
+      // Ignored if window.fetch cannot be overwritten in sandboxed iframe environment
+    }
+  }
 
   // ==========================================================================
   // XHR Interception

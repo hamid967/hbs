@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { getHrOperationsReport } from "../db";
+import { getCompanyOverviewMetrics, getHrOperationsReport } from "../db";
 import { protectedProcedure, router } from "../_core/trpc";
 
 export const reportsRouter = router({
@@ -13,4 +13,8 @@ export const reportsRouter = router({
       const filters = input.category || input.region ? { category: input.category, region: input.region } : undefined;
       return filters ? getHrOperationsReport(ctx.user.companyId, ctx.user.role, ctx.user.id, input.month, filters) : getHrOperationsReport(ctx.user.companyId, ctx.user.role, ctx.user.id, input.month);
     }),
+
+  companyOverview: protectedProcedure.query(async ({ ctx }) => {
+    return getCompanyOverviewMetrics(ctx.user.companyId);
+  }),
 });

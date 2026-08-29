@@ -7,11 +7,12 @@
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
     "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
+    "lint": "tsc --noEmit",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "quality:phase1": "pnpm check && pnpm test && pnpm build",
+    "quality:phase1": "npm run check && npm run test && npm run build",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {
@@ -58,6 +59,7 @@
     "drizzle-orm": "^0.45.2",
     "embla-carousel-react": "^8.6.0",
     "express": "^5.2.1",
+    "firebase": "^12.18.0",
     "framer-motion": "^12.23.22",
     "input-otp": "^1.4.2",
     "jose": "6.1.0",
@@ -102,7 +104,6 @@
     "drizzle-kit": "^0.31.4",
     "esbuild": "^0.25.0",
     "happy-dom": "^20.11.12",
-    "pnpm": "^10.15.1",
     "postcss": "^8.4.47",
     "prettier": "^3.6.2",
     "tailwindcss": "^4.1.14",
@@ -112,6 +113,5 @@
     "vite": "^5.4.0",
     "vite-plugin-manus-runtime": "0.0.59",
     "vitest": "^2.1.4"
-  },
-  "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af"
+  }
 }

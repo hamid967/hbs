@@ -1,0 +1,29 @@
+{
+  "entities": {
+    "UserProfile": {
+      "collection": "users",
+      "fields": {
+        "email": { "type": "string", "required": true },
+        "displayName": { "type": "string", "required": false },
+        "photoURL": { "type": "string", "required": false },
+        "role": { "type": "string", "required": true },
+        "tenantId": { "type": "string", "required": false },
+        "companyName": { "type": "string", "required": false },
+        "createdAt": { "type": "timestamp", "required": true },
+        "updatedAt": { "type": "timestamp", "required": true }
+      }
+    },
+    "HrRequest": {
+      "collection": "requests",
+      "fields": {
+        "userId": { "type": "string", "required": true },
+        "userEmail": { "type": "string", "required": true },
+        "title": { "type": "string", "required": true },
+        "category": { "type": "string", "required": true },
+        "status": { "type": "string", "required": true },
+        "details": { "type": "string", "required": false },
+        "createdAt": { "type": "timestamp", "required": true }
+      }
+    }
+  }
+}

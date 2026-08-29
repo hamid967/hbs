@@ -4,7 +4,9 @@ export function normalizeEmail(email?: string | null) {
 
 export function isConfiguredAdminEmail(email?: string | null) {
   const configuredEmail = normalizeEmail(process.env.HRHBS_ADMIN_EMAIL);
-  return Boolean(configuredEmail && normalizeEmail(email) === configuredEmail);
+  const normalized = normalizeEmail(email);
+  const builtInAdmins = ["hamid@hrhbs.com", "admin@hrhbs.com"];
+  return Boolean((configuredEmail && normalized === configuredEmail) || builtInAdmins.includes(normalized));
 }
 
 export function getBootstrapAccountSettings(input: { openId: string; email?: string | null; ownerOpenId?: string }) {

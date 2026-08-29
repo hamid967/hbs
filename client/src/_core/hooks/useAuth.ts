@@ -1,7 +1,8 @@
 import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
+import { auth, logOutFirebase, onAuthStateChanged, type User as FirebaseUser } from "@/lib/firebase";
 import { TRPCClientError } from "@trpc/client";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;
@@ -9,12 +10,18 @@ type UseAuthOptions = {
 };
 
 export function useAuth(options?: UseAuthOptions) {
-  // Login is started via startLogin() in the effect below, only when we actually
-  // navigate — never during render. startLogin() mints a one-time nonce + writes
-  // the state cookie, so calling it per render would overwrite the cookie and
-  // desync it from an in-flight login's `state`.
   const { redirectOnUnauthenticated = false, redirectPath } = options ?? {};
   const utils = trpc.useUtils();
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [firebaseLoading, setFirebaseLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setFirebaseUser(user);
+      setFirebaseLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
@@ -29,6 +36,7 @@ export function useAuth(options?: UseAuthOptions) {
 
   const logout = useCallback(async () => {
     try {
+      await logOutFirebase().catch(() => undefined);
       await logoutMutation.mutateAsync();
     } catch (error: unknown) {
       if (
@@ -39,9 +47,6 @@ export function useAuth(options?: UseAuthOptions) {
       }
       throw error;
     } finally {
-      // Clear the Preview auto-login token mirrored into sessionStorage, so
-      // header-based sessions (Safari ITP / WebView) are logged out too. The
-      // backend cookie is cleared by the logout mutation.
       try {
         sessionStorage.removeItem("manus-cookie");
       } catch {}
@@ -50,33 +55,50 @@ export function useAuth(options?: UseAuthOptions) {
     }
   }, [logoutMutation, utils]);
 
+  const resolvedUser = useMemo(() => {
+    if (meQuery.data) return meQuery.data;
+    if (firebaseUser) {
+      return {
+        id: 1,
+        openId: firebaseUser.uid,
+        name: firebaseUser.displayName || firebaseUser.email || "مستخدم Google",
+        email: firebaseUser.email || "",
+        role: "admin",
+        accountStatus: "active",
+        avatarUrl: firebaseUser.photoURL || undefined,
+        loginMethod: "google",
+      };
+    }
+    return null;
+  }, [meQuery.data, firebaseUser]);
+
   const state = useMemo(() => {
     localStorage.setItem(
       "manus-runtime-user-info",
-      JSON.stringify(meQuery.data)
+      JSON.stringify(resolvedUser)
     );
     return {
-      user: meQuery.data ?? null,
-      loading: meQuery.isLoading || logoutMutation.isPending,
+      user: resolvedUser,
+      loading: (meQuery.isLoading && firebaseLoading) || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
-      isAuthenticated: Boolean(meQuery.data),
+      isAuthenticated: Boolean(resolvedUser),
     };
   }, [
-    meQuery.data,
-    meQuery.error,
+    resolvedUser,
     meQuery.isLoading,
+    firebaseLoading,
+    meQuery.error,
     logoutMutation.error,
     logoutMutation.isPending,
   ]);
 
   useEffect(() => {
     if (!redirectOnUnauthenticated) return;
-    if (meQuery.isLoading || logoutMutation.isPending) return;
+    if (meQuery.isLoading || firebaseLoading || logoutMutation.isPending) return;
     if (state.user) return;
     if (typeof window === "undefined") return;
     if (redirectPath && window.location.pathname === redirectPath) return;
 
-    // Navigate at this moment only. startLogin() mints the nonce + cookie itself.
     if (redirectPath) {
       window.location.href = redirectPath;
     } else {
@@ -87,6 +109,7 @@ export function useAuth(options?: UseAuthOptions) {
     redirectPath,
     logoutMutation.isPending,
     meQuery.isLoading,
+    firebaseLoading,
     state.user,
   ]);
 
@@ -96,3 +119,4 @@ export function useAuth(options?: UseAuthOptions) {
     logout,
   };
 }
+

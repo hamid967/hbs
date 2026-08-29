@@ -10,30 +10,67 @@ import "./index.css";
 
 const queryClient = new QueryClient();
 
+const isPublicPath = (pathname: string) => {
+  return [
+    "/",
+    "/login",
+    "/subscribe",
+    "/activate",
+    "/register",
+    "/verify-email",
+    "/forgot-password",
+    "/reset-password",
+    "/request-demo",
+  ].includes(pathname);
+};
+
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
 
-  const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
+  const isUnauthorized =
+    error.message === UNAUTHED_ERR_MSG ||
+    error.message?.includes("10001") ||
+    error.data?.code === "UNAUTHORIZED";
 
   if (!isUnauthorized) return;
 
-  if (window.location.pathname !== "/login") window.location.assign("/login");
+  if (!isPublicPath(window.location.pathname) && window.location.pathname !== "/login") {
+    window.location.assign("/login");
+  }
 };
 
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
-    redirectToLoginIfUnauthorized(error);
-    console.error("[API Query Error]", error);
+    const isUnauthorized =
+      error instanceof TRPCClientError &&
+      (error.message === UNAUTHED_ERR_MSG ||
+        error.message?.includes("10001") ||
+        error.data?.code === "UNAUTHORIZED");
+
+    if (isUnauthorized) {
+      redirectToLoginIfUnauthorized(error);
+    } else {
+      console.warn("[API Query Error]", error);
+    }
   }
 });
 
 queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
-    redirectToLoginIfUnauthorized(error);
-    console.error("[API Mutation Error]", error);
+    const isUnauthorized =
+      error instanceof TRPCClientError &&
+      (error.message === UNAUTHED_ERR_MSG ||
+        error.message?.includes("10001") ||
+        error.data?.code === "UNAUTHORIZED");
+
+    if (isUnauthorized) {
+      redirectToLoginIfUnauthorized(error);
+    } else {
+      console.warn("[API Mutation Error]", error);
+    }
   }
 });
 
