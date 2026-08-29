@@ -46,6 +46,7 @@ const OAuthAcceptanceReadiness = lazy(() => import("./pages/OAuthAcceptanceReadi
 const InternalMessaging = lazy(() => import("./pages/InternalMessaging"));
 const OrganizationStructure = lazy(() => import("./pages/OrganizationStructure"));
 const LocalLogin = lazy(() => import("./pages/LocalAccess").then(module => ({ default: module.LocalLogin })));
+const ExecutiveAdvisoryBoard = lazy(() => import("./pages/ExecutiveAdvisoryBoard"));
 const SubscriptionRequest = lazy(() => import("./pages/LocalAccess").then(module => ({ default: module.SubscriptionRequest })));
 const ActivateInvitation = lazy(() => import("./pages/LocalAccess").then(module => ({ default: module.ActivateInvitation })));
 const RegisterCompany = lazy(() => import("./pages/LocalAccess").then(module => ({ default: module.RegisterCompany })));
@@ -61,6 +62,7 @@ function Router() {
   return <Suspense fallback={<RouteFallback />}><Switch>
     <Route path="/" component={MarketingHome} /><Route path="/request-demo" component={RequestDemo} /><Route path="/login" component={LocalLogin} /><Route path="/subscribe" component={SubscriptionRequest} /><Route path="/activate" component={ActivateInvitation} /><Route path="/register" component={RegisterCompany} /><Route path="/verify-email" component={VerifyEmail} /><Route path="/forgot-password" component={ForgotPassword} /><Route path="/reset-password" component={ResetPassword} /><Route path="/app" component={Home} />
     <Route path="/assistant" component={AssistantIntake} /><Route path="/hr-system" component={HrSystemDesigner} /><Route path="/hr-tools" component={HrToolsCenter} />
+    <Route path="/consulting-hub" component={ExecutiveAdvisoryBoard} /><Route path="/team-hub" component={ExecutiveAdvisoryBoard} /><Route path="/executive-advisory" component={ExecutiveAdvisoryBoard} />
     <Route path="/employee-requests" component={EmployeeRequests} /><Route path="/leave-policies" component={LeavePolicies} /><Route path="/system-health" component={OperationalHealth} /><Route path="/data-retention" component={DataRetentionPolicies} /><Route path="/data-inventory" component={DataInventory} /><Route path="/oauth-acceptance-readiness" component={OAuthAcceptanceReadiness} />
     <Route path="/requests/new" component={NewRequest} /><Route path="/requests/:id" component={RequestDetail} /><Route path="/my-requests" component={MyRequests} />
     <Route path="/operations" component={Operations} /><Route path="/demo-requests" component={DemoRequestsAdmin} /><Route path="/roadmap" component={DeliveryRoadmap} /><Route path="/mvp" component={MvpStudio} />

@@ -43,7 +43,16 @@ export function LocalLogin() {
       await utils.auth.me.invalidate();
       setLocation("/app");
     } catch (err: any) {
-      setGoogleError(err?.message || "تعذر تسجيل الدخول بحساب Google");
+      if (
+        err?.code === "auth/popup-closed-by-user" || 
+        err?.message?.includes("popup-closed-by-user") ||
+        err?.code === "auth/cancelled-popup-request"
+      ) {
+        // User closed or dismissed the popup voluntarily
+        setGoogleError(null);
+      } else {
+        setGoogleError(err?.message || "تعذر تسجيل الدخول بحساب Google");
+      }
     } finally {
       setGoogleLoading(false);
     }

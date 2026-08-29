@@ -61,8 +61,16 @@ export const signInWithGoogle = async () => {
       }
     }
     return user;
-  } catch (error) {
-    console.error("Error signing in with Google:", error);
+  } catch (error: any) {
+    if (
+      error?.code === "auth/popup-closed-by-user" ||
+      error?.message?.includes("popup-closed-by-user") ||
+      error?.code === "auth/cancelled-popup-request"
+    ) {
+      console.info("Google sign-in popup closed by user.");
+    } else {
+      console.error("Error signing in with Google:", error);
+    }
     throw error;
   }
 };

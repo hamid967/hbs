@@ -190,9 +190,21 @@
 
 @layer base {
   * { @apply border-border outline-ring/50; }
+  html {
+    font-feature-settings: "cv01", "cv02", "liga", "kern";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
   body {
     @apply bg-background text-foreground;
-    font-family: "IBM Plex Sans Arabic", "Tajawal", system-ui, sans-serif;
+    font-family: "IBM Plex Sans Arabic", "Tajawal", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.65;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Tajawal", "IBM Plex Sans Arabic", sans-serif;
+    letter-spacing: 0;
+    font-feature-settings: "liga" 1, "calt" 1;
   }
   :focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
   button:not(:disabled), [role="button"]:not([aria-disabled="true"]), [type="button"]:not(:disabled), [type="submit"]:not(:disabled), [type="reset"]:not(:disabled), a[href], select:not(:disabled), input[type="checkbox"]:not(:disabled), input[type="radio"]:not(:disabled) { @apply cursor-pointer; }
