@@ -33,14 +33,14 @@ const validPlan = {
   executiveSummary: "مخطط عملي مبني على حجم الشركة ونشاطها.",
   operatingModel: "مسؤول موارد بشرية داخلي مع دعم تشغيلي من المدراء.",
   personalizationRationale: "تم تقديم الأولويات لأن الشركة التقنية في مرحلة نمو وتحتاج إلى توحيد الأساسيات أولاً.",
+  assumptions: ["الافتراض الأول لنموذج العمل", "الافتراض الثاني للبنية التحتية"],
   modules: [{ name: "ملفات الموظفين", purpose: "توحيد البيانات", priority: "أساسي" }, { name: "الإجازات", purpose: "إدارة الاستحقاقات", priority: "مهم" }, { name: "التطوير", purpose: "رفع المهارات", priority: "متقدم" }],
   organizationalRoles: [{ role: "مسؤول الموارد البشرية", responsibility: "إدارة البيانات والسياسات", timing: "فوراً" }, { role: "المدير المباشر", responsibility: "اعتماد الطلبات والتغذية الراجعة", timing: "خلال 30 يوماً" }, { role: "القيادة التنفيذية", responsibility: "اعتماد المقاييس", timing: "خلال 60 يوماً" }],
   workflows: [{ name: "التوظيف", outcome: "تعيين منظم", owner: "الموارد البشرية" }, { name: "التهيئة", outcome: "اندماج الموظف", owner: "المدير المباشر" }, { name: "مراجعة الأداء", outcome: "تغذية راجعة", owner: "الإدارة" }],
   policies: [{ name: "الإجازات", intent: "توضيح الاستحقاقات" }, { name: "السلوك المهني", intent: "تنظيم بيئة العمل" }, { name: "البيانات", intent: "حماية المعلومات" }],
-  executionDecisions: [{ decision: "توحيد ملفات الموظفين", recommendation: "ابدأ بقاعدة بيانات موحدة", whyNow: "لدعم النمو" }, { decision: "إطلاق التهيئة", recommendation: "اعتماد قائمة تهيئة", whyNow: "لتقليل وقت الاندماج" }, { decision: "تحديد مقاييس الموارد البشرية", recommendation: "مراجعة شهرية", whyNow: "لإتاحة القرار المبني على بيانات" }],
-  first90Days: [{ period: "الأيام 1–30", objective: "تجميع الأساسيات", actions: ["توحيد ملفات الموظفين"] }, { period: "الأيام 31–60", objective: "تشغيل التدفقات", actions: ["إطلاق طلبات الإجازة"] }, { period: "الأيام 61–90", objective: "قياس التحسن", actions: ["مراجعة مؤشرات الأداء"] }],
-  implementationPhases: [{ phase: "التأسيس", timeline: "0–30 يوماً", actions: ["جمع البيانات"] }, { phase: "التشغيل", timeline: "31–90 يوماً", actions: ["إطلاق العمليات"] }],
-  metrics: ["اكتمال الملفات", "زمن التوظيف", "رضا الموظفين"],
+  executionDecisions: [{ decision: "توحيد ملفات الموظفين", recommendation: "ابدأ بقاعدة بيانات موحدة", whyNow: "لدعم النمو", isEssential: true }, { decision: "إطلاق التهيئة", recommendation: "اعتماد قائمة تهيئة", whyNow: "لتقليل وقت الاندماج", isEssential: true }, { decision: "تحديد مقاييس الموارد البشرية", recommendation: "مراجعة شهرية", whyNow: "لإتاحة القرار المبني على بيانات", isEssential: true }],
+  first90Days: [{ period: "الأيام 1–30", phase: "التأسيس", objective: "تجميع الأساسيات", actions: ["توحيد ملفات الموظفين"] }, { period: "الأيام 31–60", phase: "التشغيل", objective: "تشغيل التدفقات", actions: ["إطلاق طلبات الإجازة"] }, { period: "الأيام 61–90", phase: "التحسين", objective: "قياس التحسن", actions: ["مراجعة مؤشرات الأداء"] }],
+  keyMetrics: [{ metric: "اكتمال الملفات", baseline: "40%" }, { metric: "زمن التوظيف", baseline: "45 يوماً" }, { metric: "رضا الموظفين", baseline: "70%" }],
   risks: ["مراجعة المتطلبات المحلية", "تحديد الملاك التشغيليين"],
 };
 

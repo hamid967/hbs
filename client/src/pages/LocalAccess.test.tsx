@@ -9,6 +9,7 @@ const mutations = vi.hoisted(() => {
     login: make(), requestSubscription: make(), activateInvitation: make(),
     register: make(), verifyEmail: make(), resendVerification: make(),
     requestPasswordReset: make(), resetPassword: make(),
+    googleLogin: make(),
   };
 });
 
