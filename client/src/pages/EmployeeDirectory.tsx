@@ -6,10 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { BriefcaseBusiness, Plus, ShieldAlert, UserRoundCheck, UsersRound } from "lucide-react";
+import { BriefcaseBusiness, Plus, Search, ShieldAlert, UserRoundCheck, UsersRound } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { FormField } from "@/components/design-system";
+import { FilterBar, FormField } from "@/components/design-system";
 
 const statusLabels = { active: "نشط", on_leave: "في إجازة", inactive: "غير نشط" } as const;
 type EmploymentStatus = keyof typeof statusLabels;
@@ -24,6 +24,9 @@ export default function EmployeeDirectory() {
   const canManageEmployeeProfile = user?.role === "admin" || user?.role === "hr";
   const { data: emergencyContacts } = trpc.employees.emergencyContacts.useQuery(undefined, { enabled: canManageSensitiveProfile });
   const { data: dependents } = trpc.employees.dependents.useQuery(undefined, { enabled: canManageSensitiveProfile });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterDepartmentId, setFilterDepartmentId] = useState("all");
+  const [filterStatus, setFilterStatus] = useState<EmploymentStatus | "all">("all");
   const [departmentOpen, setDepartmentOpen] = useState(false);
   const [departmentManagerOpen, setDepartmentManagerOpen] = useState(false);
   const [designationOpen, setDesignationOpen] = useState(false);
@@ -75,6 +78,14 @@ export default function EmployeeDirectory() {
     onError: issue => toast.error("تعذر حفظ سجل التابع", { description: issue.message }),
   });
 
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredEmployees = (employees ?? []).filter(employee => {
+    if (filterDepartmentId !== "all" && String(employee.department?.id ?? "") !== filterDepartmentId) return false;
+    if (filterStatus !== "all" && (employee.profile?.employmentStatus || "active") !== filterStatus) return false;
+    if (!normalizedQuery) return true;
+    const haystack = [employee.name, employee.designation?.title, employee.profile?.jobTitle, employee.profile?.employeeNumber, employee.department?.name].filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(normalizedQuery);
+  });
   const selected = employees?.find(item => item.id === selectedId);
   const openProfile = (employee: NonNullable<typeof employees>[number]) => {
     if (!canManageEmployeeProfile) { toast.error("لا تملك صلاحية إدارة ملف الموظف"); return; }
@@ -122,7 +133,14 @@ export default function EmployeeDirectory() {
       <div><p className="text-xs font-bold text-ds-brand-400">القوى العاملة</p><h1 className="mt-2 text-3xl font-bold text-ds-brand-950">دليل الموظفين والأقسام</h1><p className="mt-3 max-w-2xl text-sm leading-7 text-ds-neutral-600">ملفات موظفي شركتك فقط، مع الأقسام والمسميات المنظمة والمدير والمنطقة وموقع العمل لدعم التحليل التشغيلي.</p></div>
       <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setDepartmentManagerOpen(true)} className="h-10 rounded-xl border-ds-brand-200 text-ds-brand-700">مدير القسم</Button><Button variant="outline" onClick={() => setDesignationOpen(true)} className="h-10 rounded-xl border-ds-brand-200 text-ds-brand-700"><BriefcaseBusiness className="ml-2 size-4" />مسمى جديد</Button><Button onClick={() => setDepartmentOpen(true)} className="h-10 rounded-xl bg-ds-brand-800"><Plus className="ml-2 size-4" />قسم جديد</Button></div>
     </div>
-    {isLoading ? <div className="mt-8 grid gap-4 md:grid-cols-2">{[1, 2, 3, 4].map(item => <Skeleton key={item} className="h-40 rounded-3xl" />)}</div> : isError ? <StateCard title="تعذر تحميل دليل الموظفين" text={error.message} error /> : employees?.length ? <div className="mt-8 grid gap-4 md:grid-cols-2">{employees.map(employee => <article key={employee.id} className="rounded-3xl border border-ds-neutral-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between"><span className="flex size-11 items-center justify-center rounded-2xl bg-ds-brand-100 text-sm font-bold text-ds-brand-600">{employee.name?.charAt(0) || "م"}</span><span className="rounded-full bg-ds-brand-100 px-3 py-1 text-xs font-bold text-ds-brand-600">{statusLabels[employee.profile?.employmentStatus || "active"]}</span></div><h2 className="mt-4 font-bold text-ds-neutral-950">{employee.name || "موظف بلا اسم"}</h2><p className="mt-1 text-sm text-ds-neutral-700">{employee.designation?.title || employee.profile?.jobTitle || "لم يُحدد المسمى الوظيفي"}</p><div className="mt-5 grid grid-cols-2 gap-3 border-t border-ds-neutral-100 pt-4 text-xs sm:grid-cols-4"><Fact label="القسم" value={employee.department?.name || "غير محدد"} /><Fact label="المسمى" value={employee.designation?.code || "غير منظم"} /><Fact label="الموقع" value={employee.profile?.workLocation || "غير محدد"} /><Fact label="رقم الموظف" value={employee.profile?.employeeNumber || "—"} /></div><Button variant="outline" onClick={() => openProfile(employee)} className="mt-5 h-9 w-full rounded-xl border-ds-brand-200 text-ds-brand-700"><UserRoundCheck className="ml-2 size-4" />إدارة الملف</Button></article>)}</div> : <StateCard title="لا توجد حسابات مفعّلة بعد" text="بعد تفعيل الحسابات من إدارة الوصول، ستظهر هنا لتجهيز ملفاتها الوظيفية." />}
+    {isLoading ? <div className="mt-8 grid gap-4 md:grid-cols-2">{[1, 2, 3, 4].map(item => <Skeleton key={item} className="h-40 rounded-3xl" />)}</div> : isError ? <StateCard title="تعذر تحميل دليل الموظفين" text={error.message} error /> : employees?.length ? <>
+      <FilterBar className="mt-8" label="بحث وتصفية دليل الموظفين" actions={<span className="text-xs font-bold text-ds-neutral-600">{filteredEmployees.length} من {employees.length} موظفاً</span>}>
+        <div className="relative min-w-[220px] flex-1"><Search className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-ds-neutral-400" /><Input value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="ابحث بالاسم أو المسمى أو رقم الموظف…" className="h-10 rounded-xl border-ds-neutral-200 bg-white pr-9" /></div>
+        <Select value={filterDepartmentId} onValueChange={setFilterDepartmentId}><SelectTrigger className="h-10 w-44 rounded-xl border-ds-neutral-200 bg-white"><SelectValue placeholder="القسم" /></SelectTrigger><SelectContent><SelectItem value="all">كل الأقسام</SelectItem>{departments?.map(item => <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>)}</SelectContent></Select>
+        <Select value={filterStatus} onValueChange={value => setFilterStatus(value as EmploymentStatus | "all")}><SelectTrigger className="h-10 w-40 rounded-xl border-ds-neutral-200 bg-white"><SelectValue placeholder="الحالة" /></SelectTrigger><SelectContent><SelectItem value="all">كل الحالات</SelectItem>{Object.entries(statusLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select>
+      </FilterBar>
+      {filteredEmployees.length ? <div className="mt-4 grid gap-4 md:grid-cols-2">{filteredEmployees.map(employee => <article key={employee.id} className="rounded-3xl border border-ds-neutral-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between"><span className="flex size-11 items-center justify-center rounded-2xl bg-ds-brand-100 text-sm font-bold text-ds-brand-600">{employee.name?.charAt(0) || "م"}</span><span className="rounded-full bg-ds-brand-100 px-3 py-1 text-xs font-bold text-ds-brand-600">{statusLabels[employee.profile?.employmentStatus || "active"]}</span></div><h2 className="mt-4 font-bold text-ds-neutral-950">{employee.name || "موظف بلا اسم"}</h2><p className="mt-1 text-sm text-ds-neutral-700">{employee.designation?.title || employee.profile?.jobTitle || "لم يُحدد المسمى الوظيفي"}</p><div className="mt-5 grid grid-cols-2 gap-3 border-t border-ds-neutral-100 pt-4 text-xs sm:grid-cols-4"><Fact label="القسم" value={employee.department?.name || "غير محدد"} /><Fact label="المسمى" value={employee.designation?.code || "غير منظم"} /><Fact label="الموقع" value={employee.profile?.workLocation || "غير محدد"} /><Fact label="رقم الموظف" value={employee.profile?.employeeNumber || "—"} /></div><Button variant="outline" onClick={() => openProfile(employee)} className="mt-5 h-9 w-full rounded-xl border-ds-brand-200 text-ds-brand-700"><UserRoundCheck className="ml-2 size-4" />إدارة الملف</Button></article>)}</div> : <StateCard title="لا توجد نتائج مطابقة" text="عدّل كلمة البحث أو التصفية لعرض موظفين آخرين." />}
+    </> : <StateCard title="لا توجد حسابات مفعّلة بعد" text="بعد تفعيل الحسابات من إدارة الوصول، ستظهر هنا لتجهيز ملفاتها الوظيفية." />}
 
     <Dialog open={departmentOpen} onOpenChange={setDepartmentOpen}><DialogContent dir="rtl"><DialogHeader><DialogTitle>قسم جديد</DialogTitle><DialogDescription>يُحفظ القسم داخل الشركة الحالية فقط.</DialogDescription></DialogHeader><div className="grid gap-4 py-3"><FormField label="اسم القسم"><Input value={departmentName} onChange={event => setDepartmentName(event.target.value)} /></FormField><FormField label="رمز القسم"><Input value={departmentCode} onChange={event => setDepartmentCode(event.target.value)} /></FormField></div><DialogFooter><Button variant="outline" onClick={() => setDepartmentOpen(false)}>إلغاء</Button><Button onClick={() => createDepartment.mutate({ name: departmentName.trim(), ...(departmentCode.trim() ? { code: departmentCode.trim() } : {}) })} disabled={createDepartment.isPending || departmentName.trim().length < 2} className="bg-ds-brand-800">حفظ القسم</Button></DialogFooter></DialogContent></Dialog>
 

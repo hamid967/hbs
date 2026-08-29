@@ -18,11 +18,13 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import {
+  Bell,
   ClipboardList,
   BotMessageSquare,
   FilePlus2,
@@ -161,6 +163,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </SidebarHeader>
 
         <SidebarContent className="px-3 pt-6">
+          <div className="px-0.5 pb-4 group-data-[collapsible=icon]:px-0">
+            <Button
+              onClick={() => setLocation("/requests/new")}
+              className="pressable h-11 w-full justify-center rounded-xl bg-ds-emerald font-bold text-ds-ink hover:bg-ds-emerald-bright group-data-[collapsible=icon]:size-11 group-data-[collapsible=icon]:p-0"
+            >
+              <FilePlus2 className="size-4 group-data-[collapsible=icon]:ml-0" />
+              <span className="group-data-[collapsible=icon]:hidden">طلب جديد</span>
+            </Button>
+          </div>
           <p className="px-3 pb-3 text-[10px] font-semibold tracking-[0.16em] text-ds-mist-strong group-data-[collapsible=icon]:hidden">مساحة العمل</p>
           <SidebarMenu className="gap-2">
             {visibleMenuItems.map(item => <NavigationItem key={item.path} {...item} />)}
@@ -223,7 +234,7 @@ function NavigationItem({ icon: Icon, label, path }: (typeof menuItems)[number])
 
 function TopBar({ availabilityLabel }: { availabilityLabel: string }) {
   const isMobile = useIsMobile();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const item = menuItems.find(entry => entry.path === location) ?? menuItems.find(entry => location.startsWith(entry.path));
 
   return (
@@ -235,10 +246,58 @@ function TopBar({ availabilityLabel }: { availabilityLabel: string }) {
           <p className="hidden text-[11px] text-ds-teal-500 sm:block">إدارة منضبطة لطلباتك الداخلية</p>
         </div>
       </div>
-      <div className="flex items-center gap-2 rounded-full border border-ds-neutral-300 bg-white/75 px-3 py-1.5 text-xs font-medium text-ds-teal-600">
-        <span className="size-2 rounded-full bg-ds-emerald" />
-        {availabilityLabel}
+      <div className="flex items-center gap-3">
+        <NotificationBell onNavigate={setLocation} />
+        <div className="hidden items-center gap-2 rounded-full border border-ds-neutral-300 bg-white/75 px-3 py-1.5 text-xs font-medium text-ds-teal-600 sm:flex">
+          <span className="size-2 rounded-full bg-ds-emerald" />
+          {availabilityLabel}
+        </div>
       </div>
     </header>
+  );
+}
+
+function NotificationBell({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const utils = trpc.useUtils();
+  const { data } = trpc.notifications.list.useQuery();
+  const markRead = trpc.notifications.markRead.useMutation({ onSuccess: () => utils.notifications.list.invalidate() });
+  const unread = (data ?? []).filter(entry => !entry.readAt);
+  const recent = (data ?? []).slice(0, 5);
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button aria-label={`الإشعارات${unread.length ? ` — ${unread.length} غير مقروءة` : ""}`} className="pressable relative flex size-10 items-center justify-center rounded-xl border border-ds-neutral-300 bg-white text-ds-teal-600 hover:bg-ds-neutral-50">
+          <Bell className="size-[18px]" />
+          {unread.length > 0 && <span className="absolute -left-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-ds-danger px-1 text-[10px] font-bold text-white">{unread.length > 9 ? "٩+" : unread.length}</span>}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 rounded-2xl border-ds-neutral-200 p-0">
+        <div dir="rtl" className="flex items-center justify-between border-b border-ds-neutral-100 px-4 py-3">
+          <p className="text-sm font-bold text-ds-ink">الإشعارات</p>
+          {unread.length ? <span className="rounded-full bg-ds-danger-soft px-2 py-0.5 text-[11px] font-bold text-ds-danger">{unread.length} غير مقروءة</span> : null}
+        </div>
+        {recent.length ? (
+          <ul dir="rtl" className="max-h-80 divide-y divide-ds-neutral-100 overflow-y-auto">
+            {recent.map(entry => (
+              <li key={entry.id}>
+                <button
+                  onClick={() => { if (!entry.readAt) markRead.mutate({ id: entry.id }); onNavigate(entry.href || "/notifications"); }}
+                  className="flex w-full flex-col items-start gap-1 px-4 py-3 text-right hover:bg-ds-neutral-50"
+                >
+                  <span className="flex items-center gap-2">{!entry.readAt && <span className="size-1.5 rounded-full bg-ds-emerald" />}<span className="text-xs font-bold text-ds-ink">{entry.title}</span></span>
+                  <span className="line-clamp-2 text-[11px] leading-5 text-ds-neutral-600">{entry.body}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p dir="rtl" className="px-4 py-8 text-center text-xs text-ds-neutral-500">لا توجد إشعارات بعد.</p>
+        )}
+        <div dir="rtl" className="border-t border-ds-neutral-100 p-2">
+          <Button variant="ghost" onClick={() => onNavigate("/notifications")} className="h-9 w-full rounded-xl text-xs text-ds-brand-700">عرض كل الإشعارات</Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
