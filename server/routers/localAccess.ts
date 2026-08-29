@@ -3,9 +3,10 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getSessionCookieOptions } from "../_core/cookies";
 import { ENV } from "../_core/env";
+import { verifyGoogleIdToken } from "../_core/firebaseAuth";
 import { sdk } from "../_core/sdk";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { activateLocalInvitation, approveSubscriptionRequest, clearLocalLoginFailures, createEmailVerificationToken, createPasswordResetToken, createSubscriptionRequest, ensureDirectAdminUser, getLocalCredentialByEmail, getUserByOpenId, listProvisionableCompanies, listSubscriptionRequests, recordLocalLoginFailure, registerLocalAccount, rejectSubscriptionRequest, resetPasswordWithToken, upsertUser, verifyEmailWithToken } from "../db";
+import { activateLocalInvitation, approveSubscriptionRequest, clearLocalLoginFailures, createEmailVerificationToken, createPasswordResetToken, createSubscriptionRequest, getLocalCredentialByEmail, getUserByOpenId, listProvisionableCompanies, listSubscriptionRequests, recordLocalLoginFailure, registerLocalAccount, rejectSubscriptionRequest, resetPasswordWithToken, upsertUser, verifyEmailWithToken } from "../db";
 import { createInvitationToken, hashInvitationToken, hashLocalPassword, normalizeLocalEmail, verifyLocalPassword } from "../localCredentials";
 import { consumeLocalAccessRateLimit } from "../localAccessRateLimit";
 import { authMessages } from "../authMessages";
@@ -100,19 +101,7 @@ export const localAccessRouter = router({
   login: publicProcedure.input(z.object({ email: z.string().trim().email().max(320), password: z.string().min(1).max(128) })).mutation(async ({ ctx, input }) => {
     const email = normalizeLocalEmail(input.email);
     if (!consumeLocalAccessRateLimit(`login:${clientAddress(ctx.req)}:${email}`, 10, 15 * 60 * 1000)) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: authMessages.tooManyAttempts });
-    let candidate = await getLocalCredentialByEmail(email);
-    
-    // Auto-bootstrap for system admin credentials if not existing yet
-    if (!candidate && email === "hamid@hrhbs.com") {
-      const defaultHash = await hashLocalPassword(input.password);
-      candidate = await ensureDirectAdminUser({
-        name: "حامد — مسؤول النظام",
-        email,
-        companyName: "HBS Group",
-        passwordHash: defaultHash,
-      });
-    }
-
+    const candidate = await getLocalCredentialByEmail(email);
     const locked = Boolean(candidate?.credential.lockedUntil && candidate.credential.lockedUntil.getTime() > Date.now());
     if (!candidate || locked) throw new TRPCError({ code: "UNAUTHORIZED", message: authMessages.loginRejected });
     const { credential, user } = candidate;
@@ -133,22 +122,32 @@ export const localAccessRouter = router({
     return { success: true } as const;
   }),
 
+  /**
+   * يزامن جلسة الخادم بعد تسجيل دخول Google في المتصفح عبر Firebase.
+   *
+   * لا تُستقبل الهوية (email/openId) كمدخلات من العميل مباشرة، لأن أي طرف
+   * يستطيع استدعاء هذه النقطة العامة دون المرور بالمتصفح ويزعم أي بريد
+   * ومعرّف يريدهما. بدلاً من ذلك يُستقبل رمز Google ID Token فقط، ويُتحقق
+   * من توقيعه وإصداره ومستلمه عبر verifyGoogleIdToken قبل استخراج الهوية
+   * الفعلية منه. كما لا يُمنح "admin" تلقائياً لكل داخل عبر Google — يُطبَّق
+   * منطق التمهيد الموحّد (getBootstrapAccountSettings عبر upsertUser) نفسه
+   * المستخدم في بقية مسارات الدخول.
+   */
   googleLogin: publicProcedure.input(z.object({
-    email: z.string().trim().email().max(320),
-    name: z.string().trim().max(160).optional(),
-    openId: z.string().min(1).max(256),
+    idToken: z.string().min(10).max(4096),
   })).mutation(async ({ ctx, input }) => {
-    const email = normalizeLocalEmail(input.email);
+    let identity;
+    try { identity = await verifyGoogleIdToken(input.idToken); }
+    catch { throw new TRPCError({ code: "UNAUTHORIZED", message: "تعذر التحقق من رمز الدخول عبر Google" }); }
+    const email = normalizeLocalEmail(identity.email);
     await upsertUser({
-      openId: input.openId,
-      name: input.name || "مستخدم Google",
+      openId: identity.uid,
+      name: identity.name || "مستخدم Google",
       email,
       loginMethod: "google",
-      role: "admin",
-      accountStatus: "active",
       lastSignedIn: new Date(),
     });
-    const user = await getUserByOpenId(input.openId);
+    const user = await getUserByOpenId(identity.uid);
     if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر إعداد جلسة الدخول" });
     const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || "مستخدم" });
     createSessionCookie(ctx, sessionToken);

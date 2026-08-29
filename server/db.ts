@@ -266,40 +266,6 @@ export async function createEmailVerificationToken(input: { email: string; token
   return { user };
 }
 
-export async function ensureDirectAdminUser(input: { email: string; name: string; passwordHash: string; companyName: string }) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const normalized = input.email.trim().toLowerCase();
-  let candidate = (await db.select({ credential: localCredentials, user: users }).from(localCredentials).innerJoin(users, eq(localCredentials.userId, users.id)).where(eq(localCredentials.email, normalized)).limit(1))[0];
-  if (candidate) {
-    if (candidate.user.role !== "admin" || candidate.user.accountStatus !== "active") {
-      await db.update(users).set({ role: "admin", accountStatus: "active", emailVerifiedAt: new Date() }).where(eq(users.id, candidate.user.id));
-    }
-    return candidate;
-  }
-  let company = (await db.select().from(companies).where(eq(companies.name, input.companyName)).limit(1))[0];
-  if (!company) {
-    await db.insert(companies).values({ name: input.companyName });
-    company = (await db.select().from(companies).where(eq(companies.name, input.companyName)).limit(1))[0];
-  }
-  const openId = `local:${randomUUID()}`;
-  await db.insert(users).values({
-    openId,
-    name: input.name,
-    email: normalized,
-    loginMethod: "local",
-    companyId: company?.id ?? 1,
-    role: "admin",
-    accountStatus: "active",
-    emailVerifiedAt: new Date(),
-    lastSignedIn: new Date(),
-  });
-  const user = (await db.select().from(users).where(eq(users.openId, openId)).limit(1))[0];
-  if (!user) return undefined;
-  await db.insert(localCredentials).values({ userId: user.id, email: normalized, passwordHash: input.passwordHash });
-  return (await db.select({ credential: localCredentials, user: users }).from(localCredentials).innerJoin(users, eq(localCredentials.userId, users.id)).where(eq(localCredentials.email, normalized)).limit(1))[0];
-}
-
 export async function getUserModulePermissions(userId: number, role: UserRole): Promise<ModulePermission[]> {
   const db = await getDb();
   if (!db) return defaultModulePermissionsForRole(role);

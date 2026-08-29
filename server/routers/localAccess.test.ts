@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const dbMocks = vi.hoisted(() => ({ activateLocalInvitation: vi.fn(), approveSubscriptionRequest: vi.fn(), clearLocalLoginFailures: vi.fn(), createSubscriptionRequest: vi.fn(), getLocalCredentialByEmail: vi.fn(), listProvisionableCompanies: vi.fn(), listSubscriptionRequests: vi.fn(), recordLocalLoginFailure: vi.fn(), rejectSubscriptionRequest: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({ activateLocalInvitation: vi.fn(), approveSubscriptionRequest: vi.fn(), clearLocalLoginFailures: vi.fn(), createSubscriptionRequest: vi.fn(), getLocalCredentialByEmail: vi.fn(), getUserByOpenId: vi.fn(), listProvisionableCompanies: vi.fn(), listSubscriptionRequests: vi.fn(), recordLocalLoginFailure: vi.fn(), rejectSubscriptionRequest: vi.fn(), upsertUser: vi.fn() }));
 vi.mock("../db", () => dbMocks);
 vi.mock("../_core/env", () => ({ ENV: { ownerOpenId: "platform-owner", localAccessAllowedOrigins: ["https://hr.example.test"] } }));
 vi.mock("../_core/sdk", () => ({ sdk: { createSessionToken: vi.fn().mockResolvedValue("session-token") } }));
 vi.mock("../_core/cookies", () => ({ getSessionCookieOptions: vi.fn().mockReturnValue({ httpOnly: true, path: "/", sameSite: "none", secure: true }) }));
+const firebaseAuthMocks = vi.hoisted(() => ({ verifyGoogleIdToken: vi.fn() }));
+vi.mock("../_core/firebaseAuth", () => firebaseAuthMocks);
 vi.mock("../localCredentials", () => ({ createInvitationToken: vi.fn().mockReturnValue("x".repeat(43)), hashInvitationToken: vi.fn().mockReturnValue("token-hash"), hashLocalPassword: vi.fn().mockResolvedValue("password-hash"), normalizeLocalEmail: vi.fn(value => value.trim().toLowerCase()), verifyLocalPassword: vi.fn().mockResolvedValue(true) }));
 import { localAccessRouter } from "./localAccess";
 import type { TrpcContext } from "../_core/context";
@@ -52,6 +54,32 @@ describe("local access router", () => {
     dbMocks.activateLocalInvitation.mockResolvedValue({ openId: "local:user", name: "Client" });
     const ctx = context();
     await expect(localAccessRouter.createCaller(ctx).activateInvitation({ token: "x".repeat(43), password: "strong-passphrase-2026" })).resolves.toEqual({ success: true });
+    expect(ctx.res.cookie).toHaveBeenCalled();
+  });
+  it("rejects login for an unknown email without ever creating an account", async () => {
+    dbMocks.getLocalCredentialByEmail.mockResolvedValue(undefined);
+    const ctx = context();
+    await expect(localAccessRouter.createCaller(ctx).login({ email: "hamid@hrhbs.com", password: "whatever-an-attacker-picks" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(ctx.res.cookie).not.toHaveBeenCalled();
+  });
+  it("rejects a Google login whose ID token fails verification, without touching the user store", async () => {
+    firebaseAuthMocks.verifyGoogleIdToken.mockRejectedValue(new Error("invalid signature"));
+    const ctx = context();
+    await expect(localAccessRouter.createCaller(ctx).googleLogin({ idToken: "forged-token" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(dbMocks.upsertUser).not.toHaveBeenCalled();
+    expect(ctx.res.cookie).not.toHaveBeenCalled();
+  });
+  it("derives the Google session identity from the verified token, not from client-supplied fields, and does not force admin", async () => {
+    firebaseAuthMocks.verifyGoogleIdToken.mockResolvedValue({ uid: "google:real-uid", email: "person@example.test", name: "Real Person", emailVerified: true });
+    dbMocks.upsertUser.mockResolvedValue(undefined);
+    dbMocks.getUserByOpenId.mockResolvedValue({ id: 40, openId: "google:real-uid", name: "Real Person", email: "person@example.test", role: "user", accountStatus: "pending" });
+    const ctx = context();
+    const result = await localAccessRouter.createCaller(ctx).googleLogin({ idToken: "a-real-firebase-id-token" });
+    expect(dbMocks.upsertUser).toHaveBeenCalledWith(expect.objectContaining({ openId: "google:real-uid", email: "person@example.test", loginMethod: "google" }));
+    const upsertArgs = dbMocks.upsertUser.mock.calls[0][0];
+    expect(upsertArgs).not.toHaveProperty("role");
+    expect(upsertArgs).not.toHaveProperty("accountStatus");
+    expect(result.user.role).toBe("user");
     expect(ctx.res.cookie).toHaveBeenCalled();
   });
 });
