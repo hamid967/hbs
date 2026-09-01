@@ -1,5 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import CompanyOverview from "@/components/CompanyOverview";
+import ManagerKPISummary from "@/components/ManagerKPISummary";
+import PerformanceTrendsChart from "@/components/PerformanceTrendsChart";
+import SmartNotificationsBanner from "@/components/SmartNotificationsBanner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -32,7 +34,7 @@ const serviceCards = [
     detail: "الإجازات، التعريف بالراتب، تحديث البيانات الوظيفية، ومزيد من الخدمات الذاتية.",
     icon: Building2,
     badge: "خدمة ذاتية",
-    tone: "bg-emerald-50 text-emerald-800 border-emerald-200",
+    tone: "bg-ds-brand-50 text-ds-brand-900 border-ds-brand-200",
     path: "/requests/new?type=hr",
   },
   {
@@ -40,7 +42,7 @@ const serviceCards = [
     detail: "معاملات منصات قوى، مقيم، مدد، التأشيرات وتجديد الإقامات والتوثيق الرسمي.",
     icon: Landmark,
     badge: "ربط سيادي",
-    tone: "bg-amber-50 text-amber-900 border-amber-200",
+    tone: "bg-ds-success-soft text-ds-brand-900 border-ds-success-border",
     path: "/requests/new?type=government",
   },
 ];
@@ -53,7 +55,7 @@ const categoryPillars = [
     desc: "إدارة الطلبات، صندوق العمل، والمعاملات اليومية",
     path: "/my-requests",
     badge: "العمليات الحية",
-    color: "from-emerald-500/10 to-teal-500/5 text-emerald-900 border-emerald-200",
+    color: "from-ds-brand-500/10 to-ds-brand-700/5 text-ds-brand-950 border-ds-brand-200",
   },
   {
     title: "الموظفون والأفراد",
@@ -62,7 +64,7 @@ const categoryPillars = [
     desc: "دليل الموظفين، العقود، والتوظيف والأداء",
     path: "/employees",
     badge: "إدارة الكوادر",
-    color: "from-blue-500/10 to-cyan-500/5 text-blue-950 border-blue-200",
+    color: "from-ds-emerald/10 to-ds-brand-500/5 text-ds-ink border-ds-success-border",
   },
   {
     title: "الوقت والدوام",
@@ -71,7 +73,7 @@ const categoryPillars = [
     desc: "سجل الحضور، الورديات، وأرصدة الإجازات",
     path: "/attendance",
     badge: "الامتثال الزمني",
-    color: "from-purple-500/10 to-indigo-500/5 text-purple-950 border-purple-200",
+    color: "from-ds-brand-600/10 to-ds-brand-800/5 text-ds-brand-950 border-ds-brand-200",
   },
   {
     title: "المالية والرواتب",
@@ -80,7 +82,7 @@ const categoryPillars = [
     desc: "مسيرات الرواتب (WPS مدد)، النفقات والاشتراكات",
     path: "/reports",
     badge: "حماية الأجور",
-    color: "from-amber-500/10 to-orange-500/5 text-amber-950 border-amber-200",
+    color: "from-ds-gold/15 to-ds-warning-soft text-ds-ink border-ds-gold/30",
   },
 ];
 
@@ -110,37 +112,37 @@ export default function Home() {
         {/* Intro transition overlay */}
         <div
           aria-hidden={!introVisible}
-          className={`pointer-events-none fixed inset-0 z-50 grid place-items-center bg-[#0A221A] transition-opacity duration-300 ${
+          className={`pointer-events-none fixed inset-0 z-50 grid place-items-center bg-ds-brand-950 transition-opacity duration-300 ${
             introVisible ? "opacity-100" : "opacity-0"
           }`}
         >
           <div className="premium-grid absolute inset-0 opacity-70" />
           <div className="intro-emerge relative flex flex-col items-center">
-            <div className="relative grid size-24 place-items-center rounded-[2rem] border border-[#D4AF37]/50 bg-white/10 text-emerald-400 shadow-[0_0_0_16px_rgba(24,185,130,.08),0_32px_70px_rgba(0,0,0,.4)]">
-              <Orbit className="size-10 text-emerald-400" />
-              <span className="signal-breathe absolute -bottom-1 -left-1 size-3.5 rounded-full bg-[#D4AF37]" />
+            <div className="relative grid size-24 place-items-center rounded-[2rem] border border-ds-brand-400/50 bg-white/10 text-ds-brand-300 shadow-[0_0_0_16px_rgba(34,117,89,.12),0_32px_70px_rgba(0,0,0,.4)]">
+              <Orbit className="size-10 text-ds-brand-300" />
+              <span className="signal-breathe absolute -bottom-1 -left-1 size-3.5 rounded-full bg-ds-emerald-bright" />
             </div>
-            <p className="mt-5 text-sm font-bold tracking-widest text-[#FDFDFB]">حلول الغد · HR HBS 2030</p>
-            <p className="mt-1 text-xs font-semibold text-emerald-400">المنظومة السيادية الموحدة</p>
+            <p className="mt-5 text-sm font-bold tracking-widest text-white">حلول الغد · HR HBS 2030</p>
+            <p className="mt-1 text-xs font-semibold text-ds-brand-200">المنظومة السيادية الموحدة</p>
           </div>
         </div>
 
         {/* ── Executive Hero Banner ─────────────────────────────────── */}
-        <section className="relative overflow-hidden rounded-[2.25rem] bg-gradient-to-br from-[#0A221A] via-[#091D16] to-[#06140F] px-6 py-8 text-[#FDFDFB] shadow-2xl md:px-10 md:py-12 border border-emerald-900/40">
+        <section className="relative overflow-hidden rounded-[2.25rem] bg-gradient-to-br from-ds-brand-950 via-ds-brand-900 to-ds-brand-950 px-6 py-8 text-white shadow-2xl md:px-10 md:py-12 border border-ds-brand-800/60">
           <div aria-hidden="true" className="premium-grid absolute inset-0 opacity-40" />
           <div aria-hidden="true" className="premium-shine absolute inset-0" />
 
           <div className="relative grid items-center gap-8 lg:grid-cols-[1.15fr_.85fr]">
             <div className="max-w-2xl space-y-4">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/10 px-3.5 py-1 text-xs font-bold text-[#F5E6B8]">
-                <Sparkles className="size-3.5 text-[#D4AF37]" />
+              <div className="inline-flex items-center gap-2 rounded-full border border-ds-gold/30 bg-ds-gold/10 px-3.5 py-1 text-xs font-bold text-ds-gold">
+                <Sparkles className="size-3.5 text-ds-gold" />
                 <span>منظومة الامتثال والموارد البشرية السيادية 2030</span>
               </div>
 
               <h1 className="text-3xl font-black leading-tight tracking-tight text-white md:text-4xl lg:text-5xl">
                 كل طلب إداري يبدأ بانضباط،
                 <br />
-                <span className="text-emerald-400">وينتهي بأثر تشغيلي موثق.</span>
+                <span className="text-ds-brand-300">وينتهي بأثر تشغيلي موثق.</span>
               </h1>
 
               <p className="max-w-xl text-sm leading-relaxed text-slate-300 md:text-base">
@@ -151,7 +153,7 @@ export default function Home() {
                 <Button
                   onClick={() => setLocation("/requests/new")}
                   size="lg"
-                  className="pressable h-12 rounded-2xl bg-gradient-to-r from-[#18B982] to-[#109E6D] px-6 font-black text-slate-950 hover:from-[#15A674] hover:to-[#0D855C] shadow-lg shadow-emerald-950/40"
+                  className="pressable h-12 rounded-2xl bg-gradient-to-r from-ds-brand-600 to-ds-brand-700 px-6 font-black text-white hover:from-ds-brand-700 hover:to-ds-brand-800 shadow-lg shadow-ds-brand-950/40"
                 >
                   <FilePlus2 className="ml-2 size-4" />
                   إنشاء طلب جديد الآن
@@ -163,7 +165,7 @@ export default function Home() {
                   size="lg"
                   className="h-12 rounded-2xl border-white/20 bg-white/5 px-5 font-bold text-white hover:bg-white/10"
                 >
-                  <BotMessageSquare className="ml-2 size-4 text-emerald-400" />
+                  <BotMessageSquare className="ml-2 size-4 text-ds-brand-300" />
                   المساعد الذكي «حامد»
                 </Button>
               </div>
@@ -173,10 +175,10 @@ export default function Home() {
             <div className="relative mx-auto w-full max-w-sm rounded-[2rem] border border-white/15 bg-white/[.08] p-5 shadow-2xl backdrop-blur-md">
               <div className="flex items-center justify-between border-b border-white/10 pb-3 text-xs text-slate-300">
                 <span className="font-bold flex items-center gap-1.5">
-                  <ShieldCheck className="size-4 text-emerald-400" />
+                  <ShieldCheck className="size-4 text-ds-brand-300" />
                   حالة الامتثال التشغيلي
                 </span>
-                <span className="rounded-full bg-emerald-500/20 border border-emerald-400/30 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300">
+                <span className="rounded-full bg-ds-emerald/20 border border-ds-emerald-soft/30 px-2.5 py-0.5 text-[11px] font-bold text-ds-emerald-soft">
                   نشط ومطابق
                 </span>
               </div>
@@ -194,16 +196,16 @@ export default function Home() {
 
               <div className="mt-4 rounded-2xl border border-white/10 bg-black/40 p-3.5 space-y-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-[#F5E6B8]">سلسلة الاعتماد والموافقات</p>
-                  <ChartNoAxesCombined className="size-4 text-emerald-400" />
+                  <p className="text-xs font-bold text-ds-brand-300">سلسلة الاعتماد والموافقات</p>
+                  <ChartNoAxesCombined className="size-4 text-ds-brand-400" />
                 </div>
                 <p className="text-[11px] leading-relaxed text-slate-300">
                   المعاملات تُحوّل تلقائياً بحسب مصفوفة الصلاحيات المعتمدة للمنشأة.
                 </p>
                 <div className="flex items-center gap-2 pt-1">
-                  <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="size-2 rounded-full bg-ds-emerald-bright animate-pulse" />
                   <span className="h-0.5 flex-1 bg-white/20" />
-                  <span className="size-2 rounded-full bg-[#D4AF37]" />
+                  <span className="size-2 rounded-full bg-ds-brand-400" />
                   <span className="h-0.5 flex-1 bg-white/20" />
                   <span className="size-2 rounded-full bg-slate-300" />
                 </div>
@@ -211,6 +213,15 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* ── Smart Urgent Notifications System ───────────────────── */}
+        <SmartNotificationsBanner />
+
+        {/* ── Executive KPI Summary Card Section for Managers ────────── */}
+        <ManagerKPISummary />
+
+        {/* ── Performance Trends Chart (Recharts) ───────────────────── */}
+        <PerformanceTrendsChart />
 
         {/* ── Grouped Pillars Quick Navigation (Workspace, People, Time, Finance) ─ */}
         <section className="space-y-3">
@@ -250,8 +261,8 @@ export default function Home() {
                   </div>
 
                   <div className="mt-4 flex items-center justify-between border-t border-black/5 pt-3 text-xs font-bold">
-                    <span className="text-slate-900 group-hover:text-emerald-700 transition">استعراض القسم</span>
-                    <ArrowLeft className="size-3.5 text-slate-400 group-hover:-translate-x-1 group-hover:text-emerald-700 transition" />
+                    <span className="text-slate-900 group-hover:text-ds-brand-700 transition">استعراض القسم</span>
+                    <ArrowLeft className="size-3.5 text-slate-400 group-hover:-translate-x-1 group-hover:text-ds-brand-700 transition" />
                   </div>
                 </button>
               );
@@ -260,7 +271,7 @@ export default function Home() {
         </section>
 
         {/* ── Monthly Operations Pulse Strip ─────────────────────────── */}
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs">
+        <section className="rounded-3xl border border-ds-neutral-200 bg-white p-5 shadow-xs">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div>
               <h2 className="text-sm font-black text-slate-950">نبض العمليات الشهرية</h2>
@@ -270,7 +281,7 @@ export default function Home() {
             </div>
             <button
               onClick={() => setLocation("/reports")}
-              className="pressable rounded-xl bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition"
+              className="pressable rounded-xl bg-ds-brand-50 border border-ds-brand-200 px-3.5 py-1.5 text-xs font-bold text-ds-brand-800 hover:bg-ds-brand-100 transition"
             >
               عرض التقرير التفصيلي
             </button>
@@ -307,15 +318,12 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── Company Overview KPI Cards ────────────────────────────── */}
-        <CompanyOverview />
-
         {/* ── 10-Member Sovereign Advisory & Expert Team Section ───── */}
         <section className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-0.5 text-xs font-bold text-emerald-800">
-                <UsersRound className="size-3.5 text-emerald-600" />
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-ds-brand-50 border border-ds-brand-200 px-3 py-0.5 text-xs font-bold text-ds-brand-800">
+                <UsersRound className="size-3.5 text-ds-brand-600" />
                 <span>فريق العمل الاستشاري المعتمد (10 خبراء ومستشارين)</span>
               </div>
               <h2 className="text-lg font-black text-slate-950">استشارات الامتثال ونظام العمل والرواتب الفورية</h2>
@@ -325,7 +333,7 @@ export default function Home() {
             </div>
             <Button
               onClick={() => setLocation("/consulting-hub")}
-              className="h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer"
+              className="h-10 rounded-xl bg-ds-brand-600 hover:bg-ds-brand-700 text-white font-bold text-xs shadow-xs cursor-pointer"
             >
               عرض مركز الخبراء بالكامل (10) <ArrowLeft className="mr-1.5 size-4" />
             </Button>
@@ -337,28 +345,28 @@ export default function Home() {
                 name: "المستشار د. إبراهيم الهذلي",
                 role: "كبير المستشارين القانونيين",
                 spec: "م 77، م 84 والنزاعات العمالية",
-                color: "bg-purple-50 text-purple-900 border-purple-200",
+                color: "bg-ds-brand-50 text-ds-brand-900 border-ds-brand-200",
                 badge: "قانون العمل",
               },
               {
                 name: "أ. حازم رضوان",
                 role: "رئيس قطاع الأجور WPS",
                 spec: "تدقيق ملفات مدد ومسيرات SIF",
-                color: "bg-teal-50 text-teal-900 border-teal-200",
+                color: "bg-ds-gold-soft text-ds-warning-deep border-ds-gold/30",
                 badge: "حماية الأجور",
               },
               {
                 name: "أ. فيصل الدوسري",
                 role: "مدير العلاقات الحكومية GRO",
                 spec: "قوى، مقيم، ورادار الـ 7 مستويات",
-                color: "bg-rose-50 text-rose-900 border-rose-200",
+                color: "bg-ds-success-soft text-ds-brand-900 border-ds-success-border",
                 badge: "المنصات الحكومية",
               },
               {
                 name: "أ. ليلى الحربي",
                 role: "أخصائية التأمينات ونطاقات",
                 spec: "أوزان التوطين واشتراكات GOSI",
-                color: "bg-amber-50 text-amber-900 border-amber-200",
+                color: "bg-ds-neutral-100 text-ds-neutral-900 border-ds-neutral-200",
                 badge: "التأمينات ونطاقات",
               },
             ].map((exp, idx) => (
@@ -372,14 +380,14 @@ export default function Home() {
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 border border-black/5">
                       {exp.badge}
                     </span>
-                    <span className="size-2 rounded-full bg-emerald-500" />
+                    <span className="size-2 rounded-full bg-ds-emerald" />
                   </div>
                   <h3 className="font-bold text-slate-900 text-xs">{exp.name}</h3>
                   <p className="text-[11px] font-semibold text-slate-600 mt-0.5">{exp.role}</p>
                   <p className="text-[10px] text-slate-500 mt-1 leading-snug">{exp.spec}</p>
                 </div>
 
-                <div className="mt-3 pt-2 border-t border-black/5 flex items-center justify-between text-[11px] font-bold text-emerald-800">
+                <div className="mt-3 pt-2 border-t border-black/5 flex items-center justify-between text-[11px] font-bold text-ds-brand-800">
                   <span>طلب توجيه استشاري</span>
                   <ChevronLeft className="size-3.5" />
                 </div>
@@ -389,10 +397,10 @@ export default function Home() {
         </section>
 
         {/* ── Superior Model Comparison Highlight (HBS vs Jisr) ───────── */}
-        <section className="rounded-3xl border border-blue-200/80 bg-gradient-to-br from-blue-50/50 via-white to-slate-50 p-6 shadow-xs">
+        <section className="rounded-3xl border border-ds-brand-200/80 bg-gradient-to-br from-ds-brand-50/40 via-white to-ds-neutral-50 p-6 shadow-xs">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
             <div>
-              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-200 mb-2 inline-block">
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-ds-brand-100 text-ds-brand-900 border border-ds-brand-200 mb-2 inline-block">
                 مقارنة تقنية وتشغيلية
               </span>
               <h2 className="text-lg font-black text-slate-950">
@@ -403,7 +411,7 @@ export default function Home() {
               onClick={() => setLocation("/consulting-hub")}
               variant="outline"
               size="sm"
-              className="rounded-xl border-blue-200 bg-white text-blue-900 hover:bg-blue-50 font-bold text-xs"
+              className="rounded-xl border-ds-brand-200 bg-white text-ds-brand-900 hover:bg-ds-brand-50 font-bold text-xs"
             >
               استعراض المزايا الكاملة
             </Button>
@@ -411,7 +419,7 @@ export default function Home() {
 
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl bg-white border border-slate-200/80 p-4 shadow-xs">
-              <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs mb-1.5">
+              <div className="flex items-center gap-2 text-ds-emerald font-bold text-xs mb-1.5">
                 <Sparkles className="size-4" />
                 <span>ذكاء تفسيري vs إدخال يدوي</span>
               </div>
@@ -421,7 +429,7 @@ export default function Home() {
             </div>
 
             <div className="rounded-2xl bg-white border border-slate-200/80 p-4 shadow-xs">
-              <div className="flex items-center gap-2 text-blue-700 font-bold text-xs mb-1.5">
+              <div className="flex items-center gap-2 text-ds-brand-600 font-bold text-xs mb-1.5">
                 <ShieldCheck className="size-4" />
                 <span>تدقيق WPS 3.0 الاستباقي</span>
               </div>
@@ -431,7 +439,7 @@ export default function Home() {
             </div>
 
             <div className="rounded-2xl bg-white border border-slate-200/80 p-4 shadow-xs">
-              <div className="flex items-center gap-2 text-amber-700 font-bold text-xs mb-1.5">
+              <div className="flex items-center gap-2 text-ds-warning-deep font-bold text-xs mb-1.5">
                 <UsersRound className="size-4" />
                 <span>فريق خبراء استشاري مدمج</span>
               </div>
@@ -451,7 +459,7 @@ export default function Home() {
             </div>
             <button
               onClick={() => setLocation("/requests/new")}
-              className="flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-900 transition"
+              className="flex items-center gap-1 text-xs font-bold text-ds-brand-700 hover:text-ds-brand-900 transition"
             >
               عرض جميع الخدمات <ChevronLeft className="size-4" />
             </button>
@@ -476,7 +484,7 @@ export default function Home() {
                   </div>
                   <p className="text-xs leading-relaxed text-slate-600">{card.detail}</p>
                 </div>
-                <ArrowLeft className="mt-1 size-5 text-slate-400 transition-transform group-hover:-translate-x-1 group-hover:text-emerald-800" />
+                <ArrowLeft className="mt-1 size-5 text-slate-400 transition-transform group-hover:-translate-x-1 group-hover:text-ds-brand-800" />
               </button>
             ))}
           </div>
@@ -486,13 +494,13 @@ export default function Home() {
         <section className="grid gap-4 md:grid-cols-2">
           <button
             onClick={() => setLocation("/assistant")}
-            className="group overflow-hidden rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-6 text-right transition duration-200 hover:-translate-y-1 hover:shadow-md cursor-pointer"
+            className="group overflow-hidden rounded-3xl border border-ds-brand-200 bg-gradient-to-br from-ds-brand-50/70 via-white to-ds-brand-50/30 p-6 text-right transition duration-200 hover:-translate-y-1 hover:shadow-md cursor-pointer"
           >
             <div className="flex items-start justify-between">
-              <span className="flex size-12 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-sm">
+              <span className="flex size-12 items-center justify-center rounded-2xl bg-ds-brand-600 text-white shadow-sm">
                 <BotMessageSquare className="size-6" />
               </span>
-              <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5">
+              <span className="rounded-full bg-ds-brand-100 text-ds-brand-800 text-[10px] font-bold px-2.5 py-0.5">
                 مساعد ذكي مدعوم بـ AI
               </span>
             </div>
@@ -504,13 +512,13 @@ export default function Home() {
 
           <button
             onClick={() => setLocation("/hr-system")}
-            className="group overflow-hidden rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-6 text-right transition duration-200 hover:-translate-y-1 hover:shadow-md cursor-pointer"
+            className="group overflow-hidden rounded-3xl border border-ds-gold/30 bg-gradient-to-br from-ds-gold-soft via-white to-ds-brand-50/20 p-6 text-right transition duration-200 hover:-translate-y-1 hover:shadow-md cursor-pointer"
           >
             <div className="flex items-start justify-between">
-              <span className="flex size-12 items-center justify-center rounded-2xl bg-[#D4AF37] text-slate-950 shadow-sm font-black">
-                <WandSparkles className="size-6" />
+              <span className="flex size-12 items-center justify-center rounded-2xl bg-ds-gold text-ds-brand-950 shadow-sm font-black">
+                <WandSparkles className="size-6 text-white" />
               </span>
-              <span className="rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold px-2.5 py-0.5">
+              <span className="rounded-full bg-ds-gold/20 text-ds-warning-deep text-[10px] font-bold px-2.5 py-0.5">
                 مخطط الهيكلة
               </span>
             </div>
@@ -540,7 +548,7 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-5 py-8 text-center">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm border border-slate-200">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-white text-ds-brand-700 shadow-sm border border-slate-200">
                 <Clock3 className="size-5" />
               </div>
               <p className="mt-3 text-sm font-bold text-slate-900">سجل المعاملات والطلبات</p>
@@ -550,15 +558,15 @@ export default function Home() {
             </div>
           </div>
 
-          <aside className="rounded-3xl border border-[#D4AF37]/30 bg-gradient-to-br from-[#FAF8F2] to-[#F5EFE0] p-6 space-y-3">
+          <aside className="rounded-3xl border border-ds-gold/40 bg-gradient-to-br from-ds-gold-soft to-ds-warning-soft p-6 space-y-3">
             <div className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-[#D4AF37]" />
-              <p className="text-xs font-extrabold text-[#7A5A2A] uppercase tracking-wide">توجيه تنفيذي معتمد</p>
+              <span className="size-2 rounded-full bg-ds-gold" />
+              <p className="text-xs font-extrabold text-ds-warning-deep uppercase tracking-wide">توجيه تنفيذي معتمد</p>
             </div>
-            <h3 className="text-lg font-black text-[#4A3818] leading-snug">
+            <h3 className="text-lg font-black text-ds-ink leading-snug">
               التفاصيل الدقيقة تسرّع دورة اعتماد المعاملة.
             </h3>
-            <p className="text-xs leading-relaxed text-[#6E5429]">
+            <p className="text-xs leading-relaxed text-ds-neutral-600">
               إرفاق الوثائق الرسمية وكتابة مبررات الطلب بدقة يُمكّن مسؤولي الموارد البشرية والعلاقات الحكومية من إنجاز معاملتك في أقل من 24 ساعة عمل.
             </p>
           </aside>
@@ -582,7 +590,7 @@ function QuickMetric({ label, value, detail }: { label: string; value: string; d
     <article className="pressable rounded-2xl border border-slate-100 bg-slate-50/80 p-4 hover:bg-white hover:border-slate-200 transition">
       <p className="text-xs font-bold text-slate-600">{label}</p>
       <p className="mt-2 text-xl font-black text-slate-950">{value}</p>
-      <p className="mt-1 text-[11px] font-semibold text-emerald-700">{detail}</p>
+      <p className="mt-1 text-[11px] font-semibold text-ds-brand-700">{detail}</p>
     </article>
   );
 }

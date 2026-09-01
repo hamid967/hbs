@@ -159,7 +159,11 @@ export const reactPrebundleDependencies = ["react", "react-dom", "@radix-ui/reac
 
 function readBuildRevision() {
   try {
-    return execFileSync("git", ["rev-parse", "--short=12", "HEAD"], { cwd: PROJECT_ROOT, encoding: "utf-8" }).trim();
+    return execFileSync("git", ["rev-parse", "--short=12", "HEAD"], {
+      cwd: PROJECT_ROOT,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
   } catch {
     return "unknown";
   }
@@ -198,6 +202,13 @@ export default defineConfig({
   server: {
     host: true,
     allowedHosts: true,
+    hmr:
+      process.env.DISABLE_HMR === "true"
+        ? false
+        : {
+            port: 3000,
+            clientPort: 3000,
+          },
     fs: {
       strict: true,
       deny: ["**/.*"],

@@ -10,9 +10,10 @@ import viteConfig from "../../vite.config";
 export const spaFallbackRoute = "/{*splat}";
 
 export async function setupVite(app: Express, server: Server) {
+  const isHmrDisabled = process.env.DISABLE_HMR === "true";
   const serverOptions = {
     middlewareMode: true,
-    hmr: { server },
+    hmr: isHmrDisabled ? false : { server, port: 3000, clientPort: 3000 },
     allowedHosts: true as const,
   };
 

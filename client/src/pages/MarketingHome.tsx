@@ -8,1267 +8,1332 @@ import {
   ChevronDown,
   ChevronLeft,
   Clock3,
-  Coins,
-  CreditCard,
-  Crown,
-  FileCheck,
   FileSpreadsheet,
   FileText,
   HelpCircle,
   Laptop,
   Layers,
   Lock,
-  LockKeyhole,
   Menu,
   PhoneCall,
   Play,
+  Pause,
+  RotateCcw,
+  Volume2,
+  VolumeX,
+  Maximize2,
   Scale,
-  Search,
   Shield,
-  ShieldAlert,
   ShieldCheck,
-  Sliders,
   Sparkles,
   Star,
-  TrendingUp,
-  UserCheck,
   UsersRound,
   Users,
   X,
   Zap,
   Award,
-  Maximize2
+  ArrowUpRight,
+  CalendarCheck,
+  Smartphone,
+  Send,
+  Sliders,
+  CheckCircle,
+  Eye,
+  TrendingUp,
+  Download,
+  FileCheck,
+  BadgeCheck,
+  Briefcase,
+  Layers3,
+  Activity,
+  AlertTriangle,
+  QrCode,
+  DollarSign,
+  Fingerprint,
+  Cpu,
+  Terminal,
+  Radio,
+  Search,
+  Compass,
+  CornerDownLeft,
+  RefreshCw,
+  SlidersHorizontal,
+  ChevronRight,
+  Database,
+  Globe,
+  Flame,
+  CheckCheck,
+  Network
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CinematicExecutiveIntro, COMPLETE_ENTERPRISE_TEAM } from "@/components/CinematicExecutiveIntro";
-import { ExecutiveSlideDeck } from "@/components/ExecutiveSlideDeck";
+import { toast } from "sonner";
 
-// --- Government Integrations Constants ---
-const GOVERNMENT_INTEGRATIONS = [
-  { name: "منصة قوى (Qiwa)", role: "عقود العمل ولوائح المنشأة", status: "متوافق 100%", tag: "MHRSD" },
-  { name: "منصة مدد (Mudad)", role: "نظام حماية الأجور (WPS)", status: "توليد فوري", tag: "WPS" },
-  { name: "التأمينات (GOSI)", role: "احتساب الاشتراكات ونسب السعودة", status: "حساب آلي", tag: "GOSI" },
-  { name: "منصة مقيم (Muqeem)", role: "رصد الإقامات والتأشيرات", status: "تنبيه استباقي", tag: "Passports" },
-  { name: "سبل (Saudi Post)", role: "الترميز والعنوان الوطني", status: "تكامل مباشر", tag: "SPL" },
-  { name: "النفاذ الوطني الموحد", role: "دخول آمن وموثوق للمنشآت", status: "دخول معتمد", tag: "SSO" },
+// --- AI Prompts Database for Interactive AI Terminal ---
+interface AIPromptPreset {
+  id: string;
+  category: string;
+  label: string;
+  prompt: string;
+  badge: string;
+  response: {
+    title: string;
+    citation: string;
+    metrics: { label: string; value: string; color: string }[];
+    details: string[];
+    actionLabel: string;
+  };
+}
+
+const AI_PROMPT_PRESETS: AIPromptPreset[] = [
+  {
+    id: "eos_calc",
+    category: "نظام العمل والتعويضات",
+    label: "احسب مكافأة نهاية الخدمة (استقالة بعد 4 سنوات)",
+    prompt: "احسب استحقاق مكافأة نهاية الخدمة لموظف براتب أساسي 12,000 ر.س، وبدلات 3,000 ر.س، أمضى 4 سنوات وقدم استقالته وفق نظام العمل السعودي.",
+    badge: "المادة 84 & 85",
+    response: {
+      title: "احتساب مكافأة نهاية الخدمة الاستباقي (المادة 85 نظام العمل)",
+      citation: "المرجع النظامي: المادة 85 (حالة الاستقالة بعد مدة خدمة بين سنتين و5 سنوات)",
+      metrics: [
+        { label: "الأجر الفعلي المعتمد", value: "15,000 ر.س", color: "emerald" },
+        { label: "نسبة الاستحقاق بالاستقالة", value: "ثلث المكافأة (1/3)", color: "cyan" },
+        { label: "إجمالي المكافأة المستحقة", value: "10,000 ر.س", color: "emerald" },
+        { label: "فترة الإشعار المعتمدة", value: "60 يوماً متوافقة", color: "purple" }
+      ],
+      details: [
+        "تم احتساب نصف أجر شهر عن كل سنة من السنوات الأربع الأولى: (15,000 ÷ 2) × 4 = 30,000 ر.س كإجمالي أولي.",
+        "بناءً على المادة 85 من نظام العمل السعودي: يستحق الموظف المستقيل ثلث المكافأة (30,000 × 1/3 = 10,000 ر.س).",
+        "تمت مطابقة رصيد الإجازات المتبقي (14 يوماً) وإضافته لنموذج المخالصة النهائية الآلي بنقرة واحدة."
+      ],
+      actionLabel: "تصدير مسودة المخالصة المالية المعتمدة"
+    }
+  },
+  {
+    id: "wps_audit",
+    category: "حماية الأجور والرواتب",
+    label: "تدقيق مسير الرواتب ومنع رفض مدد SIF",
+    prompt: "قم بالفحص الاستباقي لملف مسير الرواتب لشهر أغسطس وتحقق من تطابق أجور 48 موظفاً مع التأمينات الاجتماعية وبنوك المملكة.",
+    badge: "WPS 3.0 مدد",
+    response: {
+      title: "تقرير الفحص الذكي الاستباقي لملف حماية الأجور (WPS Audit)",
+      citation: "المرجع: اشتراطات منصة مدد وبنك الراجحي / الأهلي / الإنماء",
+      metrics: [
+        { label: "جاهزية ملف SIF", value: "100% مدقق", color: "emerald" },
+        { label: "نسبة الامتثال المتوقعة", value: "99.8%", color: "emerald" },
+        { label: "تطابق التأمينات (GOSI)", value: "48/48 مطابق", color: "teal" },
+        { label: "مخاطر الرفض البنكي", value: "0 ملاحظة", color: "cyan" }
+      ],
+      details: [
+        "تم التحقق التلقائي من عدم وجود رواتب تقل عن المسجل في عقد قوى الموثق.",
+        "تمت تسوية خصومات الغياب والتأخير بنسبة لا تتجاوز الحدود النظامية (المادة 92).",
+        "تم توليد ملف SIF القياسي المشفر وجاهزيته للإرسال المباشر لبوابة المنشأة في مدد."
+      ],
+      actionLabel: "توليد ملف SIF المعتمد للبنك"
+    }
+  },
+  {
+    id: "nitaqat_sim",
+    category: "التوطين ونطاقات",
+    label: "محاكاة تعيين 3 مقيمين وتأثيرها على النطاق",
+    prompt: "لدينا 32 موظفاً (14 سعودياً و18 مقيماً)، ما هو تأثير استقطاب 3 مقيمين إضافيين على نطاق المنشأة وهل نحتاج توظيف سعودي؟",
+    badge: "نطاقات 2026",
+    response: {
+      title: "محاكاة ذكية لنسبة التوطين ومسار نطاقات المنشأة",
+      citation: "المرجع: دليل نطاقات المحدث لوزارة الموارد البشرية والتنمية الاجتماعية",
+      metrics: [
+        { label: "نسبة التوطين الحالية", value: "43.75% (بلاتيني)", color: "emerald" },
+        { label: "النسبة بعد توظيف 3 مقيمين", value: "40.0% (أخضر مرتفع)", color: "teal" },
+        { label: "مستوى الأمان النظامي", value: "آمن ومستقر", color: "cyan" },
+        { label: "السعوديون المطلوبون للبلاتيني", value: "1 موظف سعودي", color: "purple" }
+      ],
+      details: [
+        "المنشأة تظل في النطاق (الأخضر المرتفع) ولن تتأثر الخدمات الحكومية أو نقل الكفالات.",
+        "توصية حامد: توظيف كادر سعودي واحد براتب ≥ 4,000 ر.س لضمان الحفاظ على النطاق البلاتيني والحصول على حوافز صندوق هدف.",
+        "تم تحديث خطة الاستقطاب الفصلية تلقائياً في لوحة الإدارة."
+      ],
+      actionLabel: "فتح خطة التوظيف الاستباقية"
+    }
+  },
+  {
+    id: "gro_radar",
+    category: "رادار الامتثال الحكومي",
+    label: "فحص الوثائق والتراخيص الحرجة (90 يوماً)",
+    prompt: "أظهر قائمة الإقامات، رخص العمل، والسجلات التجارية التي توشك على الانتهاء خلال الـ 90 يوماً القادمة لمنع الغرامات.",
+    badge: "GRO Radar v3",
+    response: {
+      title: "رادار الرقابة اللحظية للوثائق والامتثال المؤسسي",
+      citation: "المرجع: منصة مقيم، وزارة التجارة، الدفاع المدني، منصة بلدي",
+      metrics: [
+        { label: "الوثائق المراقبة", value: "142 وثيقة", color: "emerald" },
+        { label: "وثائق حرجة (<30 يوم)", value: "2 إقامة (مقيم)", color: "amber" },
+        { label: "وثائق متوسطة (<60 يوم)", value: "3 رخص عمل", color: "cyan" },
+        { label: "غرامات تم تفاديها", value: "12,500 ر.س", color: "emerald" }
+      ],
+      details: [
+        "تم إرسال إشعار تجديد آلي لمسؤول العلاقات الحكومية وللموظف لتحديث التأمين الطبي.",
+        "تم رصد سداد الرسوم عبر منصة مقيم وحساب سداد المنشأة دون أي تأخير.",
+        "السجل التجاري وعضوية الغرفة التجارية ساريتان لأكثر من 18 شهراً."
+      ],
+      actionLabel: "تجديد الإقامات عبر مقيم مباشرة"
+    }
+  }
 ];
 
-const PLATFORM_PILLARS = [
+// --- Futuristic Services Showcase Catalog ---
+const FUTURISTIC_SERVICES = [
   {
-    id: "payroll",
+    id: "wps_engine",
+    title: "محرك الرواتب الذكي وحماية الأجور WPS 3.0",
+    category: "المالية والأجور المؤتمتة",
+    tagline: "أتمتة شاملة لمسيرات الرواتب، خصومات التأمينات GOSI، وتوليد ملفات SIF في 30 ثانية",
     icon: FileSpreadsheet,
-    badge: "نظام حماية الأجور",
-    title: "محرك الرواتب والامتثال (WPS)",
-    desc: "إعداد مسيرات الرواتب بضغطة زر مع احتساب خصومات التأمينات الاجتماعية (GOSI)، السلف، البدلات، وإصدار ملفات حماية الأجور المعتمدة لبنوك المملكة.",
-    points: ["تصدير ملفات مدد WPS بدقة 100%", "حساب تلقائي لشرائح التأمينات (سعودي/وافد)", "متابعة السلف والمصروفات والخصومات"],
+    color: "emerald",
+    highlightStat: "0% نسبة رفض بنكي",
+    subStat: "متوافق 100% مع مدد والراجحي والأهلي",
+    image: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80",
+    features: [
+      "توليد فوري لملف حماية الأجور بصيغة SIF المشفرة والمعتمدة لدى مدد",
+      "حساب تلقائي دقيق لاشتراكات التأمينات الاجتماعية (GOSI) للسعوديين والمقيمين",
+      "معالجة البدلات، السلف، الاستقطاعات، وساعات العمل الإضافي بنقرة واحدة",
+      "إصدار قسائم رواتب مشفرة تُرسل تلقائياً إلى تطبيق الجوال والبريد"
+    ]
   },
   {
-    id: "gov-relations",
-    icon: ShieldAlert,
-    badge: "رصد الوثائق",
-    title: "مركز العلاقات الحكومية الاستباقي",
-    desc: "لوحة تحكم ذكية ترصد انتهاء الإقامات، السجلات التجارية، رخص العمل، وعقود قوى عبر 7 مستويات تصاعدية (من 120 يوماً حتى التنبيه الحرج).",
-    points: ["7 مستويات زمنية للتحذير قبل الانتهاء", "حساب تكاليف التجديد ورسوم المقابل المالي", "منع الغرامات الحكومية تماماً"],
+    id: "saudization_radar",
+    title: "رادار التوطين ونطاقات الذكي",
+    category: "الامتثال والتخطيط الاستراتيجي",
+    tagline: "مراقبة حية لمؤشر نطاقات، محاكاة القرارات التوظيفية، وتفادي هبوط النطاق مسبقاً",
+    icon: TrendingUp,
+    color: "cyan",
+    highlightStat: "نطاق بلاتيني مضمون",
+    subStat: "تنبيهات استباقية قبل 180 يوماً",
+    image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+    features: [
+      "محاكاة استقطاب أو إنهاء العقود وانعكاسها المباشر على نسبة التوطين",
+      "ربط لحظي بمعايير وزارة الموارد البشرية وبرامج الدعم (صندوق هدف)",
+      "تقارير امتثال ربع سنوية جاهزة للعرض على مجلس الإدارة",
+      "توصيات ذكية بالوظائف المستهدفة للتوطين وتكاليفها التقديرية"
+    ]
   },
   {
-    id: "hamed-ai",
-    icon: BotMessageSquare,
-    badge: "الذكاء الاصطناعي التفسيري",
-    title: "وكيل العمليات الذكي «حامد»",
-    desc: "مساعد تشغيلي يحلل الطلبات المعقدة، يقترح الإجراءات المناسبة استناداً إلى مواد نظام العمل السعودي، ولا ينفذ أي تغيير دون موافقة بشرية صريحة.",
-    points: ["تفسير القرارات وفق مواد نظام العمل", "صياغة خطابات وقرارات إدارية فورية", "حوكمة صارمة مع تأكيد بشري إلزامي"],
+    id: "biometric_attendance",
+    title: "الحضور الذكي والسياج الجغرافي الحي",
+    category: "إدارة القوى العاملة والدوام",
+    tagline: "إثبات الدوام عبر بصمة الوجه والموقع الجغرافي المشفر مع ربط لحظي بمسير الرواتب",
+    icon: Fingerprint,
+    color: "teal",
+    highlightStat: "0.3 ثانية سرعة البصمة",
+    subStat: "سياج جغرافي دقيق بالفروع والمشاريع",
+    image: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=800&q=80",
+    features: [
+      "تحقق بيومتري متطور يمنع التلاعب وتسجيل الحضور بالنيابة",
+      "جدولة الورديات المرنة والمناوبات التلقائية بحسب طبيعة العمل",
+      "احتساب آلي للتأخير والاستئذان وربطه بمسير الرواتب بنظام العمل",
+      "تطبيق جوال خفيف وسريع يعمل دون الحاجة لأجهزة بصمة مادية مكلفة"
+    ]
   },
   {
-    id: "workforce",
-    icon: UsersRound,
-    badge: "إدارة الكفاءات",
-    title: "دليل الموظف والهيكل التنظيمي 360",
-    desc: "منظومة شاملة لبيانات الموظفين، إدارة العقود، متابعة العهد والأصول، ومخطط تفاعلي للهيكل الإداري وتوزيع الصلاحيات (RBAC).",
-    points: ["ملف موظف رقمي متكامل وشامل", "هيكل إداري متجاوب مع تسلسل الموافقات", "إخفاء وحماية البيانات الحساسة (PDPL)"],
-  },
-  {
-    id: "time-leave",
-    icon: Clock3,
-    badge: "الدوام والإجازات",
-    title: "إدارة الحضور والورديات والإجازات",
-    desc: "تتبع دقيق للورديات، التأخير، ساعات العمل الإضافية، وأرصدة الإجازات السنوية والمرضية والاضطرارية وفق لائحة تنظيم العمل المعتمدة.",
-    points: ["حساب أرصدة الإجازات اللحظية بدقة", "جدولة الورديات المرنة والمناوبات", "ربط مباشر بساعات مسير الرواتب"],
-  },
-  {
-    id: "security",
-    icon: Lock,
-    badge: "الأمان والسيادة",
-    title: "عزل تام للبيانات وحماية الخصوصية",
-    desc: "بنية سحابية سيادية داخل المملكة العربية السعودية، متوافقة مع ضوابط هيئة الحكومة الرقمية ونظام حماية البيانات الشخصية السعودي.",
-    points: ["عزل بيانات المنشآت المتعددة (Multi-Tenant)", "سجل تدقيق كامل لكافة الأنشطة (Audit Trail)", "تشفير متقدم للمعلومات والرواتب"],
-  },
+    id: "employee_experience",
+    title: "بوابة الموظف الرقمية والخدمة الذاتية",
+    category: "تجربة الكفاءات والموظفين",
+    tagline: "تطبيق جوال فائق السلاسة لطلب الإجازات، السلف، والشهادات المختومة بالرمز الرقمي",
+    icon: Smartphone,
+    color: "purple",
+    highlightStat: "< 15 ثانية للطلب",
+    subStat: "شهادات تعريف بالراتب معتمدة بـ QR",
+    image: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=800&q=80",
+    features: [
+      "إصدار خطابات التعريف بالراتب المعتمدة رقمياً بالختم ورمز التحقق QR",
+      "طلب الإجازات والاطلاع على الرصيد المستحق ومسار الموافقات اللحظي",
+      "استعراض قسائم الرواتب التاريخية مع التفصيل الكامل للبدلات والخصومات",
+      "سلاسل موافقات إدارية ديناميكية تتكيف مع الهيكل التنظيمي للمنشأة"
+    ]
+  }
 ];
 
-const FAQS = [
-  {
-    q: "هل النظام متوافق رسمياً مع نظام العمل السعودي ومنصات قوى ومدد؟",
-    a: "نعم، تم تصميم منصة HBS 2030 من الأساس لتلبي كافة متطلبات وزارة الموارد البشرية والتنمية الاجتماعية، وتوليد ملفات حماية الأجور (WPS) المعتمدة لدى منصة مدد، مع ضبط احتساب نسب التأمينات الاجتماعية (GOSI) تلقائياً.",
-  },
-  {
-    q: "كيف يعمل مساعد الذكاء الاصطناعي «حامد» وما مدى دقة قراراته؟",
-    a: "«حامد» هو وكيل ذكاء اصطناعي تفسيري مدرب على لوائح العمل والأنظمة السعودية. يقوم بتحليل الطلبات والإجازات وتقديم توصيات مسندة للمادة القانونية، مع اشتراط تأكيد المشرف البشري قبل تنفيذ أي تعديل، مما يضمن دقة 100% وأماناً تشغيلياً كاملاً.",
-  },
-  {
-    q: "هل يمكننا نقل بيانات الموظفين والعقود من أنظمتنا الحالية (جسر / Excel / Frappe)؟",
-    a: "نعم، يوفر النظام أدوات استيراد ذكية تدعم ملفات Excel وCSV وقواعد البيانات المهيكلة، مع خدمة ترحيل بيانات شاملة وتدريب مجاني لفريق الموارد البشرية خلال 48 ساعة من الاشتراك.",
-  },
-  {
-    q: "ما هي معايير الأمان وحماية البيانات المطبقة في HBS؟",
-    a: "تخضع بيانات المنصة لنظام حماية البيانات الشخصية السعودي (PDPL) مع تشفير كامل بمستوى AES-256، وعزل صارم لحسابات كل منشأة (Multi-Tenant Isolation)، واستضافة سحابية متوافقة مع متطلبات الهيئة الوطنية للأمن السيبراني (NCA).",
-  },
-  {
-    q: "هل يدعم النظام الشركات المتعددة والفروع ذات السجلات التجارية المختلفة؟",
-    a: "نعم وبكل سهولة. تتيح المنصة للمجموعات والشركات القابضة إدارة عدة منشآت وفروع من لوحة تحكم واحدة، مع فصل المسيرات والموافقات والصلاحيات لكل كيان بشكل مستقل.",
-  },
+// --- Saudi Government Neural Integrations ---
+const SAUDI_INTEGRATIONS = [
+  { name: "منصة قوى (Qiwa)", subtitle: "توثيق العقود واللوائح", badge: "API v2.4 Live", icon: Building2, status: "نشط 100%" },
+  { name: "منصة مدد (Mudad)", subtitle: "حماية الأجور WPS 3.0", badge: "SIF Ready", icon: FileSpreadsheet, status: "نشط 100%" },
+  { name: "التأمينات (GOSI)", subtitle: "الاشتراكات والتوطين", badge: "Sync Live", icon: ShieldCheck, status: "نشط 100%" },
+  { name: "منصة مقيم (Muqeem)", subtitle: "الإقامات وتأشيرات العمل", badge: "Direct Connect", icon: Users, status: "نشط 100%" },
+  { name: "العنوان الوطني (SPL)", subtitle: "التحقق الجغرافي للمنشأة", badge: "Verified", icon: QrCode, status: "نشط 100%" },
+  { name: "النفاذ الوطني (Nafath)", subtitle: "الدخول المؤسسي الموحد", badge: "SSO Biometric", icon: Lock, status: "نشط 100%" }
 ];
 
 export default function MarketingHome() {
   const [, setLocation] = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [showIntro, setShowIntro] = useState(false);
-  const [viewMode, setViewMode] = useState<"slides" | "scroll">("slides");
-  const [activeConsoleTab, setActiveConsoleTab] = useState<"overview" | "payroll" | "gov" | "ai" | "ess">("overview");
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [selectedTeamCategory, setSelectedTeamCategory] = useState<string>("all");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Interactive ROI Simulator State
-  const [employeeCount, setEmployeeCount] = useState<number>(85);
-  const [sector, setSector] = useState<string>("tech");
-  const [avgSalary, setAvgSalary] = useState<number>(9500);
+  // --- Interactive AI Terminal State ---
+  const [selectedPromptId, setSelectedPromptId] = useState<string>("wps_audit");
+  const [customPromptInput, setCustomPromptInput] = useState<string>("");
+  const [isAITyping, setIsAITyping] = useState<boolean>(false);
+  const [typedResponseText, setTypedResponseText] = useState<string>("");
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
 
-  // Billing Cycle State for Pricing Section
-  const [billingCycle, setBillingCycle] = useState<"annual" | "monthly">("annual");
+  // --- Interactive Services Showcase State ---
+  const [activeServiceTab, setActiveServiceTab] = useState<number>(0);
 
-  // Calculations
-  const calculatedSavings = useMemo(() => {
-    const hoursSavedMonthly = Math.round(employeeCount * 1.6);
-    const moneySavedMonthly = Math.round(hoursSavedMonthly * (avgSalary / 160) * 1.25);
-    const annualSavings = moneySavedMonthly * 12;
-    const penaltyRiskAvoidance = employeeCount > 50 ? 45000 : 20000;
-    return {
-      hoursSavedMonthly,
-      moneySavedMonthly: moneySavedMonthly.toLocaleString("ar-SA"),
-      annualSavings: annualSavings.toLocaleString("ar-SA"),
-      penaltyRiskAvoidance: penaltyRiskAvoidance.toLocaleString("ar-SA"),
-      saudizationScore: sector === "tech" ? "82% (نطاق بلاتيني)" : "76% (نطاق أخضر مرتفع)",
+  // --- Interactive Saudization Simulator State ---
+  const [saudiCount, setSaudiCount] = useState<number>(18);
+  const [expatCount, setExpatCount] = useState<number>(24);
+
+  // --- Interactive Payroll Simulator State ---
+  const [payrollEmployees, setPayrollEmployees] = useState<number>(48);
+  const [avgSalary, setAvgSalary] = useState<number>(8500);
+  const [isAuditingPayroll, setIsAuditingPayroll] = useState<boolean>(false);
+  const [auditSuccess, setAuditSuccess] = useState<boolean>(true);
+
+  // --- Interactive ROI & Savings Calculator State ---
+  const [roiHeadcount, setRoiHeadcount] = useState<number>(65);
+  const [roiManualHours, setRoiManualHours] = useState<number>(38);
+
+  // --- Interactive Self-Service Mobile Simulator App Screen ---
+  const [mobileActiveApp, setMobileActiveApp] = useState<"certificate" | "leave" | "payslip" | "loan">("certificate");
+
+  // --- Quick Demo Request Form State ---
+  const [demoName, setDemoName] = useState("");
+  const [demoCompany, setDemoCompany] = useState("");
+  const [demoPhone, setDemoPhone] = useState("");
+  const [demoEmployees, setDemoEmployees] = useState("10-50");
+  const [demoSubmitting, setDemoSubmitting] = useState(false);
+
+  // Selected Active Preset
+  const activePromptPreset = AI_PROMPT_PRESETS.find((p) => p.id === selectedPromptId) || AI_PROMPT_PRESETS[0];
+
+  // AI Response Typing Simulation Effect
+  useEffect(() => {
+    setIsAITyping(true);
+    setTypedResponseText("");
+    const fullText = activePromptPreset.response.details.join(" \n\n");
+    let currentIdx = 0;
+
+    const timer = setInterval(() => {
+      if (currentIdx < fullText.length) {
+        setTypedResponseText(fullText.slice(0, currentIdx + 4));
+        currentIdx += 4;
+      } else {
+        setTypedResponseText(fullText);
+        setIsAITyping(false);
+        clearInterval(timer);
+      }
+    }, 15);
+
+    return () => clearInterval(timer);
+  }, [selectedPromptId]);
+
+  // Keyboard shortcut (Ctrl+K / Cmd+K) for Command Palette
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
     };
-  }, [employeeCount, sector, avgSalary]);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
-  const month = new Date().toISOString().slice(0, 7);
-  const { data: report } = trpc.reports.monthly.useQuery({ month });
+  // Calculate dynamic Saudization metrics
+  const totalHeadcount = saudiCount + expatCount;
+  const saudizationPercent = totalHeadcount > 0 ? ((saudiCount / totalHeadcount) * 100).toFixed(1) : "0";
+  const numSaudization = parseFloat(saudizationPercent);
 
-  const filteredTeamMembers = selectedTeamCategory === "all"
-    ? COMPLETE_ENTERPRISE_TEAM
-    : COMPLETE_ENTERPRISE_TEAM.filter((m) => m.category === selectedTeamCategory);
+  let nitaqatTier = "بلاتيني";
+  let nitaqatColor = "text-emerald-400 border-emerald-500/40 bg-emerald-500/10";
+  let nitaqatAdvise = "المنشأة في قمة الأمان والاستقرار ومؤهلة لكافة التأشيرات الفورية";
+
+  if (numSaudization < 15) {
+    nitaqatTier = "أحمر (حرج)";
+    nitaqatColor = "text-rose-400 border-rose-500/40 bg-rose-500/10";
+    nitaqatAdvise = "تنبيه حرج: توقف خدمات نقل الكفالة والتأشيرات حتى رفع النسبة";
+  } else if (numSaudization < 25) {
+    nitaqatTier = "أخضر منخفض";
+    nitaqatColor = "text-amber-400 border-amber-500/40 bg-amber-500/10";
+    nitaqatAdvise = "مقبول جزئياً مع قيود على بعض التأشيرات التوسعية";
+  } else if (numSaudization < 38) {
+    nitaqatTier = "أخضر مرتفع";
+    nitaqatColor = "text-teal-400 border-teal-500/40 bg-teal-500/10";
+    nitaqatAdvise = "وضع آمن مع إمكانية التوسع ونقل الخدمات بسهولة";
+  }
+
+  // Calculate dynamic Payroll total
+  const totalBasePay = payrollEmployees * avgSalary;
+  const estimatedGosi = Math.round(totalBasePay * 0.0975); // approx GOSI
+  const netPayroll = totalBasePay - estimatedGosi;
+
+  // Calculate dynamic ROI
+  const calculatedMonthlySavings = Math.round(roiHeadcount * 180 + roiManualHours * 95);
+  const calculatedYearlySavings = calculatedMonthlySavings * 12;
+  const calculatedHoursSaved = Math.round(roiManualHours * 0.78);
+
+  const handleAuditPayroll = () => {
+    setIsAuditingPayroll(true);
+    setTimeout(() => {
+      setIsAuditingPayroll(false);
+      setAuditSuccess(true);
+      toast.success("تم التدقيق الذكي بنجاح: 0 ملاحظات، جاهز 100% لمدد وبنوك المملكة");
+    }, 600);
+  };
+
+  const handleQuickDemoSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!demoName.trim() || !demoPhone.trim()) {
+      toast.error("يرجى إدخال الاسم ورقم الجوال للتواصل");
+      return;
+    }
+    setDemoSubmitting(true);
+    setTimeout(() => {
+      setDemoSubmitting(false);
+      toast.success("تم استلام طلبك بنجاح! سيتواصل معك مهندس حلول HBS 2030 لتفعيل التجربة.");
+      setDemoName("");
+      setDemoCompany("");
+      setDemoPhone("");
+    }, 700);
+  };
 
   return (
-    <main dir="rtl" className="min-h-screen overflow-x-hidden bg-[#FDFDFB] text-slate-900 font-sans antialiased selection:bg-emerald-500 selection:text-white">
+    <div dir="rtl" className="min-h-screen bg-[#030908] text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-black overflow-x-hidden">
       
-      {/* ── $100K Cinematic Executive Intro Modal ────────────────────── */}
-      <CinematicExecutiveIntro
-        isOpen={showIntro}
-        onComplete={() => setShowIntro(false)}
-      />
-
-      {/* ── Top Announcement Banner ─────────────────────────────────── */}
-      <div className="bg-[#0A221A] text-emerald-300 px-4 py-2.5 text-center text-xs font-semibold border-b border-emerald-900/50 flex flex-wrap items-center justify-center gap-2">
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-          تحديث 2026 السيادي
-        </span>
-        <span>متوافق كلياً مع متطلبات نظام العمل السعودي المحدث ولائحة منصة مدد لحماية الأجور (WPS)</span>
-        
-        <button
-          onClick={() => setShowIntro(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#D4AF37]/20 text-[#F5E6B8] hover:bg-[#D4AF37]/30 border border-[#D4AF37]/40 text-[11px] font-bold transition cursor-pointer mr-2 shadow-sm"
-        >
-          <Crown className="size-3 text-[#D4AF37]" />
-          <span>تشغيل الانترو الفخم ($100K)</span>
-        </button>
-
-        <button 
-          onClick={() => setLocation("/subscribe")} 
-          className="hidden sm:inline-flex items-center gap-1 underline text-emerald-300 hover:text-white mr-2 font-bold cursor-pointer"
-        >
-          اطلب تجربة المنشآت <ChevronLeft className="size-3.5" />
-        </button>
-      </div>
-
-      {/* ── Main Navigation Bar ─────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 bg-[#0F2F24]/95 backdrop-blur-md border-b border-white/10 text-white transition-all">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-20 items-center justify-between gap-4">
-            
-            {/* Brand Logo & Monogram */}
-            <button onClick={() => setLocation("/")} className="flex items-center gap-3 text-right group">
-              <div className="relative flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#18B982] to-[#0A8060] text-slate-950 font-black text-xl shadow-[0_0_24px_rgba(24,185,130,0.35)] transition group-hover:scale-105">
-                هـ
-                <span className="absolute -top-1 -right-1 size-3 rounded-full bg-[#D4AF37] border-2 border-[#0F2F24]" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold tracking-tight text-white">حلول الغد</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/10 text-amber-300 border border-white/10">HBS 2030</span>
-                </div>
-                <p className="text-[10px] font-medium tracking-widest text-emerald-200/80">SAUDI INTELLIGENT ENTERPRISE</p>
-              </div>
-            </button>
-
-            {/* Desktop Navigation Links */}
-            <nav className="hidden lg:flex items-center gap-5 text-xs font-semibold text-slate-200">
-              <a href="#deck" onClick={() => setViewMode("slides")} className="text-amber-300 hover:text-amber-200 flex items-center gap-1 transition font-bold">
-                <Crown className="size-3.5 text-[#D4AF37]" />
-                العرض التنفيذي (سلايدات)
-              </a>
-              <a href="#team" className="hover:text-emerald-400 transition">فريق العمل (10)</a>
-              <a href="#pillars" className="hover:text-emerald-400 transition">المنظومة والحلول</a>
-              <a href="#console" className="hover:text-emerald-400 transition">لوحة العمليات الحية</a>
-              <a href="#pricing" className="hover:text-emerald-400 transition">باقات المنشآت</a>
-              <a href="#simulator" className="hover:text-emerald-400 transition">حاسبة العائد</a>
-              <a href="#faqs" className="hover:text-emerald-400 transition">الأسئلة الشائعة</a>
-            </nav>
-
-            {/* Header Action Buttons */}
-            <div className="hidden sm:flex items-center gap-2.5">
-              {/* Mode Toggle Pills */}
-              <div className="flex items-center p-1 rounded-xl bg-black/40 border border-white/15 text-[11px] font-bold">
-                <button
-                  onClick={() => setViewMode("slides")}
-                  className={`px-3 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
-                    viewMode === "slides"
-                      ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-black"
-                      : "text-slate-300 hover:text-white"
-                  }`}
-                >
-                  <Crown className="size-3" />
-                  سلايدات فخمة
-                </button>
-                <button
-                  onClick={() => setViewMode("scroll")}
-                  className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-                    viewMode === "scroll"
-                      ? "bg-white/20 text-white"
-                      : "text-slate-300 hover:text-white"
-                  }`}
-                >
-                  تصفح كامل
-                </button>
-              </div>
-
-              <Button
-                onClick={() => setShowIntro(true)}
-                variant="outline"
-                className="h-9 rounded-xl text-xs font-bold text-[#F5E6B8] hover:bg-[#D4AF37]/20 border-[#D4AF37]/40 bg-[#D4AF37]/10 px-3"
-              >
-                <Play className="size-3 ml-1 text-[#D4AF37]" />
-                انترو $100K
-              </Button>
-
-              <Button
-                onClick={() => setLocation("/login")}
-                variant="ghost"
-                className="h-9 rounded-xl text-xs font-bold text-white hover:bg-white/10 border border-white/15 px-3"
-              >
-                دخول
-              </Button>
-
-              <Button
-                onClick={() => setLocation("/subscribe")}
-                className="h-9 rounded-xl bg-gradient-to-r from-[#18B982] to-[#109E6D] hover:from-[#15A674] hover:to-[#0D855C] text-slate-950 font-bold text-xs px-4 shadow-lg shadow-emerald-950/40"
-              >
-                طلب اشتراك <ArrowLeft className="mr-1 size-3.5" />
-              </Button>
+      {/* ── 1. Futuristic Smart HUD Top Bar ──────────────────────────────── */}
+      <div className="bg-[#051310] border-b border-emerald-900/40 text-[11px] py-1.5 px-4 hidden sm:block">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4 text-emerald-400">
+            <div className="flex items-center gap-1.5">
+              <span className="relative flex size-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full size-2 bg-emerald-500" />
+              </span>
+              <span className="font-mono font-bold">HBS Neural OS v3.8 · Live Engine</span>
             </div>
+            <span className="text-emerald-900">•</span>
+            <div className="flex items-center gap-1 text-slate-300 font-mono">
+              <Cpu className="size-3 text-emerald-400" />
+              <span>زمن الاستجابة: 12ms</span>
+            </div>
+            <span className="text-emerald-900">•</span>
+            <div className="flex items-center gap-1 text-slate-300 font-mono">
+              <ShieldCheck className="size-3.5 text-emerald-400" />
+              <span>أمن سيبراني سعودي (NCA Class A)</span>
+            </div>
+          </div>
 
-            {/* Mobile Menu Toggle */}
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden flex size-10 items-center justify-center rounded-xl bg-white/10 text-white border border-white/10"
-              aria-label="القائمة الرئيسية"
+              onClick={() => setCommandPaletteOpen(true)}
+              className="flex items-center gap-2 px-2.5 py-0.5 rounded-lg bg-emerald-950/80 border border-emerald-700/50 text-emerald-300 hover:border-emerald-500 transition text-[10px] font-mono cursor-pointer"
             >
-              {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+              <Terminal className="size-3" />
+              <span>الأوامر الذكية السريعة</span>
+              <kbd className="bg-emerald-900/60 px-1.5 py-0.2 rounded text-[9px] text-emerald-200 border border-emerald-700">Ctrl+K</kbd>
             </button>
+            <div className="flex items-center gap-1 text-[11px] text-slate-400">
+              <span>الرياض، المملكة العربية السعودية 🇸🇦</span>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Mobile Dropdown Menu */}
-        {menuOpen && (
-          <div className="lg:hidden border-t border-white/10 bg-[#0A221A] px-5 py-6 space-y-4">
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10">
-              <span className="text-xs font-bold text-slate-300">طريقة العرض:</span>
-              <div className="flex gap-1">
-                <button
-                  onClick={() => { setViewMode("slides"); setMenuOpen(false); }}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold ${viewMode === "slides" ? "bg-emerald-500 text-slate-950" : "bg-white/10 text-white"}`}
-                >
-                  سلايدات فخمة
-                </button>
-                <button
-                  onClick={() => { setViewMode("scroll"); setMenuOpen(false); }}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold ${viewMode === "scroll" ? "bg-emerald-500 text-slate-950" : "bg-white/10 text-white"}`}
-                >
-                  تصفح كامل
-                </button>
+      {/* ── 2. Futuristic Main Header ─────────────────────────────────────── */}
+      <header className="sticky top-0 z-40 bg-[#030908]/90 backdrop-blur-xl border-b border-emerald-900/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+          
+          {/* Futuristic Holographic Logo */}
+          <div
+            className="flex items-center gap-3 cursor-pointer group"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          >
+            <div className="relative size-11 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-700 p-0.5 shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/40 transition">
+              <div className="w-full h-full bg-[#04120F] rounded-[14px] flex items-center justify-center text-emerald-400">
+                <Building2 className="size-6 text-emerald-400 group-hover:scale-110 transition-transform" />
               </div>
             </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-black text-white tracking-tight font-mono">HBS 2030</span>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono">
+                  SMART OS
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-400/80 font-medium">المنظومة الذكية للموارد البشرية والرواتب</p>
+            </div>
+          </div>
 
-            <nav className="grid gap-2 text-sm font-semibold text-slate-200">
-              <button onClick={() => { setShowIntro(true); setMenuOpen(false); }} className="text-right px-3 py-2 rounded-lg bg-[#D4AF37]/15 text-[#F5E6B8] border border-[#D4AF37]/30 flex items-center gap-2">
-                <Crown className="size-4 text-[#D4AF37]" />
-                تشغيل الانترو الفخم ($100,000)
-              </button>
-              <a onClick={() => setMenuOpen(false)} href="#deck" className="px-3 py-2 rounded-lg hover:bg-white/5">العرض التنفيذي</a>
-              <a onClick={() => setMenuOpen(false)} href="#team" className="px-3 py-2 rounded-lg hover:bg-white/5">فريق العمل (10)</a>
-              <a onClick={() => setMenuOpen(false)} href="#pillars" className="px-3 py-2 rounded-lg hover:bg-white/5">المنظومة والحلول</a>
-              <a onClick={() => setMenuOpen(false)} href="#console" className="px-3 py-2 rounded-lg hover:bg-white/5">لوحة العمليات الحية</a>
-              <a onClick={() => setMenuOpen(false)} href="#pricing" className="px-3 py-2 rounded-lg hover:bg-white/5 text-amber-300">باقات المنشآت</a>
-              <a onClick={() => setMenuOpen(false)} href="#simulator" className="px-3 py-2 rounded-lg hover:bg-white/5">حاسبة العائد</a>
-              <a onClick={() => setMenuOpen(false)} href="#faqs" className="px-3 py-2 rounded-lg hover:bg-white/5">الأسئلة الشائعة</a>
-            </nav>
-            <div className="pt-4 border-t border-white/10 grid grid-cols-2 gap-2">
-              <Button onClick={() => { setMenuOpen(false); setLocation("/login"); }} variant="outline" className="w-full text-xs font-bold text-white border-white/20">
+          {/* Navigation Links with Futuristic Micro-badges */}
+          <nav className="hidden lg:flex items-center gap-6 text-xs font-bold text-slate-300">
+            <a href="#ai-terminal" className="hover:text-emerald-400 transition flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-emerald-950/40">
+              <Sparkles className="size-3.5 text-emerald-400" />
+              <span>مساعد حامد الذكي</span>
+            </a>
+            <a href="#smart-showcase" className="hover:text-emerald-400 transition px-3 py-1.5 rounded-xl hover:bg-emerald-950/40">
+              محركات المنظومة
+            </a>
+            <a href="#saudization-simulator" className="hover:text-emerald-400 transition flex items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-emerald-950/40">
+              <TrendingUp className="size-3.5 text-cyan-400" />
+              <span>محاكي نطاقات</span>
+            </a>
+            <a href="#mobile-simulator" className="hover:text-emerald-400 transition px-3 py-1.5 rounded-xl hover:bg-emerald-950/40">
+              تطبيق الخدمة الذاتية
+            </a>
+            <a href="#roi-calculator" className="hover:text-emerald-400 transition px-3 py-1.5 rounded-xl hover:bg-emerald-950/40">
+              حاسبة التوفير الذكية
+            </a>
+            <a href="#gov-matrix" className="hover:text-emerald-400 transition px-3 py-1.5 rounded-xl hover:bg-emerald-950/40">
+              التكامل الحكومي
+            </a>
+          </nav>
+
+          {/* Action Buttons */}
+          <div className="hidden sm:flex items-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => setLocation("/login")}
+              className="text-xs font-bold text-slate-300 hover:text-emerald-300 hover:bg-emerald-950/40 rounded-xl h-10 px-4 cursor-pointer border border-emerald-900/40"
+            >
+              تسجيل الدخول
+            </Button>
+            <Button
+              onClick={() => {
+                const el = document.getElementById("demo-form");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+                else setLocation("/request-demo");
+              }}
+              className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 text-xs font-black rounded-xl h-10 px-5 shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition cursor-pointer flex items-center gap-1.5"
+            >
+              <Zap className="size-3.5 fill-slate-950" />
+              <span>تفعيل التجربة الذكية</span>
+            </Button>
+          </div>
+
+          {/* Mobile Menu Toggle */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="lg:hidden size-10 flex items-center justify-center rounded-xl text-slate-300 hover:bg-emerald-950/60 border border-emerald-900/40"
+            aria-label="القائمة"
+          >
+            {mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          </button>
+        </div>
+
+        {/* Mobile Dropdown */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden bg-[#051310] border-b border-emerald-900/60 px-4 pt-3 pb-6 space-y-2">
+            <a href="#ai-terminal" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-sm font-bold text-slate-200 hover:text-emerald-400">
+              ✨ مساعد حامد الذكي
+            </a>
+            <a href="#smart-showcase" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-sm font-bold text-slate-200 hover:text-emerald-400">
+              ⚙️ محركات المنظومة الذكية
+            </a>
+            <a href="#saudization-simulator" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-sm font-bold text-slate-200 hover:text-emerald-400">
+              📊 محاكي نطاقات والتوطين
+            </a>
+            <a href="#mobile-simulator" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-sm font-bold text-slate-200 hover:text-emerald-400">
+              📱 تطبيق الخدمة الذاتية
+            </a>
+            <a href="#roi-calculator" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-sm font-bold text-slate-200 hover:text-emerald-400">
+              💰 حاسبة العائد والتوفير
+            </a>
+            <div className="pt-3 border-t border-emerald-900/50 flex flex-col gap-2">
+              <Button
+                variant="outline"
+                onClick={() => { setMobileMenuOpen(false); setLocation("/login"); }}
+                className="w-full h-11 rounded-xl text-xs font-bold border-emerald-800 text-slate-200"
+              >
                 تسجيل الدخول
               </Button>
-              <Button onClick={() => { setMenuOpen(false); setLocation("/subscribe"); }} className="w-full text-xs font-bold bg-[#18B982] text-slate-950">
-                طلب اشتراك
+              <Button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  const el = document.getElementById("demo-form");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="w-full h-11 rounded-xl bg-emerald-500 text-slate-950 text-xs font-black"
+              >
+                طلب عرض تجريبي فوري
               </Button>
             </div>
           </div>
         )}
       </header>
 
-      {/* ── SECTION: LUXURY EXECUTIVE SLIDE DECK ──────────────────────── */}
-      <section id="deck" className="relative">
-        <ExecutiveSlideDeck
-          onOpenIntro={() => setShowIntro(true)}
-          pulse={report ? {
-            requests: { submitted: 18, inReview: 6, completed: 84 },
-            approvals: { pending: 4, approved: 72, rejected: 3 }
-          } : undefined}
-        />
-      </section>
-
-      {/* ── Hero Section: High Impact Saudi Enterprise ──────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#0F2F24] via-[#0C271E] to-[#0A221A] text-white pt-12 pb-24 lg:pt-16 lg:pb-32 border-b border-emerald-950">
+      {/* ── 3. Futuristic Cyber Hero Section ─────────────────────────────── */}
+      <section className="relative pt-10 pb-20 sm:pt-16 sm:pb-28 overflow-hidden">
         
-        {/* Subtle Decorative Geometric Backdrop */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute -top-40 -left-40 size-96 rounded-full bg-[#18B982]/10 blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 -right-40 size-96 rounded-full bg-[#D4AF37]/10 blur-3xl pointer-events-none" />
+        {/* Cyber Holographic Mesh & Grid Background */}
+        <div className="absolute inset-0 bg-[radial-gradient(#0c2a21_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none" />
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[800px] h-[450px] bg-gradient-to-tr from-emerald-500/20 via-teal-500/15 to-cyan-500/20 blur-[120px] pointer-events-none -z-10" />
 
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          
+          {/* Header Title Area */}
+          <div className="text-center max-w-4xl mx-auto space-y-5">
             
-            {/* Saudi Enterprise Authority Pill */}
-            <div className="inline-flex items-center gap-2.5 rounded-full border border-[#D4AF37]/40 bg-white/[0.06] px-4 py-2 text-xs font-bold text-[#E7C89C] mb-8 shadow-inner">
-              <span className="size-2 rounded-full bg-[#18B982] animate-pulse" />
-              <span>معيار حلول الغد · متوافق 100% مع رؤية المملكة 2030 وأنظمة MHRSD</span>
+            <div className="inline-flex items-center gap-2.5 rounded-full bg-emerald-950/80 border border-emerald-500/40 px-4 py-1.5 text-xs font-mono font-bold text-emerald-300 shadow-lg shadow-emerald-500/10">
+              <span className="flex size-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>المنظومة الذكية المستقبلية للموارد البشرية والرواتب 🇸🇦</span>
+              <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded font-mono">VISION 2030</span>
             </div>
 
-            {/* Main Hero Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.2] tracking-tight">
-              نظام التشغيل السيادي لإدارة <br className="hidden sm:inline" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#18B982] via-[#5DE0AD] to-[#D4AF37]">
-                الموارد البشرية والامتثال الحكومي
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.25]">
+              نظام تشغيل ذكي ومستقبلي{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">
+                لإدارة الموارد البشرية والرواتب
               </span>
             </h1>
 
-            {/* Subtitle */}
-            <p className="mt-6 text-base sm:text-lg lg:text-xl text-slate-300 leading-relaxed max-w-3xl mx-auto">
-              تحكم فوري في مسيرات الرواتب وحماية الأجور (مدد)، رصد استباقي لانتهاء الإقامات والتأشيرات عبر 7 مستويات زمنية، وأتمتة القرارات عبر مساعد الذكاء الاصطناعي التفسيري «حامد».
+            <p className="text-sm sm:text-base lg:text-lg text-slate-300 max-w-3xl mx-auto leading-relaxed">
+              محركات ذكاء اصطناعي تشغيلية لأتمتة حماية الأجور (WPS 3.0)، التنبؤ بنطاقات، تدقيق مكافأة نهاية الخدمة، ومساعد «حامد» المعتمد على لوائح وزارة الموارد البشرية والتأمينات وقوى.
             </p>
 
-            {/* CTA Buttons */}
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+            {/* Quick Hero Actions */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Button
-                onClick={() => setLocation("/subscribe")}
-                size="lg"
-                className="h-14 rounded-2xl bg-gradient-to-r from-[#18B982] to-[#109E6D] hover:from-[#15A674] hover:to-[#0D855C] text-slate-950 font-black text-base px-8 shadow-[0_10px_30px_rgba(24,185,130,0.3)] transition transform hover:-translate-y-0.5"
+                onClick={() => {
+                  const el = document.getElementById("ai-terminal");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="w-full sm:w-auto h-12 px-7 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition cursor-pointer flex items-center justify-center gap-2"
               >
-                احجز عرضاً تنفيذياً مخصصاً <ArrowLeft className="mr-2 size-5" />
+                <Sparkles className="size-4 text-slate-950" />
+                <span>جرّب المساعد الذكي «حامد» الآن</span>
+                <ArrowLeft className="size-4" />
               </Button>
               <Button
-                onClick={() => setLocation("/request-demo")}
-                size="lg"
                 variant="outline"
-                className="h-14 rounded-2xl border-white/25 bg-white/5 hover:bg-white/10 text-white font-bold text-base px-7 backdrop-blur-sm"
+                onClick={() => setLocation("/app")}
+                className="w-full sm:w-auto h-12 px-7 rounded-2xl border-emerald-800/80 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/60 font-bold text-xs shadow-sm cursor-pointer flex items-center gap-2"
               >
-                <Play className="ml-2 size-4 text-amber-300 fill-amber-300" />
-                استكشف العرض التفاعلي
+                <Laptop className="size-4" />
+                <span>دخول لوحة التحكم الحية</span>
               </Button>
             </div>
-
-            {/* Trust Markers Bar */}
-            <div className="mt-12 pt-8 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-semibold text-slate-300">
-              <div className="flex items-center justify-center gap-2">
-                <CheckCircle2 className="size-4 text-emerald-400 shrink-0" />
-                <span>حماية الأجور (مدد WPS)</span>
-              </div>
-              <div className="flex items-center justify-center gap-2">
-                <CheckCircle2 className="size-4 text-emerald-400 shrink-0" />
-                <span>رصد الإقامات والتراخيص</span>
-              </div>
-              <div className="flex items-center justify-center gap-2">
-                <CheckCircle2 className="size-4 text-emerald-400 shrink-0" />
-                <span>مساعد ذكي معتمد قانونياً</span>
-              </div>
-              <div className="flex items-center justify-center gap-2">
-                <CheckCircle2 className="size-4 text-emerald-400 shrink-0" />
-                <span>سيادة وأمان البيانات (PDPL)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Interactive Live Enterprise Console Showcase ────────────── */}
-      <section id="console" className="relative z-10 -mt-12 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 lg:p-8 shadow-[0_25px_60px_rgba(15,47,36,0.12)]">
-          
-          {/* Console Header Bar */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-slate-100">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="flex size-3 rounded-full bg-emerald-500 animate-ping" />
-                <span className="text-xs font-bold text-emerald-700">لوحة التحكم التفاعلية الحية</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">تجربة تشغيلية متكاملة لفرق الموارد البشرية والقيادة</h2>
-            </div>
-
-            {/* Console Tabs */}
-            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/80 rounded-2xl border border-slate-200 text-xs font-bold">
-              <button
-                onClick={() => setActiveConsoleTab("overview")}
-                className={`px-3.5 py-2 rounded-xl transition cursor-pointer ${activeConsoleTab === "overview" ? "bg-white text-emerald-800 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
-              >
-                المؤشرات الحية
-              </button>
-              <button
-                onClick={() => setActiveConsoleTab("payroll")}
-                className={`px-3.5 py-2 rounded-xl transition cursor-pointer ${activeConsoleTab === "payroll" ? "bg-white text-emerald-800 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
-              >
-                مسير الرواتب (WPS)
-              </button>
-              <button
-                onClick={() => setActiveConsoleTab("gov")}
-                className={`px-3.5 py-2 rounded-xl transition cursor-pointer ${activeConsoleTab === "gov" ? "bg-white text-emerald-800 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
-              >
-                الجوازات والوثائق
-              </button>
-              <button
-                onClick={() => setActiveConsoleTab("ai")}
-                className={`px-3.5 py-2 rounded-xl transition cursor-pointer ${activeConsoleTab === "ai" ? "bg-white text-emerald-800 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
-              >
-                الذكاء «حامد»
-              </button>
-              <button
-                onClick={() => setActiveConsoleTab("ess")}
-                className={`px-3.5 py-2 rounded-xl transition cursor-pointer ${activeConsoleTab === "ess" ? "bg-white text-emerald-800 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
-              >
-                الخدمة الذاتية
-              </button>
-            </div>
           </div>
 
-          {/* Console Active Content Screen */}
-          <div className="mt-6">
+          {/* ── 4. Interactive Live AI Terminal Sandbox («حامد AI 3.0») ─────── */}
+          <div id="ai-terminal" className="mt-14 max-w-5xl mx-auto scroll-mt-24">
             
-            {/* TAB 1: OVERVIEW */}
-            {activeConsoleTab === "overview" && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-5">
-                    <p className="text-xs font-bold text-slate-500">إجمالي القوى العاملة</p>
-                    <div className="mt-2 flex items-baseline justify-between">
-                      <span className="text-3xl font-black text-slate-900">248 موظفاً</span>
-                      <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">+12 هذا الربع</span>
-                    </div>
-                    <p className="mt-2 text-xs text-slate-500">سعودة: <strong className="text-emerald-700">78.4% (بلاتيني)</strong></p>
-                  </div>
-
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5">
-                    <p className="text-xs font-bold text-emerald-900">امتثال حماية الأجور (WPS)</p>
-                    <div className="mt-2 flex items-baseline justify-between">
-                      <span className="text-3xl font-black text-emerald-800">99.8%</span>
-                      <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">معتمد بمدد</span>
-                    </div>
-                    <p className="mt-2 text-xs text-emerald-800">مسير شهر أغسطس مكتمل وجاهز للصرف</p>
-                  </div>
-
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-5">
-                    <p className="text-xs font-bold text-amber-900">وثائق تقترب من الانتهاء</p>
-                    <div className="mt-2 flex items-baseline justify-between">
-                      <span className="text-3xl font-black text-amber-800">4 وثائق</span>
-                      <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">&lt; 30 يوماً</span>
-                    </div>
-                    <p className="mt-2 text-xs text-amber-800">تم تجهيز طلبات التجديد آلياً للمسؤول</p>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-5">
-                    <p className="text-xs font-bold text-slate-500">طلبات وموافقات معلقة</p>
-                    <div className="mt-2 flex items-baseline justify-between">
-                      <span className="text-3xl font-black text-slate-900">7 قرارات</span>
-                      <span className="text-xs font-bold text-slate-600 bg-slate-200 px-2 py-0.5 rounded-full">تتطلب تدخلك</span>
-                    </div>
-                    <p className="mt-2 text-xs text-slate-500">متوسط زمن الاستجابة: <strong>2.4 ساعة</strong></p>
-                  </div>
-                </div>
-
-                {/* Mini Visual Table Preview */}
-                <div className="rounded-2xl border border-slate-200 overflow-hidden">
-                  <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-700">أحدث العمليات والطلبات الجارية</span>
-                    <span className="text-xs text-emerald-700 font-semibold">تحديث لحظي</span>
-                  </div>
-                  <div className="divide-y divide-slate-100 text-xs">
-                    <div className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50/50">
-                      <div className="flex items-center gap-3">
-                        <span className="size-2 rounded-full bg-emerald-500" />
-                        <div>
-                          <p className="font-bold text-slate-900">إجازة سنوية — م. عبدالله القحطاني (رئيس تطوير البرمجيات)</p>
-                          <p className="text-slate-500">الرصيد المتبقي: 22 يوماً · تم التحقق من المادة 84</p>
-                        </div>
-                      </div>
-                      <span className="px-2.5 py-1 rounded-full font-bold bg-emerald-50 text-emerald-700">معتمد آلياً</span>
-                    </div>
-                    <div className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50/50">
-                      <div className="flex items-center gap-3">
-                        <span className="size-2 rounded-full bg-amber-500" />
-                        <div>
-                          <p className="font-bold text-slate-900">تجديد إقامة — د. سارة منصور (أخصائية تقنية معلومات)</p>
-                          <p className="text-slate-500">تنتهي خلال 18 يوماً · المقابل المالي جاهز للربط</p>
-                        </div>
-                      </div>
-                      <span className="px-2.5 py-1 rounded-full font-bold bg-amber-50 text-amber-700">بانتظار سداد سداد</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 2: PAYROLL */}
-            {activeConsoleTab === "payroll" && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/40 p-6 space-y-6">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">مسير رواتب شهر أغسطس 2026 (WPS)</h3>
-                    <p className="text-xs text-slate-500">مطابق لبنوك المملكة ونظام مدد لحماية الأجور</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-bold">ملف .TXT معتمد</span>
-                    <span className="px-3 py-1.5 rounded-xl bg-slate-200 text-slate-800 text-xs font-bold">التأمينات GOSI: 21.5%</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-xl bg-white border border-slate-200">
-                    <p className="text-xs text-slate-500">إجمالي الرواتب الأساسية</p>
-                    <p className="text-2xl font-black text-slate-900 mt-1">1,842,500 ر.س</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-white border border-slate-200">
-                    <p className="text-xs text-slate-500">خصومات واشتراكات التأمينات</p>
-                    <p className="text-2xl font-black text-rose-700 mt-1">198,320 ر.س</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-white border border-emerald-200 bg-emerald-50/30">
-                    <p className="text-xs text-emerald-900">صافي الحوالات البنكية للموظفين</p>
-                    <p className="text-2xl font-black text-emerald-800 mt-1">1,725,480 ر.س</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 3: GOV RELATIONS */}
-            {activeConsoleTab === "gov" && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/40 p-6 space-y-5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-slate-900">نظام الرصد الاستباقي للوثائق والإقامات (7 مستويات)</h3>
-                  <span className="text-xs font-bold text-emerald-700">صفر مخالفات</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-center text-xs">
-                  <div className="p-3 rounded-xl bg-white border border-emerald-200">
-                    <p className="text-slate-500">120 يوماً</p>
-                    <p className="text-lg font-bold text-emerald-700 mt-1">14</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-white border border-emerald-200">
-                    <p className="text-slate-500">90 يوماً</p>
-                    <p className="text-lg font-bold text-emerald-700 mt-1">8</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-white border border-sky-200">
-                    <p className="text-slate-500">60 يوماً</p>
-                    <p className="text-lg font-bold text-sky-700 mt-1">5</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-white border border-amber-200">
-                    <p className="text-slate-500">30 يوماً</p>
-                    <p className="text-lg font-bold text-amber-700 mt-1">3</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-white border border-orange-200">
-                    <p className="text-slate-500">15 يوماً</p>
-                    <p className="text-lg font-bold text-orange-700 mt-1">1</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-white border border-rose-200">
-                    <p className="text-slate-500">7 أيام</p>
-                    <p className="text-lg font-bold text-rose-700 mt-1">0</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-100 border border-slate-200">
-                    <p className="text-slate-500">منتهية</p>
-                    <p className="text-lg font-bold text-slate-800 mt-1">0</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 4: HAMED AI */}
-            {activeConsoleTab === "ai" && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-950 text-white p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="size-8 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center font-bold">ح</div>
-                    <div>
-                      <h4 className="font-bold text-sm">المساعد الذكي «حامد» · Hamed Co-pilot</h4>
-                      <p className="text-[11px] text-emerald-300">مفسر نظام العمل والسياسات الداخلية</p>
-                    </div>
-                  </div>
-                  <span className="text-xs bg-emerald-900/80 px-2.5 py-1 rounded-full text-emerald-300 border border-emerald-700">
-                    ثقة 99.4% · مادة 84
-                  </span>
-                </div>
-                <div className="p-4 rounded-xl bg-emerald-900/50 border border-emerald-800 text-xs leading-relaxed text-slate-200 space-y-2">
-                  <p className="font-bold text-emerald-300">📋 ملخص التوصية الذكية لطلب الإجازة التعويضية #REQ-928:</p>
-                  <p>«بناءً على سجل الحضور لمشروع التحول الرقمي خلال إجازة اليوم الوطني وتوافق ذلك مع المادة (107) من نظام العمل السعودي، يُوصى باحتساب يوم ونصف تعويضي أو صرف الأجر الإضافي بنسبة 150%.»</p>
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button size="sm" variant="outline" className="text-xs rounded-xl border-emerald-700 text-white bg-transparent">تعديل القرار</Button>
-                  <Button size="sm" className="text-xs rounded-xl bg-emerald-500 text-slate-950 font-bold hover:bg-emerald-400">اعتماد التوصية وتوثيقها</Button>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 5: ESS */}
-            {activeConsoleTab === "ess" && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/40 p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-slate-900">بوابة الخدمة الذاتية للموظف (ESS 360)</h3>
-                  <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-full">3 نقرات فقط</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-xs">
-                  <div className="p-4 rounded-xl bg-white border border-slate-200 hover:border-emerald-500 transition cursor-pointer">
-                    <FileText className="size-6 text-emerald-700 mx-auto mb-2" />
-                    <span className="font-bold text-slate-900">طلب إجازة</span>
-                  </div>
-                  <div className="p-4 rounded-xl bg-white border border-slate-200 hover:border-emerald-500 transition cursor-pointer">
-                    <FileCheck className="size-6 text-emerald-700 mx-auto mb-2" />
-                    <span className="font-bold text-slate-900">تعريف بالراتب</span>
-                  </div>
-                  <div className="p-4 rounded-xl bg-white border border-slate-200 hover:border-emerald-500 transition cursor-pointer">
-                    <Scale className="size-6 text-emerald-700 mx-auto mb-2" />
-                    <span className="font-bold text-slate-900">سلفة أو مصروف</span>
-                  </div>
-                  <div className="p-4 rounded-xl bg-white border border-slate-200 hover:border-emerald-500 transition cursor-pointer">
-                    <UserCheck className="size-6 text-emerald-700 mx-auto mb-2" />
-                    <span className="font-bold text-slate-900">تحديث العنوان الوطني</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-          </div>
-        </div>
-      </section>
-
-      {/* ── Saudi Enterprise ROI & Compliance Simulator ─────────────── */}
-      <section id="simulator" className="py-24 bg-[#F8F9FA] border-y border-slate-200">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 text-xs font-bold text-emerald-800 mb-4">
-              <Sliders className="size-3.5" />
-              <span>حاسبة العائد والامتثال المؤسسي الذكية</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900">احسب العائد التشغيلي والأمان المالي لمنشأتك</h2>
-            <p className="mt-3 text-sm sm:text-base text-slate-600">
-              شاهد كيف توفر حلول الغد مئات الساعات التشغيلية وتضمن الامتثال التام مع أنظمة وزارة الموارد البشرية.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            
-            {/* Interactive Inputs Column */}
-            <div className="lg:col-span-7 rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-6">
+            {/* Outer Cyber Frame */}
+            <div className="rounded-3xl border-2 border-emerald-600/40 bg-[#04110E] p-3 sm:p-5 shadow-2xl shadow-emerald-950/60 relative overflow-hidden">
               
-              {/* Employee Count Slider */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-bold text-slate-800">حجم القوى العاملة (عدد الموظفين)</label>
-                  <span className="text-base font-black text-emerald-700 bg-emerald-50 px-3 py-1 rounded-xl">
-                    {employeeCount} موظفاً
+              {/* Top Cyber Console Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-[#071F19] rounded-2xl border border-emerald-800/60 mb-4 text-xs font-mono">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex gap-1.5">
+                    <span className="size-3 rounded-full bg-rose-500/80 inline-block" />
+                    <span className="size-3 rounded-full bg-amber-500/80 inline-block" />
+                    <span className="size-3 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                  </div>
+                  <span className="text-emerald-300 font-bold">HBS-HAMED-AI-CONSOLE // STAGE 3.0</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-400 text-[11px]">
+                  <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono">
+                    SAUDI LABOR LAW 2026
                   </span>
-                </div>
-                <input
-                  type="range"
-                  min={10}
-                  max={500}
-                  step={5}
-                  value={employeeCount}
-                  onChange={(e) => setEmployeeCount(Number(e.target.value))}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#18B982]"
-                />
-                <div className="flex justify-between text-[11px] text-slate-400 font-mono">
-                  <span>10 موظفين</span>
-                  <span>250 موظفاً</span>
-                  <span>500+ موظف</span>
+                  <span className="text-emerald-500 font-bold hidden sm:inline">● متصل باللوائح</span>
                 </div>
               </div>
 
-              {/* Sector Selector */}
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-800">القطاع والنشاط التجاري</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs font-semibold">
-                  {[
-                    { id: "tech", label: "تقنية واتصالات" },
-                    { id: "contracting", label: "مقاولات وإنشاءات" },
-                    { id: "retail", label: "تجارة وتجزئة" },
-                    { id: "health", label: "رعاية صحية" },
-                    { id: "finance", label: "خدمات مالية" },
-                    { id: "industrial", label: "صناعة وتشغيل" },
-                  ].map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setSector(s.id)}
-                      className={`p-3 rounded-xl border transition text-center cursor-pointer ${sector === s.id ? "border-emerald-600 bg-emerald-50 text-emerald-900 font-bold" : "border-slate-200 bg-slate-50/50 text-slate-700 hover:bg-slate-100"}`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Average Salary Input */}
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-800">متوسط الراتب الشهري التقديري</label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    value={avgSalary}
-                    onChange={(e) => setAvgSalary(Math.max(3000, Number(e.target.value)))}
-                    className="h-11 rounded-xl pr-4 pl-16 text-sm font-bold border-slate-200 font-mono"
-                  />
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">ر.س / شهر</span>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Results Output Column */}
-            <div className="lg:col-span-5 rounded-3xl bg-gradient-to-br from-[#0F2F24] to-[#0A221A] text-white p-6 sm:p-8 shadow-xl space-y-6">
-              <div>
-                <p className="text-xs font-bold tracking-wider text-emerald-400 uppercase">الأثر والعائد التقديري المباشر</p>
-                <h3 className="text-2xl font-black mt-1">توفير سنوي يصل إلى:</h3>
-                <p className="text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-amber-300 mt-2 font-mono">
-                  {calculatedSavings.annualSavings} <span className="text-xl text-slate-300 font-sans">ر.س</span>
+              {/* Prompt Presets Selector Bar */}
+              <div className="space-y-2 mb-4">
+                <p className="text-[11px] font-bold text-emerald-400 font-mono flex items-center gap-1.5">
+                  <Terminal className="size-3.5" />
+                  <span>اختر سيناريو ذكي لتجربة الاستجابة الفورية:</span>
                 </p>
-              </div>
-
-              <div className="space-y-3.5 border-t border-white/10 pt-5 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-300">ساعات العمل الشهرية الموفرة:</span>
-                  <strong className="text-emerald-300 font-mono text-sm">{calculatedSavings.hoursSavedMonthly} ساعة / شهرياً</strong>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-300">تجنب مخاطر الغرامات الحكومية:</span>
-                  <strong className="text-amber-300 font-mono text-sm">~{calculatedSavings.penaltyRiskAvoidance} ر.س</strong>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-300">نطاق التوطين المقترح:</span>
-                  <strong className="text-emerald-300 text-sm font-bold">{calculatedSavings.saudizationScore}</strong>
-                </div>
-              </div>
-
-              <Button
-                onClick={() => setLocation("/subscribe")}
-                className="w-full h-12 rounded-xl bg-gradient-to-r from-[#18B982] to-[#109E6D] hover:from-[#15A674] hover:to-[#0D855C] text-slate-950 font-bold text-sm shadow-md cursor-pointer"
-              >
-                تثبيت النتائج وطلب عرض سعر رسمي <ArrowLeft className="mr-2 size-4" />
-              </Button>
-            </div>
-
-          </div>
-
-        </div>
-      </section>
-
-      {/* ── The 6 Core Enterprise Pillars ──────────────────────────── */}
-      <section id="pillars" className="py-24 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 border border-slate-200 px-3.5 py-1.5 text-xs font-bold text-slate-700 mb-4">
-            <Layers className="size-3.5 text-emerald-700" />
-            <span>معمارية النظام المتكاملة</span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900">ركائز منظومة HBS 2030 الست</h2>
-          <p className="mt-3 text-sm sm:text-base text-slate-600">
-            تمت هندسة كل وحدة لتعمل بتناغم كامل مع اللوائح السعودية والمعايير السحابية الحديثة.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {PLATFORM_PILLARS.map((pillar) => {
-            const Icon = pillar.icon;
-            return (
-              <div
-                key={pillar.id}
-                className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm hover:shadow-md transition group flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 group-hover:bg-emerald-500 group-hover:text-white transition">
-                      <Icon className="size-6" />
-                    </span>
-                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
-                      {pillar.badge}
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900 mt-6">{pillar.title}</h3>
-                  <p className="text-xs text-slate-600 leading-relaxed mt-2.5">{pillar.desc}</p>
-                </div>
-
-                <div className="mt-6 pt-5 border-t border-slate-100 space-y-2">
-                  {pillar.points.map((pt, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs font-medium text-slate-700">
-                      <Check className="size-3.5 text-emerald-600 shrink-0" />
-                      <span>{pt}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ── Complete 10-Member Enterprise Sovereign Team Showcase ───── */}
-      <section id="team" className="py-24 bg-gradient-to-b from-[#0F2F24] via-[#0B251D] to-[#081C16] text-white border-t border-emerald-950">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          
-          <div className="text-center max-w-3xl mx-auto mb-14">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-[#D4AF37]/30 px-4 py-1.5 text-xs font-bold text-[#F5E6B8] mb-4">
-              <Users className="size-3.5 text-[#D4AF37]" />
-              <span>فريق العمل والقيادة السيادية المعتمدة (10 خبراء ومستشارين)</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-black">نخبة الكفاءات الوطنية لإدارة الامتثال والتحول</h2>
-            <p className="mt-3 text-sm sm:text-base text-slate-300">
-              يقف خلف منظومة HBS 2030 فريق متكامل يجمع بين الاستشارات القانونية لأنظمة العمل، هندسة الحوسبة السيادية، وإدارة الرواتب المعتمدة.
-            </p>
-
-            {/* Team Category Filter Pills */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
-              {[
-                { id: "all", label: "كافة أعضاء الفريق (10)" },
-                { id: "leadership", label: "القيادة التنفيذية" },
-                { id: "legal", label: "الامتثال وقانون العمل" },
-                { id: "payroll", label: "الرواتب وWPS مدد" },
-                { id: "ai_tech", label: "الذكاء والتقنية السيادية" },
-                { id: "experience", label: "تجربة ونجاح المنشآت" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setSelectedTeamCategory(tab.id)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                    selectedTeamCategory === tab.id
-                      ? "bg-gradient-to-r from-[#18B982] to-[#109E6D] text-slate-950 font-black shadow-lg shadow-emerald-950/50"
-                      : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white border border-white/10"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Team Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTeamMembers.map((member) => (
-              <div
-                key={member.id}
-                className="group relative rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-md p-6 hover:bg-white/[0.08] hover:border-emerald-500/50 transition-all duration-300 flex flex-col justify-between shadow-xl"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`size-14 rounded-2xl border flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform ${member.avatarBg}`}>
-                        <Users className="size-6 text-current" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <h3 className="text-base font-bold text-white group-hover:text-emerald-300 transition-colors">
-                            {member.name}
-                          </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                  {AI_PROMPT_PRESETS.map((preset) => {
+                    const isSelected = selectedPromptId === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        onClick={() => setSelectedPromptId(preset.id)}
+                        className={`p-3 rounded-xl text-right transition border cursor-pointer flex flex-col justify-between gap-1.5 ${
+                          isSelected
+                            ? "bg-emerald-950/90 border-emerald-400 text-white shadow-md shadow-emerald-500/20 ring-1 ring-emerald-400/50"
+                            : "bg-[#061813] border-emerald-900/50 text-slate-300 hover:border-emerald-700 hover:bg-[#09221B]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-emerald-900/60 text-emerald-300 border border-emerald-700/50">
+                            {preset.badge}
+                          </span>
+                          {isSelected && <Sparkles className="size-3 text-emerald-400 animate-spin" />}
                         </div>
-                        <p className="text-xs text-[#D4AF37] font-semibold mt-0.5">{member.role}</p>
-                        <p className="text-[10px] text-slate-400 font-mono tracking-wider">{member.nationalIdRef}</p>
-                      </div>
+                        <p className="text-xs font-bold text-slate-100 leading-tight">{preset.label}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Terminal Screen Body */}
+              <div className="bg-[#020B09] rounded-2xl border border-emerald-900/70 p-5 sm:p-7 space-y-6 relative overflow-hidden">
+                
+                {/* Active Prompt Box */}
+                <div className="p-4 rounded-xl bg-[#061C16] border border-emerald-800/60 flex items-start gap-3">
+                  <div className="size-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <BotMessageSquare className="size-4.5" />
+                  </div>
+                  <div className="space-y-1 w-full">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-emerald-400 font-mono">الاستفسار التشغيلي المقدم لحامد:</span>
+                      <span className="text-[10px] text-slate-400 font-mono">{activePromptPreset.category}</span>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white/10 text-emerald-300 border border-white/5">
-                      {member.badge}
+                    <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
+                      "{activePromptPreset.prompt}"
+                    </p>
+                  </div>
+                </div>
+
+                {/* AI Holographic Response Output */}
+                <div className="space-y-4 pt-1">
+                  
+                  {/* Response Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-900/60 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="size-4 text-emerald-400" />
+                      <h3 className="text-sm sm:text-base font-black text-emerald-300">
+                        {activePromptPreset.response.title}
+                      </h3>
+                    </div>
+                    <span className="text-[11px] font-mono text-slate-400 bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-800/40">
+                      {activePromptPreset.response.citation}
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-300 leading-relaxed bg-black/20 p-3 rounded-xl border border-white/5">
-                    {member.bio}
-                  </p>
-
-                  <div className="mt-4 space-y-1.5 text-[11px] text-emerald-200">
-                    {member.credentials.slice(0, 2).map((cred, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <Award className="size-3.5 text-[#D4AF37] shrink-0" />
-                        <span>{cred}</span>
+                  {/* AI Computed Metrics Bar */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {activePromptPreset.response.metrics.map((m, idx) => (
+                      <div key={idx} className="bg-[#051813] border border-emerald-800/50 p-3 rounded-xl">
+                        <p className="text-[10px] text-slate-400 font-medium">{m.label}</p>
+                        <p className="text-sm sm:text-base font-black text-emerald-300 font-mono mt-0.5">{m.value}</p>
                       </div>
                     ))}
                   </div>
+
+                  {/* Dynamic Streamed Explanation Box */}
+                  <div className="p-4 rounded-xl bg-[#041410] border border-emerald-900/60 text-xs text-slate-300 leading-relaxed space-y-2 font-mono">
+                    <div className="flex items-center justify-between text-[10px] text-emerald-400 font-bold border-b border-emerald-900/40 pb-1.5">
+                      <span>التحليل النظامي والتنفيذي:</span>
+                      {isAITyping ? (
+                        <span className="flex items-center gap-1 text-emerald-400 animate-pulse">
+                          <span>جارٍ التوليد الذكي...</span>
+                        </span>
+                      ) : (
+                        <span className="text-emerald-400 flex items-center gap-1">
+                          <CheckCheck className="size-3.5" />
+                          <span>جاهز للاعتماد</span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="whitespace-pre-line text-slate-200 text-xs sm:text-sm">
+                      {typedResponseText}
+                      {isAITyping && <span className="inline-block w-2 h-4 bg-emerald-400 mr-1 animate-pulse" />}
+                    </div>
+                  </div>
+
+                  {/* Terminal Action Buttons */}
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                      <ShieldCheck className="size-4 text-emerald-400" />
+                      <span>يتطلب اعتماد مسؤول الموارد البشرية النهائي لضمان أعلى معايير الحوكمة.</span>
+                    </div>
+                    <Button
+                      onClick={() => {
+                        toast.success(`تم تنفيذ الإجراء: ${activePromptPreset.response.actionLabel}`);
+                      }}
+                      className="w-full sm:w-auto h-10 px-5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-md cursor-pointer flex items-center gap-2"
+                    >
+                      <span>{activePromptPreset.response.actionLabel}</span>
+                      <ArrowUpRight className="size-3.5" />
+                    </Button>
+                  </div>
+
                 </div>
 
-                <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400">الاعتماد:</span>
-                  <span className="font-bold text-[#F5E6B8] bg-[#D4AF37]/10 px-2.5 py-0.5 rounded-full border border-[#D4AF37]/20">
-                    {member.titleEn}
-                  </span>
-                </div>
               </div>
-            ))}
-          </div>
 
-          <div className="mt-12 text-center">
-            <button
-              onClick={() => setShowIntro(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#D4AF37] to-[#B89020] hover:from-[#E2C048] hover:to-[#C69C2A] text-slate-950 font-black text-xs shadow-xl transition cursor-pointer transform hover:-translate-y-0.5"
-            >
-              <Crown className="size-4" />
-              <span>مشاهدة عرض التقديم السيادي للفريق ($100K Intro)</span>
-            </button>
+            </div>
+
           </div>
 
         </div>
       </section>
 
-      {/* ── Enterprise Pricing & Packages Section ─────────────────────── */}
-      <section id="pricing" className="py-24 bg-gradient-to-b from-slate-50 to-white border-t border-slate-200">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      {/* ── 5. Smart Futuristic Services Showcase (Interactive Engine Tabs) ─ */}
+      <section id="smart-showcase" className="py-20 bg-[#04110E] border-y border-emerald-900/40 relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <div className="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-4 py-1.5 text-xs font-bold text-amber-900 mb-4 shadow-sm">
-              <Crown className="size-4 text-amber-600" />
-              <span>خيارات الاشتراك المرنة للمنشآت والشركات القابضة</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900">استثمار تشغيلي ذكي مصمم لنمو منشأتك</h2>
-            <p className="mt-3 text-sm sm:text-base text-slate-600">
-              باقات مرنة تشمل كافة التحديثات القانونية الدورية، دعم فني محلي، وترحيل بيانات مجاني.
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <span className="inline-block text-xs font-mono font-bold px-3.5 py-1 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-700/60">
+              محركات HBS المستقبلية الأربعة
+            </span>
+            <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+              أدوات تشغيلية مؤتمتة تقود مستقبل منشأتك
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-400">
+              حلول مصممة لتلبية متطلبات كبرى المنشآت والشركات السعودية المتنامية بأعلى كفاءة رقمية.
             </p>
-
-            {/* Annual vs Monthly Toggle */}
-            <div className="mt-8 inline-flex items-center gap-3 p-1.5 rounded-2xl bg-slate-200/80 border border-slate-300 text-xs font-bold">
-              <button
-                onClick={() => setBillingCycle("annual")}
-                className={`px-5 py-2.5 rounded-xl transition cursor-pointer flex items-center gap-2 ${billingCycle === "annual" ? "bg-[#0F2F24] text-white shadow-md" : "text-slate-700 hover:text-slate-900"}`}
-              >
-                <span>الدفع السنوي</span>
-                <span className="bg-emerald-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full">وفر شهرين (18%)</span>
-              </button>
-              <button
-                onClick={() => setBillingCycle("monthly")}
-                className={`px-5 py-2.5 rounded-xl transition cursor-pointer ${billingCycle === "monthly" ? "bg-[#0F2F24] text-white shadow-md" : "text-slate-700 hover:text-slate-900"}`}
-              >
-                <span>الدفع الشهري</span>
-              </button>
-            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+          {/* Service Selector Tabs */}
+          <div className="flex flex-wrap justify-center gap-3">
+            {FUTURISTIC_SERVICES.map((srv, idx) => {
+              const Icon = srv.icon;
+              const isActive = activeServiceTab === idx;
+              return (
+                <button
+                  key={srv.id}
+                  onClick={() => setActiveServiceTab(idx)}
+                  className={`flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-xs font-bold transition cursor-pointer border ${
+                    isActive
+                      ? "bg-emerald-500 text-slate-950 border-emerald-400 shadow-lg shadow-emerald-500/20 font-black"
+                      : "bg-[#061B15] text-slate-300 border-emerald-900/50 hover:bg-[#0A261E] hover:border-emerald-700"
+                  }`}
+                >
+                  <Icon className="size-4" />
+                  <span>{srv.title.split(" ")[0]} {srv.title.split(" ")[1]}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Service Showcase Card */}
+          {(() => {
+            const activeSrv = FUTURISTIC_SERVICES[activeServiceTab];
+            const Icon = activeSrv.icon;
+            return (
+              <div className="bg-gradient-to-br from-[#072019] via-[#041410] to-[#020A08] rounded-3xl border border-emerald-800/80 p-6 sm:p-10 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                  
+                  {/* Left Column: Details & Features */}
+                  <div className="lg:col-span-7 space-y-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
+                        {activeSrv.category}
+                      </span>
+                      <span className="text-xs font-mono px-3 py-1 rounded-full bg-white/10 text-slate-300">
+                        {activeSrv.highlightStat}
+                      </span>
+                    </div>
+
+                    <h3 className="text-2xl sm:text-3xl font-black text-white">{activeSrv.title}</h3>
+                    
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                      {activeSrv.tagline}
+                    </p>
+
+                    {/* Features checklist */}
+                    <div className="space-y-2.5 pt-1">
+                      {activeSrv.features.map((feat, i) => (
+                        <div key={i} className="flex items-start gap-2.5 text-xs text-slate-200">
+                          <div className="size-5 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                            <Check className="size-3.5" />
+                          </div>
+                          <span className="leading-relaxed">{feat}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Action Bar */}
+                    <div className="pt-3 flex flex-col sm:flex-row sm:items-center gap-4">
+                      <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-950/80 border border-emerald-800/60">
+                        <Activity className="size-4 text-emerald-400" />
+                        <span className="text-xs font-bold text-emerald-300 font-mono">{activeSrv.subStat}</span>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          const el = document.getElementById("demo-form");
+                          if (el) el.scrollIntoView({ behavior: "smooth" });
+                        }}
+                        className="h-11 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-6 shadow-md transition cursor-pointer"
+                      >
+                        تفعيل محرك {activeSrv.title.split(" ")[0]}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Visual Showcase Frame */}
+                  <div className="lg:col-span-5 relative">
+                    <div className="relative rounded-2xl overflow-hidden border border-emerald-700/50 shadow-2xl group">
+                      <img
+                        src={activeSrv.image}
+                        alt={activeSrv.title}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-72 sm:h-80 object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#020A08] via-black/40 to-transparent" />
+                      
+                      <div className="absolute bottom-4 right-4 left-4 p-4 rounded-xl bg-[#041712]/90 backdrop-blur-md border border-emerald-600/40 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="size-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                            <Icon className="size-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-white">{activeSrv.title}</p>
+                            <p className="text-[10px] text-emerald-300/80 font-mono">{activeSrv.highlightStat}</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold font-mono px-2 py-1 rounded bg-emerald-500 text-slate-950">
+                          LIVE ENGINE
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            );
+          })()}
+
+        </div>
+      </section>
+
+      {/* ── 6. Smart Interactive Saudization & Nitaqat Matrix Simulator ──── */}
+      <section id="saudization-simulator" className="py-20 bg-[#030908] relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+          
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <span className="inline-block text-xs font-mono font-bold px-3 py-1 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800">
+              محاكي التوطين الاستباقي 🇸🇦
+            </span>
+            <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+              محاكي نطاقات الذكي: خطط لقراراتك التوظيفية بثقة
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-400">
+              حرّك أشرطة التمرير لمشاهدة الانعكاس المباشر لتوظيف الكوادر السعودية أو المقيمين على نطاق منشأتك وحالة الخدمات الحكومية.
+            </p>
+          </div>
+
+          <div className="max-w-4xl mx-auto bg-[#051813] rounded-3xl border border-emerald-800/80 p-6 sm:p-10 shadow-2xl space-y-8">
             
-            {/* TIER 1: GROWTH / نمو */}
-            <div className="rounded-3xl border border-slate-200 bg-white p-7 sm:p-8 flex flex-col justify-between shadow-sm hover:shadow-md transition">
-              <div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700">باقة النمو</span>
-                  <span className="text-xs text-slate-500 font-medium">حتى 30 موظفاً</span>
+            {/* Sliders Area */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              
+              {/* Saudi Employees Slider */}
+              <div className="space-y-3 bg-[#030E0B] p-5 rounded-2xl border border-emerald-900/60">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                    <Users className="size-4" />
+                    <span>عدد الكوادر السعودية:</span>
+                  </span>
+                  <span className="text-lg font-black text-emerald-300 font-mono">{saudiCount} موظفاً</span>
                 </div>
-                <h3 className="text-2xl font-black text-slate-900 mt-4">الشركات الناشئة والمكاتب</h3>
-                <p className="text-xs text-slate-500 mt-2">بداية قوية لضبط مسير الرواتب والامتثال الحكومي الأساسي.</p>
-
-                <div className="mt-6 pb-6 border-b border-slate-100">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-black text-slate-900 font-mono">
-                      {billingCycle === "annual" ? "890" : "1,050"}
-                    </span>
-                    <span className="text-xs font-bold text-slate-500">ر.س / شهرياً</span>
-                  </div>
-                  <p className="text-[11px] text-emerald-700 font-semibold mt-1">تُدفع سنوياً أو شهرياً مع تدريب أولي</p>
+                <input
+                  type="range"
+                  min="1"
+                  max="100"
+                  value={saudiCount}
+                  onChange={(e) => setSaudiCount(parseInt(e.target.value))}
+                  className="w-full h-2 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                  <span>1</span>
+                  <span>50</span>
+                  <span>100</span>
                 </div>
-
-                <ul className="mt-6 space-y-3 text-xs text-slate-700">
-                  <li className="flex items-center gap-2"><Check className="size-4 text-emerald-600 shrink-0" /> مسير الرواتب وملفات مدد WPS</li>
-                  <li className="flex items-center gap-2"><Check className="size-4 text-emerald-600 shrink-0" /> رصد انتهاء الإقامات والتراخيص</li>
-                  <li className="flex items-center gap-2"><Check className="size-4 text-emerald-600 shrink-0" /> بوابة الخدمة الذاتية وتتبع الإجازات</li>
-                  <li className="flex items-center gap-2"><Check className="size-4 text-emerald-600 shrink-0" /> دعم فني عبر التذاكر والبريد</li>
-                </ul>
               </div>
 
-              <div className="mt-8 pt-4">
+              {/* Expat Employees Slider */}
+              <div className="space-y-3 bg-[#030E0B] p-5 rounded-2xl border border-emerald-900/60">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <UsersRound className="size-4" />
+                    <span>عدد الكوادر غير السعودية:</span>
+                  </span>
+                  <span className="text-lg font-black text-slate-200 font-mono">{expatCount} موظفاً</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={expatCount}
+                  onChange={(e) => setExpatCount(parseInt(e.target.value))}
+                  className="w-full h-2 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                  <span>0</span>
+                  <span>50</span>
+                  <span>100</span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Live Holographic Results Gauge */}
+            <div className="bg-[#020B09] p-6 rounded-2xl border border-emerald-700/60 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-900/60 pb-4">
+                <div>
+                  <p className="text-[11px] text-slate-400 font-mono">نسبة التوطين المحسوبة اللحظية:</p>
+                  <p className="text-3xl sm:text-4xl font-black text-emerald-400 font-mono mt-1">
+                    {saudizationPercent}%
+                  </p>
+                </div>
+                <div className="text-left sm:text-right">
+                  <p className="text-[11px] text-slate-400 font-mono">تصنيف المنشأة في نطاقات:</p>
+                  <span className={`inline-block mt-1 px-4 py-1 rounded-full text-sm font-black font-mono border ${nitaqatColor}`}>
+                    {nitaqatTier}
+                  </span>
+                </div>
+              </div>
+
+              {/* Advisory Box */}
+              <div className="p-4 rounded-xl bg-[#061C16] border border-emerald-800/50 flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-slate-200">
+                  <ShieldCheck className="size-5 text-emerald-400 shrink-0" />
+                  <span>{nitaqatAdvise}</span>
+                </div>
                 <Button
-                  onClick={() => setLocation("/subscribe")}
-                  variant="outline"
-                  className="w-full h-12 rounded-xl font-bold text-xs border-slate-300 text-slate-800 hover:bg-slate-50 cursor-pointer"
+                  onClick={() => {
+                    toast.success("تم تحديث خطة التوطين وتصديرها بصيغة PDF في لوحة التقارير");
+                  }}
+                  className="h-8 px-3 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-slate-950 text-[11px] font-bold shrink-0"
                 >
-                  اختر باقة النمو
+                  تصدير تقرير نطاقات
                 </Button>
               </div>
+
             </div>
 
-            {/* TIER 2: ADVANCED ENTERPRISE / الأعمال المتقدمة - HIGHLIGHTED */}
-            <div className="relative rounded-3xl border-2 border-emerald-600 bg-gradient-to-b from-[#0F2F24] to-[#0A221A] text-white p-7 sm:p-8 flex flex-col justify-between shadow-2xl scale-105 z-10">
-              <div className="absolute -top-3.5 right-1/2 translate-x-1/2 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 text-[11px] font-black px-4 py-1 rounded-full shadow-md flex items-center gap-1.5">
-                <Star className="size-3.5 fill-slate-950" />
-                الأكثر اختياراً للمنشآت السعودية
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">باقة الأعمال الذكية</span>
-                  <span className="text-xs text-emerald-300/80 font-medium">حتى 150 موظفاً</span>
-                </div>
-                <h3 className="text-2xl font-black text-white mt-4">المؤسسات والشركات المتوسطة</h3>
-                <p className="text-xs text-slate-300 mt-2">شامل وكيل الذكاء «حامد»، الترحيل الشامل، والربط الحكومي المتقدم.</p>
-
-                <div className="mt-6 pb-6 border-b border-white/15">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-black text-emerald-400 font-mono">
-                      {billingCycle === "annual" ? "2,490" : "2,950"}
-                    </span>
-                    <span className="text-xs font-bold text-slate-300">ر.س / شهرياً</span>
-                  </div>
-                  <p className="text-[11px] text-amber-300 font-semibold mt-1">توفير سنوي مباشر 5,520 ر.س</p>
-                </div>
-
-                <ul className="mt-6 space-y-3 text-xs text-slate-200">
-                  <li className="flex items-center gap-2"><Check className="size-4 text-emerald-400 shrink-0" /> كل ميزات باقة النمو + عدد موظفين أعلى</li>
-                  <li className="flex items-center gap-2"><Check className="size-4 text-emerald-400 shrink-0" /> <strong>مساعد الذكاء الاصطناعي التفسيري «حامد»</strong></li>
-                  <li className="flex items-center gap-2"><Check className="size-4 text-emerald-400 shrink-0" /> محرك التحذير ذو الـ 7 مستويات للإقامات</li>
-                  <li className="flex items-center gap-2"><Check className="size-4 text-emerald-400 shrink-0" /> ترحيل كامل للبيانات وتدريب الموظفين مجاناً</li>
-                  <li className="flex items-center gap-2"><Check className="size-4 text-emerald-400 shrink-0" /> مدير حساب مخصص ودعم هاتفي ذو أولوية</li>
-                </ul>
-              </div>
-
-              <div className="mt-8 pt-4">
-                <Button
-                  onClick={() => setLocation("/subscribe")}
-                  className="w-full h-12 rounded-xl bg-gradient-to-r from-[#18B982] to-[#109E6D] hover:from-[#15A674] hover:to-[#0D855C] text-slate-950 font-black text-xs shadow-lg cursor-pointer"
-                >
-                  ابدأ التجربة التنفيذية الآن <ArrowLeft className="mr-2 size-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* TIER 3: HOLDING / المجموعات والقابضة */}
-            <div className="rounded-3xl border border-slate-200 bg-white p-7 sm:p-8 flex flex-col justify-between shadow-sm hover:shadow-md transition">
-              <div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700">باقة المجموعات والسيادة</span>
-                  <span className="text-xs text-slate-500 font-medium">غير محدود</span>
-                </div>
-                <h3 className="text-2xl font-black text-slate-900 mt-4">الشركات القابضة والمصانع</h3>
-                <p className="text-xs text-slate-500 mt-2">تعدد سجلات تجارية، استضافة مخصصة، واتفاقيات مستوى خدمة SLA.</p>
-
-                <div className="mt-6 pb-6 border-b border-slate-100">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-black text-slate-900">عقد مخصص</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 font-semibold mt-1">تسعير يتناسب مع حجم العمليات والربط الخاص</p>
-                </div>
-
-                <ul className="mt-6 space-y-3 text-xs text-slate-700">
-                  <li className="flex items-center gap-2"><Check className="size-4 text-emerald-600 shrink-0" /> دعم فروع وشركات شقيقة غير محدودة</li>
-                  <li className="flex items-center gap-2"><Check className="size-4 text-emerald-600 shrink-0" /> ربط مخصص عبر واجهات برمجة التطبيقات (API)</li>
-                  <li className="flex items-center gap-2"><Check className="size-4 text-emerald-600 shrink-0" /> اتفاقية مستوى خدمة خاصة (SLA 99.99%)</li>
-                  <li className="flex items-center gap-2"><Check className="size-4 text-emerald-600 shrink-0" /> تدقيق أمني مخصص وخيارات استضافة معزولة</li>
-                </ul>
-              </div>
-
-              <div className="mt-8 pt-4">
-                <Button
-                  onClick={() => setLocation("/request-demo")}
-                  variant="outline"
-                  className="w-full h-12 rounded-xl font-bold text-xs border-slate-300 text-slate-800 hover:bg-slate-50 cursor-pointer"
-                >
-                  طلب اجتماع تنفيذي مخصص
-                </Button>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Money-back Guarantee & Compliance Assurance */}
-          <div className="mt-12 rounded-2xl bg-emerald-50/70 border border-emerald-200 p-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-right">
-            <div className="flex items-center gap-3">
-              <div className="size-10 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center font-bold shrink-0">
-                <ShieldCheck className="size-6" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-emerald-950">ضمان الامتثال التام بنسبة 100%</h4>
-                <p className="text-xs text-emerald-800">في حال عدم توافق مسيرات الرواتب مع منصة مدد أو نظام حماية الأجور، نتحمل المتابعة الكاملة.</p>
-              </div>
-            </div>
-            <Button
-              onClick={() => setLocation("/subscribe")}
-              className="h-10 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs px-5 shrink-0"
-            >
-              تواصل مع مستشار الاشتراك
-            </Button>
           </div>
 
         </div>
       </section>
 
-      {/* ── Saudi Government & System Integrations ─────────────────── */}
-      <section id="integrations" className="py-20 bg-[#0F2F24] text-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      {/* ── 7. Interactive Next-Gen Mobile Self-Service Simulator ────────── */}
+      <section id="mobile-simulator" className="py-20 bg-[#04110E] border-t border-emerald-900/40 relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
-          <div className="text-center max-w-3xl mx-auto mb-14">
-            <span className="text-xs font-bold text-amber-300 tracking-widest uppercase">الربط والتوافق الحكومي المعتمد</span>
-            <h2 className="text-3xl sm:text-4xl font-black mt-2">متصل بأهم المنصات والأنظمة السيادية</h2>
-            <p className="mt-3 text-sm text-slate-300">
-              تكامل سلس وتوافق معايير مع كافة منصات وزارة الموارد البشرية وهيئات المملكة.
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <span className="inline-block text-xs font-mono font-bold px-3.5 py-1 rounded-full bg-purple-950 text-purple-300 border border-purple-800">
+              تطبيق الجوال والخدمة الذاتية 📱
+            </span>
+            <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+              تجربة رقمية فائقة للموظف على الجوال والويب
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-400">
+              انقر على التبويبات لتجربة شاشات الخدمة الذاتية الحية وإصدار المستندات الرقمية المعتمدة فوراً.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {GOVERNMENT_INTEGRATIONS.map((gov) => (
-              <div key={gov.name} className="rounded-2xl bg-white/5 border border-white/10 p-5 hover:bg-white/10 transition">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    {gov.tag}
-                  </span>
-                  <span className="text-xs font-semibold text-amber-300">{gov.status}</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center max-w-5xl mx-auto">
+            
+            {/* Left Column: Interactive Apps List */}
+            <div className="lg:col-span-6 space-y-3">
+              {[
+                {
+                  id: "certificate",
+                  title: "خطاب تعريف بالراتب موثق بـ QR",
+                  desc: "إصدار فوري لشهادة الراتب المعتمدة بختم المنشأة الرقمي ورمز التحقق للجهات التمويلية والبنوك.",
+                  icon: QrCode,
+                  badge: "فوري 100%"
+                },
+                {
+                  id: "leave",
+                  title: "طلب إجازة ذكي مع رصيد لحظي",
+                  desc: "تقديم طلب الإجازة السنوية أو المرضية وحساب الرصيد المتبقي تلقائياً وفق نظام العمل.",
+                  icon: CalendarCheck,
+                  badge: "موافقة سريعة"
+                },
+                {
+                  id: "payslip",
+                  title: "قسيمة الراتب المشفرة وتفاصيل البدلات",
+                  desc: "استعراض مسير الراتب الشهري وتفاصيل خصومات التأمينات وساعات العمل الإضافية بكل شفافية.",
+                  icon: FileText,
+                  badge: "مشفرة وآمنة"
+                },
+                {
+                  id: "loan",
+                  title: "طلب سلفة مالية واحتساب الأقساط",
+                  desc: "تقديم طلب سلفة مع جدول سداد آلي يُقتطع تلقائياً من مسير الرواتب القادم.",
+                  icon: DollarSign,
+                  badge: "جدولة تلقائية"
+                }
+              ].map((app) => {
+                const Icon = app.icon;
+                const isSelected = mobileActiveApp === app.id;
+                return (
+                  <div
+                    key={app.id}
+                    onClick={() => setMobileActiveApp(app.id as any)}
+                    className={`p-4 rounded-2xl border transition cursor-pointer ${
+                      isSelected
+                        ? "bg-[#08241C] border-emerald-400 shadow-lg shadow-emerald-500/20 ring-1 ring-emerald-500/50"
+                        : "bg-[#030E0B] border-emerald-900/50 hover:bg-[#061A14] hover:border-emerald-700"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`size-8 rounded-lg flex items-center justify-center ${
+                          isSelected ? "bg-emerald-500 text-slate-950" : "bg-emerald-950 text-emerald-400"
+                        }`}>
+                          <Icon className="size-4" />
+                        </div>
+                        <h4 className="text-xs font-bold text-white">{app.title}</h4>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                        {app.badge}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">{app.desc}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Right Column: 3D Smartphone Interactive Screen Mockup */}
+            <div className="lg:col-span-6 flex justify-center">
+              <div className="w-[300px] sm:w-[320px] rounded-[40px] border-4 border-slate-800 bg-[#020A08] p-3 shadow-2xl shadow-emerald-950/80 relative">
+                
+                {/* Speaker & Camera Notch */}
+                <div className="w-28 h-4 bg-slate-900 rounded-full mx-auto mb-3 flex items-center justify-center">
+                  <span className="size-1.5 rounded-full bg-slate-700" />
                 </div>
-                <h4 className="text-base font-bold mt-3 text-white">{gov.name}</h4>
-                <p className="text-xs text-slate-300 mt-1">{gov.role}</p>
+
+                {/* Smartphone Screen Content */}
+                <div className="bg-[#041410] rounded-[28px] border border-emerald-800/60 p-4 space-y-4 text-white min-h-[460px] flex flex-col justify-between">
+                  
+                  {/* App Header Inside Phone */}
+                  <div className="flex items-center justify-between border-b border-emerald-900/60 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="size-7 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs">
+                        ع
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-white">عبدالعزيز الشمري</p>
+                        <p className="text-[9px] text-emerald-400 font-mono">مطور برمجيات أول</p>
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                      نشط
+                    </span>
+                  </div>
+
+                  {/* Dynamic Screen by Selected App */}
+                  <div className="space-y-3 flex-1">
+                    {mobileActiveApp === "certificate" && (
+                      <div className="bg-[#020B09] p-3.5 rounded-xl border border-emerald-800/60 space-y-2.5 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-emerald-300">شهادة تعريف بالراتب</span>
+                          <span className="text-[9px] font-mono text-slate-400">#CERT-2026-89</span>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-900/60 text-[10px] space-y-1 text-slate-300">
+                          <p>الراتب الأساسي: <strong className="text-white">16,000 ر.س</strong></p>
+                          <p>إجمالي البدلات: <strong className="text-white">4,000 ر.س</strong></p>
+                          <p>الجهة الموجه إليها: <strong className="text-emerald-300">إلى من يهمه الأمر</strong></p>
+                        </div>
+                        <div className="flex items-center justify-between pt-1">
+                          <div className="flex items-center gap-1 text-[9px] text-emerald-400">
+                            <QrCode className="size-6 text-emerald-300" />
+                            <span>رمز تحقق إلكتروني</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded bg-emerald-500 text-slate-950 font-bold text-[9px]">
+                            مختوم رقمياً
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {mobileActiveApp === "leave" && (
+                      <div className="bg-[#020B09] p-3.5 rounded-xl border border-emerald-800/60 space-y-2.5 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-teal-300">طلب إجازة سنوية</span>
+                          <span className="text-[9px] font-mono text-emerald-400">الرصيد: 21 يوماً</span>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-teal-950/40 border border-teal-900/60 text-[10px] space-y-1 text-slate-300">
+                          <p>من: <strong className="text-white">01 سبتمبر 2026</strong></p>
+                          <p>إلى: <strong className="text-white">07 سبتمبر 2026 (7 أيام)</strong></p>
+                          <p>حالة الطلب: <strong className="text-teal-400">بانتظار موافقة المدير المباشر</strong></p>
+                        </div>
+                        <button
+                          onClick={() => toast.success("تم إرسال طلب الإجازة للمدير المباشر")}
+                          className="w-full py-1.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 text-[10px] font-bold cursor-pointer"
+                        >
+                          تأكيد وإرسال الطلب
+                        </button>
+                      </div>
+                    )}
+
+                    {mobileActiveApp === "payslip" && (
+                      <div className="bg-[#020B09] p-3.5 rounded-xl border border-emerald-800/60 space-y-2.5 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-emerald-300">قسيمة راتب شهر أغسطس</span>
+                          <span className="text-[9px] font-mono text-emerald-400">مدفوع بنجاح</span>
+                        </div>
+                        <div className="p-2 rounded bg-emerald-950/40 text-[10px] space-y-1">
+                          <div className="flex justify-between"><span>الأساسي والبدلات:</span><span className="font-mono text-white">20,000 ر.س</span></div>
+                          <div className="flex justify-between text-rose-300"><span>خصم التأمينات (GOSI):</span><span className="font-mono">-1,950 ر.س</span></div>
+                          <div className="flex justify-between border-t border-emerald-900 pt-1 font-bold text-emerald-300"><span>صافي المحول للبنك:</span><span className="font-mono">18,050 ر.س</span></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {mobileActiveApp === "loan" && (
+                      <div className="bg-[#020B09] p-3.5 rounded-xl border border-emerald-800/60 space-y-2.5 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-purple-300">طلب سلفة راتب</span>
+                          <span className="text-[9px] font-mono text-slate-400">الحد الأقصى: 10,000 ر.س</span>
+                        </div>
+                        <div className="p-2 rounded bg-purple-950/40 text-[10px] space-y-1">
+                          <p>المبلغ المطلوب: <strong className="text-white">6,000 ر.س</strong></p>
+                          <p>عدد الأقساط: <strong className="text-white">3 أشهر (2,000 ر.س/شهر)</strong></p>
+                          <p>تاريخ بدء الخصم: <strong className="text-purple-300">راتب سبتمبر 2026</strong></p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Phone Bottom Home Indicator */}
+                  <div className="w-24 h-1 bg-slate-700 rounded-full mx-auto" />
+
+                </div>
+
               </div>
-            ))}
+            </div>
+
           </div>
 
         </div>
       </section>
 
-      {/* ── Security, PDPL, and Data Sovereignty ───────────────────── */}
-      <section id="security" className="py-24 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-8 sm:p-12">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 text-emerald-800 px-3.5 py-1 text-xs font-bold mb-4">
-                <ShieldCheck className="size-4" />
-                <span>السيادة والخصوصية والأمان</span>
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-black text-slate-900 leading-tight">
-                أمان مصرفي وعزل تام لبيانات المنشأة
-              </h2>
-              <p className="mt-4 text-sm sm:text-base text-slate-600 leading-relaxed">
-                تلتزم حلول الغد بالمعايير الصارمة لنظام حماية البيانات الشخصية السعودي (PDPL) وضوابط الهيئة الوطنية للأمن السيبراني (NCA)، مع تشفير متقدم لكافة مسيرات الرواتب والمعلومات الحساسة.
-              </p>
-
-              <div className="mt-8 space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="size-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5">
-                    <Lock className="size-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900">عزل تام للحسابات والشركات المتعددة (Multi-Tenant Isolation)</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">ضمان عدم تداخل بيانات أي شركة أو فرع مع الآخر على مستوى قاعدة البيانات.</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="size-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5">
-                    <FileCheck className="size-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900">سجل تدقيق كامل لكافة الأنشطة (Audit Trail Logs)</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">توثيق هوية وتوقيت كل قرار، إجازة، كشف راتب، أو تعديل إداري في النظام.</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="size-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5">
-                    <Building2 className="size-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900">استضافة محلية متوافقة مع الأنظمة السعودية</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">بياناتك لا تغادر حدود المملكة العربية السعودية وتخضع للسيادة النظامية الكاملة.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
-              <h3 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3">شهادات الامتثال والأمان</h3>
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                  <Shield className="size-8 text-emerald-700 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-slate-900">نظام PDPL</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">حماية البيانات الشخصية</p>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                  <LockKeyhole className="size-8 text-emerald-700 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-slate-900">AES-256</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">تشفير المسيرات والوثائق</p>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                  <Scale className="size-8 text-emerald-700 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-slate-900">لوائح MHRSD</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">نظام العمل السعودي</p>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                  <Zap className="size-8 text-emerald-700 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-slate-900">99.9% Uptime</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">جاهزية سحابية دائمة</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Enterprise FAQ Section ─────────────────────────────────── */}
-      <section id="faqs" className="py-24 bg-white border-t border-slate-200">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+      {/* ── 8. Interactive Enterprise ROI & Cost Savings Calculator ───────── */}
+      <section id="roi-calculator" className="py-20 bg-[#030908] relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
-          <div className="text-center mb-16">
-            <span className="text-xs font-bold text-emerald-700 tracking-wider uppercase">الأسئلة الشائعة</span>
-            <h2 className="text-3xl font-black text-slate-900 mt-2">إجابات على استفسارات المنشآت والقيادات</h2>
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <span className="inline-block text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-700/60">
+              حاسبة العائد على الاستثمار الذكية 💰
+            </span>
+            <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+              كم ستوفّر منشأتك سنوياً باستخدام منظومة HBS 2030؟
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-400">
+              أدخل عدد موظفيك وساعات العمل اليدوي الحالية لتشاهد التوفير المالي والزمني المباشر.
+            </p>
           </div>
 
-          <div className="space-y-4">
-            {FAQS.map((faq, index) => {
-              const isOpen = openFaq === index;
+          <div className="max-w-4xl mx-auto bg-[#051813] rounded-3xl border border-emerald-800/80 p-6 sm:p-10 shadow-2xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              
+              {/* Sliders Input Column */}
+              <div className="space-y-6">
+                
+                {/* Headcount slider */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-200">إجمالي عدد الموظفين في المنشأة:</span>
+                    <span className="text-base font-black text-emerald-400 font-mono">{roiHeadcount} موظفاً</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="1000"
+                    value={roiHeadcount}
+                    onChange={(e) => setRoiHeadcount(parseInt(e.target.value))}
+                    className="w-full h-2 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                    <span>10 موظفين</span>
+                    <span>500</span>
+                    <span>1000+ موظف</span>
+                  </div>
+                </div>
+
+                {/* Manual HR Hours slider */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-200">ساعات العمل اليدوي في الرواتب شهرياً:</span>
+                    <span className="text-base font-black text-cyan-400 font-mono">{roiManualHours} ساعة</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="5"
+                    max="120"
+                    value={roiManualHours}
+                    onChange={(e) => setRoiManualHours(parseInt(e.target.value))}
+                    className="w-full h-2 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                    <span>5 ساعات</span>
+                    <span>60 ساعة</span>
+                    <span>120+ ساعة</span>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Dynamic Results Card */}
+              <div className="bg-[#020B09] p-6 rounded-2xl border border-emerald-700/60 space-y-4">
+                <div>
+                  <p className="text-[11px] text-slate-400 font-mono">التوفير المالي السنوي التقديري:</p>
+                  <p className="text-3xl sm:text-4xl font-black text-emerald-400 font-mono mt-1">
+                    {calculatedYearlySavings.toLocaleString()} ر.س
+                  </p>
+                  <p className="text-[10px] text-emerald-300 font-mono mt-0.5">({calculatedMonthlySavings.toLocaleString()} ر.س شهرياً)</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-emerald-900/60">
+                  <div className="bg-[#061A14] p-3 rounded-xl border border-emerald-800/40">
+                    <p className="text-[10px] text-slate-400">ساعات مستعادة شهرياً:</p>
+                    <p className="text-lg font-black text-teal-300 font-mono mt-0.5">{calculatedHoursSaved} ساعة</p>
+                  </div>
+                  <div className="bg-[#061A14] p-3 rounded-xl border border-emerald-800/40">
+                    <p className="text-[10px] text-slate-400">تقليل مخاطر الغرامات:</p>
+                    <p className="text-lg font-black text-cyan-300 font-mono mt-0.5">99.8%</p>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    const el = document.getElementById("demo-form");
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="w-full h-11 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-md transition cursor-pointer mt-2"
+                >
+                  احصل على دراسة جدوى مفصلة لمنشأتك
+                </Button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ── 9. Saudi Government Neural Sync Matrix ──────────────────────── */}
+      <section id="gov-matrix" className="py-16 bg-[#04110E] border-y border-emerald-900/40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          
+          <div className="text-center space-y-2">
+            <span className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950 border border-emerald-800 px-3 py-1 rounded-full">
+              الربط والتكامل الحكومي المباشر 🇸🇦
+            </span>
+            <h3 className="text-xl sm:text-2xl font-black text-white pt-1">
+              جاهزية تامة ومطابقة 100% مع البوابات والجهات الرسمية
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+            {SAUDI_INTEGRATIONS.map((gov, idx) => {
+              const Icon = gov.icon;
               return (
                 <div
-                  key={index}
-                  className="rounded-2xl border border-slate-200 bg-slate-50/50 overflow-hidden transition"
+                  key={idx}
+                  className="bg-[#030E0B] rounded-2xl border border-emerald-900/60 p-4 text-center space-y-2 shadow-sm hover:border-emerald-500 transition group"
                 >
-                  <button
-                    onClick={() => setOpenFaq(isOpen ? null : index)}
-                    className="w-full p-5 text-right flex items-center justify-between gap-4 font-bold text-slate-900 text-sm sm:text-base hover:bg-slate-100/60 transition cursor-pointer"
-                  >
-                    <span>{faq.q}</span>
-                    <ChevronDown className={`size-5 text-slate-400 shrink-0 transition-transform ${isOpen ? "rotate-180 text-emerald-700" : ""}`} />
-                  </button>
-                  {isOpen && (
-                    <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100">
-                      {faq.a}
-                    </div>
-                  )}
+                  <div className="size-10 rounded-xl bg-emerald-950 text-emerald-400 mx-auto flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Icon className="size-5" />
+                  </div>
+                  <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-700/50">
+                    {gov.badge}
+                  </span>
+                  <p className="text-xs font-black text-white">{gov.name}</p>
+                  <p className="text-[10px] text-slate-400">{gov.subtitle}</p>
                 </div>
               );
             })}
@@ -1277,104 +1342,194 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      {/* ── Executive VIP Call to Action ───────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-r from-[#0F2F24] via-[#0C271E] to-[#0A221A] text-white py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10 text-center max-w-4xl mx-auto">
-          <div className="size-16 rounded-3xl bg-gradient-to-br from-emerald-400 to-amber-300 text-slate-950 flex items-center justify-center mx-auto mb-6 shadow-xl">
-            <Sparkles className="size-8" />
-          </div>
-          <h2 className="text-3xl sm:text-5xl font-black leading-tight">
-            ارتقِ بعمليات منشأتك إلى مستوى القيادة الذكية
-          </h2>
-          <p className="mt-4 text-base sm:text-lg text-slate-300 max-w-2xl mx-auto">
-            انضم إلى كبرى الشركات السعودية التي تعتمد حلول الغد كشريك تشغيلي موثوق للامتثال والرواتب والعلاقات الحكومية.
-          </p>
+      {/* ── 10. Smart Demo Request Form (Instant Activation Box) ─────────── */}
+      <section id="demo-form" className="py-20 bg-[#030908] relative">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          
+          <div className="rounded-3xl border-2 border-emerald-600/40 bg-gradient-to-br from-[#061E17] via-[#041410] to-[#020A08] text-white p-8 sm:p-12 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Button
-              onClick={() => setLocation("/subscribe")}
-              size="lg"
-              className="h-14 rounded-2xl bg-gradient-to-r from-[#18B982] to-[#109E6D] hover:from-[#15A674] hover:to-[#0D855C] text-slate-950 font-black text-base px-8 shadow-xl cursor-pointer"
-            >
-              اطلب عرضاً مخصصاً لمنشأتك <ArrowLeft className="mr-2 size-5" />
-            </Button>
-            <Button
-              onClick={() => setLocation("/request-demo")}
-              size="lg"
-              variant="outline"
-              className="h-14 rounded-2xl border-white/20 bg-white/5 hover:bg-white/10 text-white font-bold text-base px-7 cursor-pointer"
-            >
-              تحدث مع مستشار أنظمة HR
-            </Button>
+            <div className="relative z-10 max-w-2xl mx-auto text-center space-y-6">
+              
+              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3.5 py-1 text-xs font-mono font-bold text-emerald-300 border border-emerald-500/40">
+                <Sparkles className="size-3.5" />
+                <span>عرض توضيحي مباشر وتفعيل فوري</span>
+              </div>
+
+              <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                جاهز لترقية إدارة الموارد البشرية والرواتب في منشأتك؟
+              </h2>
+
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                املأ النموذج وسيقوم مستشار الحلول لدينا بالتواصل معك وتقديم عرض توضيحي مباشر مخصص لاحتياجات منشأتك.
+              </p>
+
+              <form onSubmit={handleQuickDemoSubmit} className="pt-2 space-y-3.5 max-w-lg mx-auto text-right">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-200 mb-1">الاسم الكريم *</label>
+                    <Input
+                      value={demoName}
+                      onChange={(e) => setDemoName(e.target.value)}
+                      placeholder="مثال: م. فهد القحطاني"
+                      required
+                      className="h-11 rounded-xl bg-[#020B09] border-emerald-800 text-white placeholder:text-slate-500 text-xs focus:border-emerald-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-200 mb-1">اسم المنشأة / الشركة</label>
+                    <Input
+                      value={demoCompany}
+                      onChange={(e) => setDemoCompany(e.target.value)}
+                      placeholder="مثال: شركة الرؤية المتقدمة"
+                      className="h-11 rounded-xl bg-[#020B09] border-emerald-800 text-white placeholder:text-slate-500 text-xs focus:border-emerald-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-200 mb-1">رقم الجوال أو الواتساب *</label>
+                    <Input
+                      value={demoPhone}
+                      onChange={(e) => setDemoPhone(e.target.value)}
+                      placeholder="مثال: 05xxxxxxxx"
+                      required
+                      className="h-11 rounded-xl bg-[#020B09] border-emerald-800 text-white placeholder:text-slate-500 text-xs focus:border-emerald-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-200 mb-1">حجم المنشأة</label>
+                    <select
+                      value={demoEmployees}
+                      onChange={(e) => setDemoEmployees(e.target.value)}
+                      className="w-full h-11 rounded-xl bg-[#020B09] border border-emerald-800 text-white px-3 text-xs focus:border-emerald-400 outline-none"
+                    >
+                      <option value="1-10">من 1 إلى 10 موظفين</option>
+                      <option value="10-50">من 10 إلى 50 موظفاً</option>
+                      <option value="50-200">من 50 إلى 200 موظف</option>
+                      <option value="200+">أكثر من 200 موظف</option>
+                    </select>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={demoSubmitting}
+                  className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/25 transition cursor-pointer mt-2"
+                >
+                  {demoSubmitting ? (
+                    <span>جارٍ الإرسال والتأكيد...</span>
+                  ) : (
+                    <>
+                      <span>تأكيد طلب العرض التجريبي المجاني</span>
+                      <Send className="mr-2 size-4" />
+                    </>
+                  )}
+                </Button>
+
+                <p className="text-[10px] text-center text-emerald-400/80 pt-1">
+                  🔒 بياناتك مشفرة ومحمية وفق نظام حماية البيانات الشخصية السعودي (PDPL).
+                </p>
+              </form>
+
+            </div>
+
           </div>
+
         </div>
       </section>
 
-      {/* ── Corporate Footer ───────────────────────────────────────── */}
-      <footer className="bg-[#081A14] text-slate-400 text-xs py-14 border-t border-emerald-950">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 pb-12 border-b border-white/10">
+      {/* ── 11. Futuristic Footer ────────────────────────────────────────── */}
+      <footer className="bg-[#020A08] border-t border-emerald-900/60 py-12 text-slate-400">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-emerald-900/50">
             
-            <div className="lg:col-span-2 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-[#18B982] text-slate-950 font-black text-lg">
-                  هـ
-                </div>
-                <div>
-                  <span className="text-base font-bold text-white">حلول الغد | HR HBS</span>
-                  <p className="text-[10px] text-emerald-300">منظومة الموارد البشرية والعمليات الذكية</p>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-emerald-500 flex items-center justify-center text-slate-950 font-bold font-mono">
+                <Building2 className="size-5" />
               </div>
-              <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
-                نظام تشغيلي متكامل موجه للمنشآت والشركات السعودية في الرياض وجدة والمنطقة الشرقية، متوافق كلياً مع متطلبات رؤية المملكة 2030 وحماية الأجور.
-              </p>
+              <div>
+                <span className="text-base font-black text-white font-mono">HBS 2030</span>
+                <p className="text-xs text-emerald-400 font-medium">المنظومة السحابية الذكية للموارد البشرية والرواتب</p>
+              </div>
             </div>
 
-            <div>
-              <h4 className="text-sm font-bold text-white mb-3">المنظومة والحلول</h4>
-              <ul className="space-y-2">
-                <li><a href="#console" className="hover:text-emerald-400">مسير الرواتب (WPS)</a></li>
-                <li><a href="#console" className="hover:text-emerald-400">رصد الجوازات والإقامات</a></li>
-                <li><a href="#console" className="hover:text-emerald-400">وكيل الذكاء «حامد»</a></li>
-                <li><a href="#console" className="hover:text-emerald-400">الخدمة الذاتية للموظف</a></li>
-                <li><a href="#console" className="hover:text-emerald-400">الهيكل الإداري 360</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-bold text-white mb-3">الامتثال والربط</h4>
-              <ul className="space-y-2">
-                <li><a href="#integrations" className="hover:text-emerald-400">منصة مدد (WPS)</a></li>
-                <li><a href="#integrations" className="hover:text-emerald-400">منصة قوى (Qiwa)</a></li>
-                <li><a href="#integrations" className="hover:text-emerald-400">التأمينات (GOSI)</a></li>
-                <li><a href="#integrations" className="hover:text-emerald-400">العنوان الوطني (SPL)</a></li>
-                <li><a href="#security" className="hover:text-emerald-400">حماية البيانات (PDPL)</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-bold text-white mb-3">روابط سريعة</h4>
-              <ul className="space-y-2">
-                <li><button onClick={() => setLocation("/login")} className="hover:text-emerald-400 text-right cursor-pointer">دخول المنشآت</button></li>
-                <li><button onClick={() => setLocation("/subscribe")} className="hover:text-emerald-400 text-right cursor-pointer">طلب اشتراك جديد</button></li>
-                <li><button onClick={() => setLocation("/request-demo")} className="hover:text-emerald-400 text-right cursor-pointer">طلب عرض توضيحي</button></li>
-                <li><button onClick={() => setLocation("/app")} className="hover:text-emerald-400 text-right cursor-pointer">لوحة التحكم الداخلية</button></li>
-              </ul>
+            <div className="flex flex-wrap items-center gap-6 text-xs font-semibold text-slate-300">
+              <a href="#ai-terminal" className="hover:text-emerald-400 transition">مساعد حامد AI</a>
+              <a href="#smart-showcase" className="hover:text-emerald-400 transition">المحركات</a>
+              <a href="#saudization-simulator" className="hover:text-emerald-400 transition">محاكي نطاقات</a>
+              <a href="#mobile-simulator" className="hover:text-emerald-400 transition">الخدمة الذاتية</a>
+              <a href="#roi-calculator" className="hover:text-emerald-400 transition">حاسبة التوفير</a>
+              <a href="#gov-matrix" className="hover:text-emerald-400 transition">التكامل الحكومي</a>
+              <button onClick={() => setLocation("/login")} className="hover:text-emerald-400 transition cursor-pointer text-emerald-400">
+                دخول المنصة
+              </button>
             </div>
 
           </div>
 
-          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
-            <p>© 2026 حلول الغد (HR HBS) — جميع الحقوق محفوظة للمملكة العربية السعودية.</p>
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1"><Lock className="size-3" /> مشفر بـ AES-256</span>
-              <span>·</span>
-              <span>مستضاف سحابياً داخل المملكة</span>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <p>© {new Date().getFullYear()} HBS 2030. جميع الحقوق محفوظة في المملكة العربية السعودية 🇸🇦.</p>
+            <div className="flex items-center gap-4 text-[11px] text-emerald-500/80 font-mono">
+              <span>NCA CLASS A CERTIFIED</span>
+              <span>•</span>
+              <span>PDPL COMPLIANT</span>
+              <span>•</span>
+              <span>RIYADH, KSA</span>
             </div>
           </div>
+
         </div>
       </footer>
 
-    </main>
+      {/* ── 12. Command Palette Quick Actions Dialog (Ctrl+K) ───────────── */}
+      {commandPaletteOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-xl bg-[#041712] rounded-3xl border border-emerald-500/50 p-5 shadow-2xl text-white space-y-4">
+            
+            <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
+              <div className="flex items-center gap-2">
+                <Terminal className="size-4 text-emerald-400" />
+                <span className="text-xs font-bold font-mono text-emerald-300">أوامر HBS السريعة الذكية (Command Runner)</span>
+              </div>
+              <button
+                onClick={() => setCommandPaletteOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {[
+                { title: "تدقيق مسير الرواتب وتوليد ملف مدد SIF", action: () => { setSelectedPromptId("wps_audit"); setCommandPaletteOpen(false); document.getElementById("ai-terminal")?.scrollIntoView({ behavior: "smooth" }); } },
+                { title: "احتساب مكافأة نهاية الخدمة (المادة 84 & 85)", action: () => { setSelectedPromptId("eos_calc"); setCommandPaletteOpen(false); document.getElementById("ai-terminal")?.scrollIntoView({ behavior: "smooth" }); } },
+                { title: "محاكاة نسبة التوطين ومسار نطاقات", action: () => { setCommandPaletteOpen(false); document.getElementById("saudization-simulator")?.scrollIntoView({ behavior: "smooth" }); } },
+                { title: "فتح حاسبة العائد والتوفير المالي", action: () => { setCommandPaletteOpen(false); document.getElementById("roi-calculator")?.scrollIntoView({ behavior: "smooth" }); } },
+                { title: "طلب عرض تجريبي مباشر لمنشأتك", action: () => { setCommandPaletteOpen(false); document.getElementById("demo-form")?.scrollIntoView({ behavior: "smooth" }); } }
+              ].map((cmd, i) => (
+                <button
+                  key={i}
+                  onClick={cmd.action}
+                  className="w-full p-3 rounded-xl bg-[#020B09] hover:bg-emerald-950/80 border border-emerald-900/50 hover:border-emerald-500 text-right text-xs font-bold text-slate-200 transition flex items-center justify-between cursor-pointer"
+                >
+                  <span>{cmd.title}</span>
+                  <ChevronLeft className="size-4 text-emerald-400" />
+                </button>
+              ))}
+            </div>
+
+            <div className="text-[10px] text-slate-500 font-mono flex justify-between pt-2 border-t border-emerald-900/40">
+              <span>انقر على أي أمر لتنفيذه فوراً</span>
+              <kbd className="bg-emerald-950 px-1.5 py-0.5 rounded text-emerald-300 border border-emerald-800">ESC للإغلاق</kbd>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+    </div>
   );
 }

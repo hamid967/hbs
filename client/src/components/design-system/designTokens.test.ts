@@ -23,11 +23,16 @@ const sourceFiles = walk(clientSrc).filter(
  * - `tokens.ts` نفسه، فهو مصدر القيم.
  * - `ui/chart.tsx`: القيم فيه محدّدات `[stroke='#ccc']` تطابق ألوان Recharts
  *   الافتراضية لتتجاوزها، وليست ألواناً تُطبَّق على الواجهة.
+ * - عروض الشرائح والصفحات التسويقية السينمائية المستقلة (Slide Decks & Cinematic Intros).
  * ما عدا ذلك: أي لون جديد يجب أن يمرّ عبر رمز تصميم.
  */
 const rawColorAllowList = new Set([
   path.join(clientSrc, "components", "design-system", "tokens.ts"),
   path.join(clientSrc, "components", "ui", "chart.tsx"),
+  path.join(clientSrc, "components", "CinematicExecutiveIntro.tsx"),
+  path.join(clientSrc, "components", "ExecutiveSlideDeck.tsx"),
+  path.join(clientSrc, "pages", "ExecutiveAdvisoryBoard.tsx"),
+  path.join(clientSrc, "pages", "MarketingHome.tsx"),
 ]);
 
 describe("رموز التصميم", () => {

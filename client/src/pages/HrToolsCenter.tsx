@@ -63,7 +63,7 @@ const toolCards = [
     icon: FileSpreadsheet,
     title: "مولد ملفات حماية الأجور (WPS SIF)",
     text: "توليد ملفات الرواتب القياسية SIF 3.0 المعتمدة لدى منصة مدد وبنوك المملكة.",
-    tone: "bg-emerald-100 text-emerald-700",
+    tone: "bg-ds-success-soft text-ds-emerald border-ds-success-border",
     label: "سكربت تشغيلي",
   },
   {
@@ -71,7 +71,7 @@ const toolCards = [
     icon: Coins,
     title: "محرك اشتراكات التأمينات (GOSI)",
     text: "حساب دقيق لخصومات المعاشات وساند والأخطار المهنية وتطبيق سقف 45 ألف ر.س.",
-    tone: "bg-amber-100 text-amber-800",
+    tone: "bg-ds-gold-soft text-ds-warning-deep border-ds-gold/30",
     label: "حاسبة تأمينات",
   },
   {
@@ -79,7 +79,7 @@ const toolCards = [
     icon: Scale,
     title: "حاسبة نهاية الخدمة (مادتين 84 و85)",
     text: "احتساب مكافأة نهاية الخدمة بدقة الأيام وحالات الاستقالة أو إنهاء العقد.",
-    tone: "bg-sky-100 text-sky-800",
+    tone: "bg-ds-brand-50 text-ds-brand-800 border-ds-brand-200",
     label: "نظام العمل السعودي",
   },
   {
@@ -87,7 +87,7 @@ const toolCards = [
     icon: TrendingUp,
     title: "محاكي نطاقات والتوطين الذكي",
     text: "احتساب نقاط التوطين، أوزان ذوي الإعاقة (4x)، واكتشاف متطلبات النطاق البلاتيني.",
-    tone: "bg-purple-100 text-purple-800",
+    tone: "bg-ds-brand-100 text-ds-brand-900 border-ds-brand-300",
     label: "محرك نطاقات",
   },
   {
@@ -95,7 +95,7 @@ const toolCards = [
     icon: ShieldAlert,
     title: "راصد الوثائق ذو الـ 7 مستويات",
     text: "فحص استباقي للإقامات والسجلات والتراخيص وتقدير رسوم المقابل المالي وسداد.",
-    tone: "bg-rose-100 text-rose-800",
+    tone: "bg-ds-neutral-100 text-ds-neutral-900 border-ds-neutral-300",
     label: "علاقات حكومية",
   },
   {
@@ -103,7 +103,7 @@ const toolCards = [
     icon: Compass,
     title: "تشخيص جاهزية العمليات",
     text: "قيّم وضع العمليات الحالي وحدد أهم نقاط البداية لفريق الموارد البشرية.",
-    tone: "bg-ds-brand-100 text-ds-brand-600",
+    tone: "bg-ds-brand-100 text-ds-brand-700 border-ds-brand-200",
     label: "تشخيص سريع",
   },
 ];
@@ -118,12 +118,12 @@ export default function HrToolsCenter() {
       <div dir="rtl" className="mx-auto max-w-7xl space-y-8 pb-12">
         
         {/* Header Hero */}
-        <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#0F2F24] via-[#0A221A] to-[#05140F] px-6 py-10 text-white md:px-10 shadow-xl">
-          <div className="absolute -left-10 -top-16 size-52 rounded-full border-[22px] border-emerald-500/10" />
-          <div className="absolute top-1/2 right-10 size-64 rounded-full bg-[#D4AF37]/10 blur-3xl" />
+        <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-ds-brand-950 via-ds-brand-900 to-ds-neutral-950 px-6 py-10 text-white md:px-10 shadow-xl">
+          <div className="absolute -left-10 -top-16 size-52 rounded-full border-[22px] border-ds-brand-500/10" />
+          <div className="absolute top-1/2 right-10 size-64 rounded-full bg-ds-gold/10 blur-3xl" />
           <div className="relative max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-xs font-bold text-emerald-300 border border-white/10 mb-4">
-              <Terminal className="size-3.5 text-amber-300" />
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-xs font-bold text-ds-gold-soft border border-white/10 mb-4">
+              <Terminal className="size-3.5 text-ds-gold" />
               <span>مركز البرمجيات والأدوات التنفيذية · HBS 2030 Enterprise Suite</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-tight">
@@ -139,10 +139,10 @@ export default function HrToolsCenter() {
         <section>
           <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
             <div>
-              <p className="text-xs font-bold text-emerald-700">الأدوات والسكربتات الفورية</p>
+              <p className="text-xs font-bold text-ds-brand-700">الأدوات والسكربتات الفورية</p>
               <h2 className="mt-1 text-2xl font-bold text-slate-900">اختر أداة أو شغّل سكربت التنفيذ</h2>
             </div>
-            <span className="rounded-full bg-emerald-50 border border-emerald-200 px-3.5 py-1 text-xs font-bold text-emerald-800">
+            <span className="rounded-full bg-ds-brand-50 border border-ds-brand-200 px-3.5 py-1 text-xs font-bold text-ds-brand-800">
               6 أدوات ومحركات برمجية نشطة
             </span>
           </div>
@@ -154,8 +154,8 @@ export default function HrToolsCenter() {
                 onClick={() => setActive(card.id)}
                 className={`group rounded-3xl border text-right p-6 transition transform hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between ${
                   active === card.id
-                    ? "border-emerald-600 bg-emerald-50/40 shadow-md ring-2 ring-emerald-500/20"
-                    : "border-slate-200 bg-white hover:border-emerald-300 hover:shadow-md shadow-sm"
+                    ? "border-ds-brand-600 bg-ds-brand-50/40 shadow-md ring-2 ring-ds-brand-500/20"
+                    : "border-slate-200 bg-white hover:border-ds-brand-300 hover:shadow-md shadow-sm"
                 }`}
               >
                 <div>
@@ -170,7 +170,7 @@ export default function HrToolsCenter() {
                   <h3 className="mt-4 font-bold text-base text-slate-900">{card.title}</h3>
                   <p className="mt-2 text-xs leading-5 text-slate-600">{card.text}</p>
                 </div>
-                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
+                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-ds-brand-700">
                   <span>فتح وتشغيل الأداة</span>
                   <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-1" />
                 </div>
@@ -184,9 +184,9 @@ export default function HrToolsCenter() {
           <section className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm transition-all">
             <div className="flex items-center justify-between pb-6 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <Sparkles className="size-5 text-emerald-600" />
+                <Sparkles className="size-5 text-ds-brand-600" />
                 <div>
-                  <p className="text-xs font-bold text-emerald-700">الأداة التنفيذية النشطة</p>
+                  <p className="text-xs font-bold text-ds-brand-700">الأداة التنفيذية النشطة</p>
                   <h3 className="text-lg font-black text-slate-900">
                     {toolCards.find((t) => t.id === active)?.title || "أداة العمل"}
                   </h3>
@@ -214,33 +214,33 @@ export default function HrToolsCenter() {
         )}
 
         {/* Developer / CLI Scripts Reference Card */}
-        <section className="rounded-3xl border border-slate-800 bg-slate-950 text-white p-6 sm:p-8 shadow-lg">
+        <section className="rounded-3xl border border-ds-brand-900 bg-ds-brand-950 text-white p-6 sm:p-8 shadow-lg">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-ds-brand-500/20 text-ds-brand-300 border border-ds-brand-500/30">
                 <Code2 className="size-6" />
               </div>
               <div>
                 <h3 className="text-lg font-black text-white">مكتبة سكربتات Python و CLI المستقلة</h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  تم توليد وحفظ كافة السكربتات التنفيذية داخل مجلد <code className="text-amber-300 font-mono">/scripts</code> في بيئة النظام وجاهزة للتشغيل الفوري.
+                  تم توليد وحفظ كافة السكربتات التنفيذية داخل مجلد <code className="text-ds-gold font-mono">/scripts</code> في بيئة النظام وجاهزة للتشغيل الفوري.
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2 text-xs font-mono">
-              <span className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-emerald-400">
+              <span className="px-3 py-1.5 rounded-xl bg-ds-brand-900 border border-ds-brand-800 text-ds-emerald-bright">
                 wps_sif_generator.py
               </span>
-              <span className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-amber-400">
+              <span className="px-3 py-1.5 rounded-xl bg-ds-brand-900 border border-ds-brand-800 text-ds-gold">
                 gosi_contribution_calculator.py
               </span>
-              <span className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-sky-400">
+              <span className="px-3 py-1.5 rounded-xl bg-ds-brand-900 border border-ds-brand-800 text-ds-brand-300">
                 saudi_labor_law_eosb_calculator.py
               </span>
-              <span className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-purple-400">
+              <span className="px-3 py-1.5 rounded-xl bg-ds-brand-900 border border-ds-brand-800 text-ds-brand-400">
                 saudization_nitaqat_evaluator.py
               </span>
-              <span className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-rose-400">
+              <span className="px-3 py-1.5 rounded-xl bg-ds-brand-900 border border-ds-brand-800 text-rose-400">
                 document_expiry_monitor.py
               </span>
             </div>
@@ -248,10 +248,10 @@ export default function HrToolsCenter() {
         </section>
 
         {/* Legal / Operational Notice */}
-        <section className="rounded-3xl border border-amber-200 bg-amber-50/50 p-5">
+        <section className="rounded-3xl border border-ds-gold/30 bg-ds-gold-soft/50 p-5">
           <div className="flex items-start gap-3">
-            <AlertCircle className="mt-0.5 size-5 text-amber-700 shrink-0" />
-            <p className="text-xs sm:text-sm leading-6 text-amber-900">
+            <AlertCircle className="mt-0.5 size-5 text-ds-warning-deep shrink-0" />
+            <p className="text-xs sm:text-sm leading-6 text-ds-warning-deep">
               <strong>تنويه الامتثال والسيادة:</strong> صُممت هذه الأدوات والسكربتات استناداً إلى معايير وأنظمة وزارة الموارد البشرية والتنمية الاجتماعية، المؤسسة العامة للتأمينات الاجتماعية، ولوائح منصة مدد لحماية الأجور (WPS SIF 3.0). يُنصح دوماً بمراجعة مأمور الرواتب المعتمد أو المستشار القانوني للمنشأة قبل الاعتماد المالي النهائي.
             </p>
           </div>

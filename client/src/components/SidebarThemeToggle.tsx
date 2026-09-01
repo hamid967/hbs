@@ -23,7 +23,7 @@ export function SidebarThemeToggle({ className = "" }: SidebarThemeToggleProps) 
             aria-label="التبديل إلى الوضع النهاري"
             className={`pressable flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 px-2 text-xs font-bold transition-all ${
               !isDark
-                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 shadow-xs"
+                ? "bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 shadow-xs"
                 : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
             }`}
           >
@@ -38,11 +38,11 @@ export function SidebarThemeToggle({ className = "" }: SidebarThemeToggleProps) 
             aria-label="التبديل إلى الوضع الليلي"
             className={`pressable flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 px-2 text-xs font-bold transition-all ${
               isDark
-                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 shadow-xs"
+                ? "bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 shadow-xs"
                 : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
             }`}
           >
-            <Moon className={`size-3.5 ${isDark ? "text-emerald-400" : "text-slate-400"}`} />
+            <Moon className={`size-3.5 ${isDark ? "text-indigo-400" : "text-slate-400"}`} />
             <span>ليلي</span>
           </button>
         </div>
@@ -59,7 +59,7 @@ export function SidebarThemeToggle({ className = "" }: SidebarThemeToggleProps) 
               className="pressable flex size-9 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
             >
               {isDark ? (
-                <Moon className="size-4 text-emerald-400" />
+                <Moon className="size-4 text-indigo-400" />
               ) : (
                 <Sun className="size-4 text-amber-400" />
               )}

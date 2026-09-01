@@ -1168,13 +1168,179 @@ export async function recordAuditEvent(input: { companyId: number; actorUserId?:
   await db.insert(auditEvents).values({ companyId: input.companyId, actorUserId: input.actorUserId ?? null, category: input.category, action: input.action, entityType: input.entityType, entityId: input.entityId ?? null, summary: input.summary });
 }
 
-export async function listCompanyAuditEvents(companyId: number, input: { limit?: number; category?: AuditCategory } = {}) {
+export async function listCompanyAuditEvents(
+  companyId: number,
+  input: {
+    limit?: number;
+    category?: AuditCategory;
+    actorUserId?: number;
+    startDate?: string | Date;
+    endDate?: string | Date;
+    searchQuery?: string;
+  } = {}
+) {
   const db = await getDb();
   if (!db) return [];
-  const limit = Math.min(Math.max(input.limit ?? 25, 1), 100);
+  const limit = Math.min(Math.max(input.limit ?? 50, 1), 200);
   const conditions = [eq(auditEvents.companyId, companyId)];
   if (input.category) conditions.push(eq(auditEvents.category, input.category));
-  return db.select({ event: auditEvents, actor: { id: users.id, name: users.name } }).from(auditEvents).leftJoin(users, eq(auditEvents.actorUserId, users.id)).where(and(...conditions)).orderBy(desc(auditEvents.createdAt)).limit(limit);
+  if (input.actorUserId) conditions.push(eq(auditEvents.actorUserId, input.actorUserId));
+  if (input.startDate) {
+    const start = typeof input.startDate === "string" ? new Date(`${input.startDate}T00:00:00.000Z`) : input.startDate;
+    conditions.push(sql`${auditEvents.createdAt} >= ${start}`);
+  }
+  if (input.endDate) {
+    const end = typeof input.endDate === "string" ? new Date(`${input.endDate}T23:59:59.999Z`) : input.endDate;
+    conditions.push(sql`${auditEvents.createdAt} <= ${end}`);
+  }
+  if (input.searchQuery && input.searchQuery.trim()) {
+    const term = `%${input.searchQuery.trim()}%`;
+    conditions.push(sql`(${auditEvents.summary} LIKE ${term} OR ${auditEvents.action} LIKE ${term} OR ${auditEvents.entityType} LIKE ${term})`);
+  }
+  return db
+    .select({ event: auditEvents, actor: { id: users.id, name: users.name } })
+    .from(auditEvents)
+    .leftJoin(users, eq(auditEvents.actorUserId, users.id))
+    .where(and(...conditions))
+    .orderBy(desc(auditEvents.createdAt))
+    .limit(limit);
+}
+
+export interface SmartUrgentItem {
+  id: string;
+  category: "contract_expiring" | "payroll_pending" | "approval_required" | "attendance_alert" | "compliance_risk";
+  title: string;
+  description: string;
+  badge: string;
+  severity: "critical" | "warning" | "info";
+  count: number;
+  actionUrl: string;
+  actionLabel: string;
+  dueInfo?: string;
+}
+
+export async function getSmartUrgentNotifications(companyId: number, userId: number, role: string) {
+  const db = await getDb();
+  const items: SmartUrgentItem[] = [];
+  if (!db) return { items, totalCount: 0, criticalCount: 0, warningCount: 0 };
+
+  const now = new Date();
+  const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  // 1. Expiring / Ended active contracts
+  if (["admin", "hr"].includes(role)) {
+    try {
+      const expiringContracts = await db
+        .select({
+          id: employeeContracts.id,
+          title: employeeContracts.title,
+          endAt: employeeContracts.endAt,
+          employeeName: users.name,
+        })
+        .from(employeeContracts)
+        .leftJoin(users, eq(employeeContracts.employeeUserId, users.id))
+        .where(
+          and(
+            eq(employeeContracts.companyId, companyId),
+            eq(employeeContracts.status, "active"),
+            sql`${employeeContracts.endAt} IS NOT NULL AND ${employeeContracts.endAt} <= ${thirtyDaysLater}`
+          )
+        );
+
+      if (expiringContracts.length > 0) {
+        const hasCritical = expiringContracts.some(c => c.endAt && new Date(c.endAt) < now);
+        items.push({
+          id: "urgent-contracts",
+          category: "contract_expiring",
+          title: hasCritical ? "عقود عمل منتهية بحاجة للتجديد الفوري" : "عقود عمل تقترب من نهاية المدة (30 يوماً)",
+          description: `يوجد ${expiringContracts.length} عقد عمل يتطلب مراجعة التجديد أو التوثيق وفق نظام العمل.`,
+          badge: "عقود وتوثيق",
+          severity: hasCritical ? "critical" : "warning",
+          count: expiringContracts.length,
+          actionUrl: "/contracts",
+          actionLabel: "مراجعة العقود",
+          dueInfo: `${expiringContracts.length} عقد`,
+        });
+      }
+    } catch {
+      // Graceful fallback if table query fails
+    }
+  }
+
+  // 2. Pending Approval Tasks (Workload & Inbox)
+  const allowedApprovalRoles =
+    role === "admin"
+      ? ["hr", "government", "manager", "admin"]
+      : role === "hr"
+      ? ["hr"]
+      : role === "government"
+      ? ["government"]
+      : role === "manager"
+      ? ["manager"]
+      : [];
+
+  if (allowedApprovalRoles.length > 0) {
+    try {
+      const pendingTasks = await db
+        .select({
+          taskId: approvalTasks.id,
+          approverRole: approvalTasks.approverRole,
+          createdAt: approvalTasks.createdAt,
+          requestSubject: serviceRequests.subject,
+          requestType: serviceRequests.type,
+          requestPriority: serviceRequests.priority,
+        })
+        .from(approvalTasks)
+        .innerJoin(serviceRequests, eq(approvalTasks.requestId, serviceRequests.id))
+        .where(
+          and(
+            eq(approvalTasks.companyId, companyId),
+            eq(approvalTasks.status, "pending"),
+            inArray(approvalTasks.approverRole, allowedApprovalRoles as any)
+          )
+        );
+
+      if (pendingTasks.length > 0) {
+        const urgentCount = pendingTasks.filter(t => t.requestPriority === "urgent").length;
+        items.push({
+          id: "urgent-approvals",
+          category: "approval_required",
+          title: urgentCount > 0 ? `موافقات إدارية عاجلة (${urgentCount} طلب عاجل)` : "معاملات بانتظار قرارك الإداري",
+          description: `لديك ${pendingTasks.length} طلب إجازة أو خدمة تتطلب اعتمادك المباشر في صندوق الموافقات.`,
+          badge: "موافقات معلقة",
+          severity: urgentCount > 0 ? "critical" : "warning",
+          count: pendingTasks.length,
+          actionUrl: "/approvals",
+          actionLabel: "فتح صندوق الموافقات",
+          dueInfo: `${pendingTasks.length} معاملة`,
+        });
+      }
+    } catch {
+      // Graceful fallback
+    }
+  }
+
+  // 3. Pending Payroll & Wage Protection Approvals (WPS / SIF)
+  if (["admin", "hr", "manager"].includes(role)) {
+    items.push({
+      id: "urgent-wps-payroll",
+      category: "payroll_pending",
+      title: "تدقيق مسير الرواتب الشهري وحماية الأجور (WPS SIF 3.0)",
+      description: "التأكد من مطابقة نسب خصومات التأمينات وسقف 45 ألف ر.س لتفادي ملاحظات منصة مدد.",
+      badge: "حماية الأجور",
+      severity: "info",
+      count: 1,
+      actionUrl: "/hr-tools",
+      actionLabel: "فحص مسير الرواتب",
+      dueInfo: "دورة الشهر الحالي",
+    });
+  }
+
+  const criticalCount = items.filter(i => i.severity === "critical").reduce((acc, i) => acc + i.count, 0);
+  const warningCount = items.filter(i => i.severity === "warning").reduce((acc, i) => acc + i.count, 0);
+  const totalCount = items.reduce((acc, i) => acc + i.count, 0);
+
+  return { items, totalCount, criticalCount, warningCount };
 }
 
 export async function createRequestWithHistory(input: {
