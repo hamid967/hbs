@@ -13,6 +13,9 @@ const env = {
   databaseUrl: process.env.DATABASE_URL ?? "",
   oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
   ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
+  // معرّف مشروع Firebase — قيمة عامة غير سرّية، مطابقة لـ firebase-applet-config.json،
+  // تُستخدم للتحقق من توقيع وإصدار ومستلم رموز Google ID Token.
+  firebaseProjectId: process.env.FIREBASE_PROJECT_ID ?? "augmented-principle-gxhgq",
   localAccessAllowedOrigins: parseAllowedOrigins(process.env.LOCAL_ACCESS_ALLOWED_ORIGINS ?? ""),
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",

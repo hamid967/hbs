@@ -31,15 +31,9 @@ export function LocalLogin() {
     setGoogleError(null);
     try {
       const user = await signInWithGoogle();
-      if (user) {
-        await googleLoginMutation.mutateAsync({
-          email: user.email || "",
-          name: user.displayName || "مستخدم Google",
-          openId: user.uid,
-        }).catch((err) => {
-          console.warn("Backend session sync note:", err);
-        });
-      }
+      if (!user) throw new Error("تعذر تسجيل الدخول بحساب Google");
+      const idToken = await user.getIdToken();
+      await googleLoginMutation.mutateAsync({ idToken });
       await utils.auth.me.invalidate();
       setLocation("/app");
     } catch (err: any) {

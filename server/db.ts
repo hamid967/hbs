@@ -266,40 +266,6 @@ export async function createEmailVerificationToken(input: { email: string; token
   return { user };
 }
 
-export async function ensureDirectAdminUser(input: { email: string; name: string; passwordHash: string; companyName: string }) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const normalized = input.email.trim().toLowerCase();
-  let candidate = (await db.select({ credential: localCredentials, user: users }).from(localCredentials).innerJoin(users, eq(localCredentials.userId, users.id)).where(eq(localCredentials.email, normalized)).limit(1))[0];
-  if (candidate) {
-    if (candidate.user.role !== "admin" || candidate.user.accountStatus !== "active") {
-      await db.update(users).set({ role: "admin", accountStatus: "active", emailVerifiedAt: new Date() }).where(eq(users.id, candidate.user.id));
-    }
-    return candidate;
-  }
-  let company = (await db.select().from(companies).where(eq(companies.name, input.companyName)).limit(1))[0];
-  if (!company) {
-    await db.insert(companies).values({ name: input.companyName });
-    company = (await db.select().from(companies).where(eq(companies.name, input.companyName)).limit(1))[0];
-  }
-  const openId = `local:${randomUUID()}`;
-  await db.insert(users).values({
-    openId,
-    name: input.name,
-    email: normalized,
-    loginMethod: "local",
-    companyId: company?.id ?? 1,
-    role: "admin",
-    accountStatus: "active",
-    emailVerifiedAt: new Date(),
-    lastSignedIn: new Date(),
-  });
-  const user = (await db.select().from(users).where(eq(users.openId, openId)).limit(1))[0];
-  if (!user) return undefined;
-  await db.insert(localCredentials).values({ userId: user.id, email: normalized, passwordHash: input.passwordHash });
-  return (await db.select({ credential: localCredentials, user: users }).from(localCredentials).innerJoin(users, eq(localCredentials.userId, users.id)).where(eq(localCredentials.email, normalized)).limit(1))[0];
-}
-
 export async function getUserModulePermissions(userId: number, role: UserRole): Promise<ModulePermission[]> {
   const db = await getDb();
   if (!db) return defaultModulePermissionsForRole(role);
@@ -1551,10 +1517,18 @@ export async function getOperationsRequests(filters: { type?: RequestType; statu
   return db.select({ request: serviceRequests, employee: { id: users.id, name: users.name, email: users.email } }).from(serviceRequests).innerJoin(users, eq(serviceRequests.employeeId, users.id)).where(and(...conditions)).orderBy(desc(serviceRequests.updatedAt));
 }
 
-export async function updateRequestStatus(id: number, actorId: number, previousStatus: "submitted" | "in_review" | "approved" | "rejected" | "completed", nextStatus: "submitted" | "in_review" | "approved" | "rejected" | "completed", note?: string) {
+/**
+ * الاستدعاء الوحيد الحالي (requestsRouter.changeStatus) يتحقق من ملكية الشركة
+ * عبر getRequestDetail قبل الوصول إلى هنا، لكن companyId يُمرَّر ويُفرض في
+ * جملة WHERE أيضاً كدفاع بالعمق — حتى لا يتحوّل أي مسار استدعاء مستقبلي
+ * يتجاوز ذلك التحقق إلى ثغرة IDOR مباشرة.
+ */
+export async function updateRequestStatus(id: number, companyId: number, actorId: number, previousStatus: "submitted" | "in_review" | "approved" | "rejected" | "completed", nextStatus: "submitted" | "in_review" | "approved" | "rejected" | "completed", note?: string) {
   const db = await getDb();
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
   await db.transaction(async tx => {
+    const owned = (await tx.select({ id: serviceRequests.id }).from(serviceRequests).innerJoin(users, eq(serviceRequests.employeeId, users.id)).where(and(eq(serviceRequests.id, id), eq(users.companyId, companyId))).limit(1))[0];
+    if (!owned) throw new Error("الطلب غير موجود ضمن هذه الشركة");
     await tx.update(serviceRequests).set({ status: nextStatus }).where(eq(serviceRequests.id, id));
     await tx.insert(requestHistory).values({ requestId: id, actorId, action: "status_change", previousStatus, nextStatus, note: note || `تم تحديث حالة الطلب إلى ${nextStatus}.`, visibleToEmployee: true });
   });
@@ -1600,9 +1574,12 @@ export async function decideApprovalTask(input: { id: number; companyId: number;
   return { success: true } as const;
 }
 
-export async function addRequestNote(requestId: number, actorId: number, note: string, visibleToEmployee: boolean) {
+/** كـ updateRequestStatus أعلاه: companyId يُفرض هنا كدفاع بالعمق أيضاً. */
+export async function addRequestNote(requestId: number, companyId: number, actorId: number, note: string, visibleToEmployee: boolean) {
   const db = await getDb();
   if (!db) throw new Error("قاعدة البيانات غير متاحة حالياً");
+  const owned = (await db.select({ id: serviceRequests.id }).from(serviceRequests).innerJoin(users, eq(serviceRequests.employeeId, users.id)).where(and(eq(serviceRequests.id, requestId), eq(users.companyId, companyId))).limit(1))[0];
+  if (!owned) throw new Error("الطلب غير موجود ضمن هذه الشركة");
   await db.insert(requestHistory).values({ requestId, actorId, action: "note", note, visibleToEmployee });
   return { success: true } as const;
 }
