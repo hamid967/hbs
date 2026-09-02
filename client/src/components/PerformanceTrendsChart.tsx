@@ -24,6 +24,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+import { dsColors } from "./design-system/tokens";
 
 // Realistic 6-month corporate performance dataset
 const payrollTrendData = [
@@ -238,20 +239,20 @@ export default function PerformanceTrendsChart() {
               <AreaChart data={payrollTrendData} margin={{ top: 10, right: 20, left: 20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="grossGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#227559" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#227559" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor={dsColors["brand-700"]} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={dsColors["brand-700"]} stopOpacity={0.0} />
                   </linearGradient>
                   <linearGradient id="netGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8d6e32" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#8d6e32" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor={dsColors.gold} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={dsColors.gold} stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="month" tick={{ fill: "#4B5563", fontSize: 12 }} axisLine={{ stroke: "#E5E7EB" }} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={dsColors["neutral-200"]} />
+                <XAxis dataKey="month" tick={{ fill: dsColors["neutral-600"], fontSize: 12 }} axisLine={{ stroke: dsColors["neutral-200"] }} />
                 <YAxis
                   tickFormatter={val => `${(val / 1000).toFixed(0)}k`}
-                  tick={{ fill: "#4B5563", fontSize: 11 }}
-                  axisLine={{ stroke: "#E5E7EB" }}
+                  tick={{ fill: dsColors["neutral-600"], fontSize: 11 }}
+                  axisLine={{ stroke: dsColors["neutral-200"] }}
                 />
                 <Tooltip
                   content={({ active, payload, label }) => {
@@ -292,7 +293,7 @@ export default function PerformanceTrendsChart() {
                 <Area
                   type="monotone"
                   dataKey="grossPayroll"
-                  stroke="#227559"
+                  stroke={dsColors["brand-700"]}
                   strokeWidth={2.5}
                   fillOpacity={1}
                   fill="url(#grossGrad)"
@@ -301,7 +302,7 @@ export default function PerformanceTrendsChart() {
                 <Area
                   type="monotone"
                   dataKey="netTransferred"
-                  stroke="#8d6e32"
+                  stroke={dsColors.gold}
                   strokeWidth={2.5}
                   fillOpacity={1}
                   fill="url(#netGrad)"
@@ -310,13 +311,13 @@ export default function PerformanceTrendsChart() {
               </AreaChart>
             ) : (
               <ComposedChart data={attendanceTrendData} margin={{ top: 10, right: 20, left: 20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="month" tick={{ fill: "#4B5563", fontSize: 12 }} axisLine={{ stroke: "#E5E7EB" }} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={dsColors["neutral-200"]} />
+                <XAxis dataKey="month" tick={{ fill: dsColors["neutral-600"], fontSize: 12 }} axisLine={{ stroke: dsColors["neutral-200"] }} />
                 <YAxis
                   domain={[80, 100]}
                   tickFormatter={val => `${val}%`}
-                  tick={{ fill: "#4B5563", fontSize: 11 }}
-                  axisLine={{ stroke: "#E5E7EB" }}
+                  tick={{ fill: dsColors["neutral-600"], fontSize: 11 }}
+                  axisLine={{ stroke: dsColors["neutral-200"] }}
                 />
                 <Tooltip
                   content={({ active, payload, label }) => {
@@ -356,7 +357,7 @@ export default function PerformanceTrendsChart() {
                 />
                 <Bar
                   dataKey="complianceRate"
-                  fill="#227559"
+                  fill={dsColors["brand-700"]}
                   radius={[6, 6, 0, 0]}
                   barSize={28}
                   name="complianceRate"
@@ -364,9 +365,9 @@ export default function PerformanceTrendsChart() {
                 <Line
                   type="monotone"
                   dataKey="punctualityRate"
-                  stroke="#16a34a"
+                  stroke={dsColors["emerald-bright"]}
                   strokeWidth={3}
-                  dot={{ r: 4, fill: "#16a34a" }}
+                  dot={{ r: 4, fill: dsColors["emerald-bright"] }}
                   name="punctualityRate"
                 />
               </ComposedChart>
