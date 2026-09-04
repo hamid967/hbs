@@ -73,11 +73,11 @@ export default function ManagerKPISummary({ className = "" }: ManagerKPISummaryP
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+            <span className="flex size-7 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
               <TrendingUp className="size-4" />
             </span>
             <div className="flex items-center gap-2">
-              <p className="text-xs font-extrabold uppercase tracking-wider text-indigo-700">
+              <p className="text-xs font-extrabold uppercase tracking-wider text-blue-700">
                 لوحة المؤشرات التنفيذية للمدير
               </p>
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
@@ -96,14 +96,14 @@ export default function ManagerKPISummary({ className = "" }: ManagerKPISummaryP
 
         <div className="flex flex-wrap items-center gap-2 pt-1 sm:pt-0">
           <div className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-            <Landmark className="size-3.5 text-indigo-600" />
+            <Landmark className="size-3.5 text-blue-600" />
             <span className="font-bold">{companyName}</span>
           </div>
 
           {isManagerOrAdmin && (
             <button
               onClick={() => setLocation("/approvals")}
-              className="pressable inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition"
+              className="pressable inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition"
             >
               <FileCheck2 className="size-3.5" />
               صندوق الموافقات
@@ -128,12 +128,12 @@ export default function ManagerKPISummary({ className = "" }: ManagerKPISummaryP
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") setLocation("/employees");
           }}
-          className="group relative cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-indigo-50/40 via-white to-slate-50/50 p-4.5 transition duration-200 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-md"
+          className="group relative cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-blue-50/40 via-white to-slate-50/50 p-4.5 transition duration-200 hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
         >
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
-                <UsersRound className="size-3.5 text-indigo-600" />
+                <UsersRound className="size-3.5 text-blue-600" />
                 الموظفون النشطون
               </span>
               {overviewLoading ? (
@@ -149,14 +149,14 @@ export default function ManagerKPISummary({ className = "" }: ManagerKPISummaryP
                 </div>
               )}
             </div>
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-xs transition group-hover:scale-105">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-xs transition group-hover:scale-105">
               <Users className="size-5" />
             </div>
           </div>
 
           <div className="mt-3.5 flex items-center justify-between border-t border-slate-100 pt-2.5 text-xs">
             <span className="text-[11px] text-slate-500 font-medium">سجل الكوادر ودليل الموظفين</span>
-            <span className="flex items-center text-[11px] font-bold text-indigo-600 group-hover:translate-x-[-2px] transition-transform">
+            <span className="flex items-center text-[11px] font-bold text-blue-600 group-hover:translate-x-[-2px] transition-transform">
               استعراض <ArrowLeft className="mr-1 size-3" />
             </span>
           </div>

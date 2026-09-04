@@ -49,6 +49,8 @@ export function useAuth(options?: UseAuthOptions) {
     } finally {
       try {
         sessionStorage.removeItem("manus-cookie");
+        localStorage.removeItem("manus-runtime-user-token");
+        localStorage.removeItem("manus-runtime-user-info");
       } catch {}
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
@@ -69,17 +71,33 @@ export function useAuth(options?: UseAuthOptions) {
         loginMethod: "google",
       };
     }
+    if (meQuery.isLoading && typeof window !== "undefined") {
+      try {
+        const storedToken = localStorage.getItem("manus-runtime-user-token");
+        const cached = localStorage.getItem("manus-runtime-user-info");
+        if (storedToken && cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && typeof parsed === "object") {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
     return null;
-  }, [meQuery.data, firebaseUser]);
+  }, [meQuery.data, firebaseUser, meQuery.isLoading]);
 
   const state = useMemo(() => {
-    localStorage.setItem(
-      "manus-runtime-user-info",
-      JSON.stringify(resolvedUser)
-    );
+    if (resolvedUser) {
+      try {
+        localStorage.setItem(
+          "manus-runtime-user-info",
+          JSON.stringify(resolvedUser)
+        );
+      } catch {}
+    }
     return {
       user: resolvedUser,
-      loading: (meQuery.isLoading && firebaseLoading) || logoutMutation.isPending,
+      loading: (meQuery.isLoading && firebaseLoading && !resolvedUser) || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(resolvedUser),
     };
@@ -93,16 +111,34 @@ export function useAuth(options?: UseAuthOptions) {
   ]);
 
   useEffect(() => {
+    if (!meQuery.isLoading && !firebaseLoading && !meQuery.data && !firebaseUser && typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("manus-runtime-user-token");
+        localStorage.removeItem("manus-runtime-user-info");
+        sessionStorage.removeItem("manus-cookie");
+      } catch {}
+    }
+  }, [meQuery.isLoading, firebaseLoading, meQuery.data, firebaseUser]);
+
+  useEffect(() => {
     if (!redirectOnUnauthenticated) return;
     if (meQuery.isLoading || firebaseLoading || logoutMutation.isPending) return;
     if (state.user) return;
     if (typeof window === "undefined") return;
     if (redirectPath && window.location.pathname === redirectPath) return;
 
+    let hadToken = false;
+    try {
+      hadToken = Boolean(
+        localStorage.getItem("manus-runtime-user-token") ||
+        sessionStorage.getItem("manus-cookie")
+      );
+    } catch {}
+
     if (redirectPath) {
       window.location.href = redirectPath;
     } else {
-      window.location.href = "/login";
+      window.location.href = hadToken ? "/login?reason=expired" : "/login";
     }
   }, [
     redirectOnUnauthenticated,

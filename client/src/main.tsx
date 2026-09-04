@@ -35,8 +35,20 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
-  if (!isPublicPath(window.location.pathname) && window.location.pathname !== "/login") {
-    window.location.assign("/login");
+  let hadToken = false;
+  try {
+    hadToken = Boolean(
+      localStorage.getItem("manus-runtime-user-token") ||
+      sessionStorage.getItem("manus-cookie")
+    );
+    localStorage.removeItem("manus-runtime-user-token");
+    localStorage.removeItem("manus-runtime-user-info");
+    sessionStorage.removeItem("manus-cookie");
+  } catch {}
+
+  if (!isPublicPath(window.location.pathname) && !window.location.pathname.startsWith("/login")) {
+    const destination = hadToken ? "/login?reason=expired" : "/login";
+    window.location.assign(destination);
   }
 };
 
@@ -80,22 +92,22 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       headers() {
-        // Preview auto-login fallback: when the browser blocks iframe cookies
-        // (Safari ITP / private browsing / WebView), the runtime mirrors the
-        // session into sessionStorage so we can forward it as a Bearer token.
-        // The regular OAuth cookie flow keeps working and takes priority server-side.
         try {
+          const storedToken = localStorage.getItem("manus-runtime-user-token");
+          if (storedToken) {
+            return { Authorization: `Bearer ${storedToken}` };
+          }
           const raw = sessionStorage.getItem("manus-cookie");
           if (raw) {
             const prefix = `${COOKIE_NAME}=`;
             const pair = raw.split(";").find(s => s.trim().startsWith(prefix));
-            const token = pair?.trim().slice(prefix.length);
+            const token = pair ? pair.trim().slice(prefix.length) : raw;
             if (token) {
               return { Authorization: `Bearer ${token}` };
             }
           }
         } catch {
-          // sessionStorage unavailable
+          // storage unavailable
         }
         return {};
       },

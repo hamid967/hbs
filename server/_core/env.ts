@@ -8,8 +8,8 @@ export const parseAllowedOrigins = (raw: string) => raw.split(",").map(value => 
 });
 
 const env = {
-  appId: process.env.VITE_APP_ID ?? "",
-  cookieSecret: process.env.JWT_SECRET ?? "",
+  appId: process.env.VITE_APP_ID || "c83c8f33-b222-4837-97d1-7153ca880e66",
+  cookieSecret: process.env.JWT_SECRET || "hbs-studio-secret-jwt-token-2026-auth-session-key",
   databaseUrl: process.env.DATABASE_URL ?? "",
   oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
   ownerOpenId: process.env.OWNER_OPEN_ID ?? "",

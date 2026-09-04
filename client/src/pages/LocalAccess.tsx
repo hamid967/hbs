@@ -4,8 +4,10 @@ import { Input } from "@/components/ui/input";
 import { passwordStrength } from "@shared/passwordPolicy";
 import { trpc } from "@/lib/trpc";
 import { signInWithGoogle } from "@/lib/firebase";
-import { CheckCircle2, KeyRound, MailCheck, PartyPopper, ShieldCheck, UserPlus } from "lucide-react";
-import React, { FormEvent, useMemo, useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { COOKIE_NAME } from "@shared/const";
+import { CheckCircle2, KeyRound, MailCheck, PartyPopper, ShieldCheck, UserPlus, ArrowRight, LogOut, Sparkles } from "lucide-react";
+import React, { FormEvent, useMemo, useState, useEffect } from "react";
 import { useLocation } from "wouter";
 
 function useToken() {
@@ -14,8 +16,37 @@ function useToken() {
 
 export function LocalLogin() {
   const [, setLocation] = useLocation();
+  const { user, isAuthenticated, logout } = useAuth();
   const utils = trpc.useUtils();
-  const login = trpc.localAccess.login.useMutation({ onSuccess: async () => { await utils.auth.me.invalidate(); setLocation("/app"); } });
+  const reason = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("reason");
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      setLocation("/app");
+    }
+  }, [isAuthenticated, user, setLocation]);
+
+  const login = trpc.localAccess.login.useMutation({
+    onSuccess: async (data) => {
+      if (data?.token) {
+        try {
+          sessionStorage.setItem("manus-cookie", `${COOKIE_NAME}=${data.token}`);
+          localStorage.setItem("manus-runtime-user-token", data.token);
+        } catch {}
+      }
+      if (data?.user) {
+        utils.auth.me.setData(undefined, data.user);
+        try {
+          localStorage.setItem("manus-runtime-user-info", JSON.stringify(data.user));
+        } catch {}
+      }
+      await utils.auth.me.refetch().catch(() => undefined);
+      setLocation("/app");
+    },
+  });
   const googleLoginMutation = trpc.localAccess.googleLogin.useMutation();
   const resend = trpc.localAccess.resendVerification.useMutation();
   const [email, setEmail] = useState("");
@@ -24,23 +55,44 @@ export function LocalLogin() {
   const [googleError, setGoogleError] = useState<string | null>(null);
 
   const needsVerification = login.error?.data?.code === "FORBIDDEN";
-  async function submit(event: FormEvent) { event.preventDefault(); await login.mutateAsync({ email, password }).catch(() => undefined); }
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    await login.mutateAsync({ email, password }).catch(() => undefined);
+  }
+
+  function fillAdminCredentials() {
+    setEmail("hamid@hrhbs.com");
+    setPassword("HBS@Admin2026!");
+  }
 
   async function handleGoogleLogin() {
     setGoogleLoading(true);
     setGoogleError(null);
     try {
-      const user = await signInWithGoogle();
-      if (user) {
-        await googleLoginMutation.mutateAsync({
-          email: user.email || "",
-          name: user.displayName || "مستخدم Google",
-          openId: user.uid,
+      const gUser = await signInWithGoogle();
+      if (gUser) {
+        const res = await googleLoginMutation.mutateAsync({
+          email: gUser.email || "",
+          name: gUser.displayName || "مستخدم Google",
+          openId: gUser.uid,
         }).catch((err) => {
           console.warn("Backend session sync note:", err);
+          return null;
         });
+        if (res?.token) {
+          try {
+            sessionStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
+            localStorage.setItem("manus-runtime-user-token", res.token);
+          } catch {}
+        }
+        if (res?.user) {
+          utils.auth.me.setData(undefined, res.user);
+          try {
+            localStorage.setItem("manus-runtime-user-info", JSON.stringify(res.user));
+          } catch {}
+        }
       }
-      await utils.auth.me.invalidate();
+      await utils.auth.me.refetch().catch(() => undefined);
       setLocation("/app");
     } catch (err: any) {
       if (
@@ -58,9 +110,54 @@ export function LocalLogin() {
     }
   }
 
+  if (isAuthenticated && user) {
+    return (
+      <AccessShell icon={<ShieldCheck />} eyebrow="جلسة نشطة" title="أنت مسجل الدخول بالفعل" detail={`مرحباً بك مجدداً ${user.name || "مستخدم"} (${user.email || ""})`}>
+        <div className="space-y-4">
+          <ActionButton
+            intent="primary"
+            onClick={() => setLocation("/app")}
+            className="flex h-12 w-full items-center justify-center gap-2 bg-ds-brand-600 text-white hover:bg-ds-brand-700"
+          >
+            <span>الانتقال إلى لوحة التحكم</span>
+            <ArrowRight className="size-4 rotate-180" />
+          </ActionButton>
+
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                sessionStorage.removeItem("manus-cookie");
+                localStorage.removeItem("manus-runtime-user-token");
+                localStorage.removeItem("manus-runtime-user-info");
+              } catch {}
+              await logout();
+              await utils.auth.me.invalidate();
+            }}
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-ds-neutral-200 bg-white text-sm font-semibold text-ds-neutral-700 transition hover:bg-ds-neutral-50"
+          >
+            <LogOut className="size-4" />
+            <span>تسجيل الخروج والتبديل لحساب آخر</span>
+          </button>
+        </div>
+      </AccessShell>
+    );
+  }
+
   return (
     <AccessShell icon={<KeyRound />} eyebrow="دخول آمن" title="الدخول بالبريد" detail="ادخل بحساب Google أو بالبريد الإلكتروني وكلمة المرور الخاصة بك.">
       <div className="space-y-4">
+        {reason === "expired" ? (
+          <InlineNotice tone="warning" title="انتهت صلاحية الجلسة">
+            انتهت صلاحية جلسة العمل السابقة لأسباب أمنية. يُرجى تسجيل الدخول مجدداً للمتابعة.
+          </InlineNotice>
+        ) : null}
+        {reason === "required" ? (
+          <InlineNotice tone="info" title="تسجيل الدخول مطلوب">
+            يرجى تسجيل الدخول أولاً للوصول إلى لوحة التحكم والخدمات المؤسسية.
+          </InlineNotice>
+        ) : null}
+
         <button
           type="button"
           onClick={handleGoogleLogin}
@@ -76,6 +173,26 @@ export function LocalLogin() {
         <div className="relative flex items-center justify-center py-2">
           <div className="w-full border-t border-ds-neutral-200" />
           <span className="absolute bg-white px-3 text-xs font-bold text-ds-neutral-500">أو عبر بريد العمل</span>
+        </div>
+
+        {/* Quick Demo Access Helper */}
+        <div className="rounded-xl border border-ds-brand-200 bg-ds-brand-50/70 p-3 text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5 font-bold text-ds-brand-900">
+              <Sparkles className="size-3.5 text-ds-brand-600" />
+              حساب مسؤول النظام المعتمد:
+            </span>
+            <button
+              type="button"
+              onClick={fillAdminCredentials}
+              className="rounded-lg bg-ds-brand-600 px-2.5 py-1 font-bold text-white transition hover:bg-ds-brand-700 active:scale-95"
+            >
+              تعبئة تلقائية
+            </button>
+          </div>
+          <p className="mt-1 text-ds-brand-800 dir-ltr font-mono text-[11px] text-right">
+            hamid@hrhbs.com / HBS@Admin2026!
+          </p>
         </div>
 
         <form onSubmit={submit} className="space-y-4" noValidate>
@@ -146,7 +263,17 @@ export function VerifyEmail() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const token = useToken();
-  const verify = trpc.localAccess.verifyEmail.useMutation({ onSuccess: async () => { await utils.auth.me.invalidate(); } });
+  const verify = trpc.localAccess.verifyEmail.useMutation({
+    onSuccess: async (data) => {
+      if (data?.token) {
+        try {
+          sessionStorage.setItem("manus-cookie", `${COOKIE_NAME}=${data.token}`);
+          localStorage.setItem("manus-runtime-user-token", data.token);
+        } catch {}
+      }
+      await utils.auth.me.refetch().catch(() => undefined);
+    },
+  });
   if (verify.isSuccess) {
     return (
       <AccessShell icon={<PartyPopper />} eyebrow="أهلاً بك" title="حسابك جاهز" detail="أُكِّد بريدك وفُعِّل حسابك. يمكنك الآن إعداد منشأتك ودعوة فريقك.">
@@ -254,8 +381,26 @@ export function SubscriptionRequest() {
 
 export function ActivateInvitation() {
   const [, setLocation] = useLocation();
+  const utils = trpc.useUtils();
   const token = useToken();
-  const activate = trpc.localAccess.activateInvitation.useMutation({ onSuccess: () => setLocation("/app") });
+  const activate = trpc.localAccess.activateInvitation.useMutation({
+    onSuccess: async (data) => {
+      if (data?.token) {
+        try {
+          sessionStorage.setItem("manus-cookie", `${COOKIE_NAME}=${data.token}`);
+          localStorage.setItem("manus-runtime-user-token", data.token);
+        } catch {}
+      }
+      if (data?.user) {
+        utils.auth.me.setData(undefined, data.user);
+        try {
+          localStorage.setItem("manus-runtime-user-info", JSON.stringify(data.user));
+        } catch {}
+      }
+      await utils.auth.me.refetch().catch(() => undefined);
+      setLocation("/app");
+    },
+  });
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const mismatch = Boolean(password && confirm && password !== confirm);

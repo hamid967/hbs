@@ -10,20 +10,20 @@
  */
 
 export const dsColors = {
-  // brand: اللون الأساسي للعلامة (نمط منصة جسر — النيلي البنفسجي العصري)
-  "brand-50": "#eef2ff",
-  "brand-100": "#e0e7ff",
-  "brand-200": "#c7d2fe",
-  "brand-300": "#a5b4fc",
-  "brand-400": "#818cf8",
-  "brand-500": "#6366f1",
-  "brand-600": "#4f46e5",
-  "brand-700": "#4338ca",
-  "brand-800": "#3730a3",
-  "brand-900": "#312e81",
-  "brand-950": "#1e1b4b",
-  "brand-1000": "#0f172a",
-  // neutral: الرمادي النقي الأنيق (Slate): النصوص، الحدود، الأسطح المحايدة
+  // brand: تدرّجات الأزرق الملكي الراقي (Royal & Electric Blue)
+  "brand-50": "#eff6ff",
+  "brand-100": "#dbeafe",
+  "brand-200": "#bfdbfe",
+  "brand-300": "#93c5fd",
+  "brand-400": "#60a5fa",
+  "brand-500": "#3b82f6",
+  "brand-600": "#2563eb",
+  "brand-700": "#1d4ed8",
+  "brand-800": "#1e40af",
+  "brand-900": "#1e3a8a",
+  "brand-950": "#0f172a",
+  "brand-1000": "#020617",
+  // neutral: التدرج الرمادي المحايد النقي والأسود والأبيض
   "neutral-50": "#f8fafc",
   "neutral-100": "#f1f5f9",
   "neutral-200": "#e2e8f0",
@@ -40,14 +40,14 @@ export const dsColors = {
   "teal-600": "#0284c7",
   "teal-700": "#0369a1",
   "teal-900": "#0c4a6e",
-  // ink: أعمق درجات النص والخلفيات الداكنة
-  ink: "#0f172a",
+  // ink: أعمق درجات النص والخلفيات الداكنة (الأسود الكحلي الصافي)
+  ink: "#090d16",
   "ink-strong": "#020617",
-  // success: حالة النجاح (الزمردي النعناعي)
+  // success: حالة النجاح (الزمردي النقي)
   success: "#10b981",
   "success-soft": "#ecfdf5",
   "success-border": "#a7f3d0",
-  // warning: حالة التحذير والانتظار (العسلي الدافئ)
+  // warning: حالة التحذير والانتظار (العنبر الدافئ)
   warning: "#f59e0b",
   "warning-strong": "#d97706",
   "warning-tan": "#b45309",
@@ -55,19 +55,19 @@ export const dsColors = {
   "warning-bright": "#fbbf24",
   "warning-soft": "#fffbeb",
   "warning-border": "#fde68a",
-  // danger: حالة الخطأ والرفض (المرجاني الصريح)
+  // danger: حالة الخطأ والرفض (الأحمر الصريح)
   danger: "#ef4444",
   "danger-muted": "#991b1b",
   "danger-strong": "#b91c1c",
   "danger-bright": "#f87171",
   "danger-soft": "#fef2f2",
   "danger-border": "#fecaca",
-  // info: حالة المعلومة والخدمات الحكومية (الأزرق الملكي)
-  info: "#3b82f6",
+  // info: حالة المعلومة والخدمات الحكومية (الأزرق الصافي)
+  info: "#2563eb",
   "info-soft": "#eff6ff",
   "info-border": "#bfdbfe",
   // accent: ألوان التمييز البصري للواجهة
-  violet: "#8b5cf6",
+  violet: "#2563eb",
   emerald: "#10b981",
   "emerald-bright": "#34d399",
   "emerald-soft": "#6ee7b7",

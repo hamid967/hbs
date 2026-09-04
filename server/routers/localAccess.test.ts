@@ -35,7 +35,7 @@ describe("local access router", () => {
   it("sets a session only after a valid local password and active account", async () => {
     dbMocks.getLocalCredentialByEmail.mockResolvedValue({ credential: { id: 8, passwordHash: "password-hash", failedAttempts: 0, lockedUntil: null }, user: { id: 12, openId: "local:user", name: "Client", accountStatus: "active" } });
     const ctx = context();
-    await expect(localAccessRouter.createCaller(ctx).login({ email: "client@example.test", password: "strong-passphrase-2026" })).resolves.toEqual({ success: true });
+    await expect(localAccessRouter.createCaller(ctx).login({ email: "client@example.test", password: "strong-passphrase-2026" })).resolves.toMatchObject({ success: true, token: "session-token" });
     expect(ctx.res.cookie).toHaveBeenCalled();
     expect(dbMocks.clearLocalLoginFailures).toHaveBeenCalledWith(8);
   });
@@ -51,7 +51,7 @@ describe("local access router", () => {
   it("starts a session only after the invitation activation helper succeeds", async () => {
     dbMocks.activateLocalInvitation.mockResolvedValue({ openId: "local:user", name: "Client" });
     const ctx = context();
-    await expect(localAccessRouter.createCaller(ctx).activateInvitation({ token: "x".repeat(43), password: "strong-passphrase-2026" })).resolves.toEqual({ success: true });
+    await expect(localAccessRouter.createCaller(ctx).activateInvitation({ token: "x".repeat(43), password: "strong-passphrase-2026" })).resolves.toMatchObject({ success: true, token: "session-token" });
     expect(ctx.res.cookie).toHaveBeenCalled();
   });
 });

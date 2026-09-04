@@ -268,13 +268,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return (
       <div dir={direction} className="relative flex min-h-screen items-center justify-center overflow-hidden bg-ds-brand-950 px-5 text-white">
         <div className="premium-grid absolute inset-0 opacity-70" />
-        <div className="absolute -right-28 -top-32 size-[28rem] rounded-full bg-indigo-500/15 blur-3xl" />
+        <div className="absolute -right-28 -top-32 size-[28rem] rounded-full bg-blue-500/15 blur-3xl" />
         <div className="absolute -bottom-40 -left-24 size-[30rem] rounded-full bg-sky-500/10 blur-3xl" />
         <section className="relative w-full max-w-md rounded-[2rem] border border-white/20 bg-ds-neutral-50 p-8 text-center text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,.35)] backdrop-blur sm:p-10">
-          <div className="mx-auto mb-7 flex size-16 items-center justify-center rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-600 text-2xl font-black text-white shadow-lg shadow-indigo-950/20">
+          <div className="mx-auto mb-7 flex size-16 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-600 to-blue-700 text-2xl font-black text-white shadow-lg shadow-blue-950/20">
             هـ
           </div>
-          <p className="mb-2 text-xs font-bold tracking-[0.2em] text-indigo-700">HR HBS 2030</p>
+          <p className="mb-2 text-xs font-bold tracking-[0.2em] text-blue-700">HR HBS 2030</p>
           <h1 className="text-3xl font-black tracking-tight text-slate-950">حلول الغد</h1>
           <p className="mt-4 text-sm leading-7 text-slate-600">
             منظومة الموارد البشرية والامتثال السيادي للشركات السعودية.
@@ -282,13 +282,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Button
             onClick={() => setLocation("/login")}
             size="lg"
-            className="pressable mt-8 h-12 w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-base font-bold text-white hover:from-indigo-700 hover:to-indigo-800 shadow-lg shadow-indigo-950/30"
+            className="pressable mt-8 h-12 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 text-base font-bold text-white hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-950/30"
           >
             الدخول الموحد للمنشآت
           </Button>
           <button
             onClick={() => setLocation("/subscribe")}
-            className="mt-4 w-full text-sm font-bold text-indigo-600 hover:text-indigo-800 transition"
+            className="mt-4 w-full text-sm font-bold text-blue-600 hover:text-blue-800 transition"
           >
             طلب اشتراك منشأة جديدة
           </button>
@@ -309,12 +309,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return (
       <div dir={direction} className="relative flex min-h-screen items-center justify-center overflow-hidden bg-ds-brand-950 px-5 text-white">
         <div className="premium-grid absolute inset-0 opacity-70" />
-        <div className="absolute -right-28 -top-32 size-[28rem] rounded-full bg-indigo-500/15 blur-3xl" />
+        <div className="absolute -right-28 -top-32 size-[28rem] rounded-full bg-blue-500/15 blur-3xl" />
         <section className="relative w-full max-w-md rounded-[2rem] border border-white/20 bg-ds-neutral-50 p-8 text-center text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,.35)]">
-          <span className={`mx-auto flex size-16 items-center justify-center rounded-3xl ${isRejected || isSuspended ? "bg-rose-100 text-rose-700" : "bg-indigo-100 text-indigo-800"}`}>
+          <span className={`mx-auto flex size-16 items-center justify-center rounded-3xl ${isRejected || isSuspended ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-800"}`}>
             {isRejected || isSuspended ? <ShieldAlert className="size-8" /> : <Clock3 className="size-8" />}
           </span>
-          <p className="mt-7 text-xs font-bold tracking-[.18em] text-indigo-700">HR HBS 2030</p>
+          <p className="mt-7 text-xs font-bold tracking-[.18em] text-blue-700">HR HBS 2030</p>
           <h1 className="mt-3 text-2xl font-black text-slate-950">
             {isRejected ? "تعذر تفعيل الحساب" : isSuspended ? "الحساب موقوف مؤقتاً" : "الحساب بانتظار التفعيل"}
           </h1>
@@ -389,7 +389,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar
         side="right"
         collapsible="icon"
-        className="border-l border-white/10 bg-ds-brand-950 text-white shadow-2xl transition-all duration-300"
+        className="border-l border-white/10 bg-ds-ink text-white shadow-2xl transition-all duration-300"
       >
         {/* ── Sidebar Header ────────────────────────────────────────── */}
         <SidebarHeader className="h-[88px] justify-center border-b border-white/10 px-4">
@@ -398,17 +398,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               onClick={() => setLocation("/app")}
               className="flex items-center gap-3 text-right hover:opacity-90 transition cursor-pointer"
             >
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-base font-black text-white shadow-md shadow-indigo-950/40">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-base font-black text-white shadow-md shadow-blue-950/40">
                 هـ
               </div>
               <div className="min-w-0 group-data-[collapsible=icon]:hidden">
                 <div className="flex items-center gap-1.5">
                   <p className="text-base font-black tracking-tight text-white">حلول الغد</p>
-                  <span className="rounded bg-indigo-500/20 border border-indigo-400/30 px-1.5 py-0.2 text-[9px] font-bold text-indigo-300">
+                  <span className="rounded bg-blue-500/20 border border-blue-400/30 px-1.5 py-0.2 text-[9px] font-bold text-blue-300">
                     2030
                   </span>
                 </div>
-                <p className="mt-0.5 text-[10px] font-medium tracking-[0.18em] text-indigo-300">
+                <p className="mt-0.5 text-[10px] font-medium tracking-[0.18em] text-blue-300">
                   SOVEREIGN HR ENTERPRISE
                 </p>
               </div>
@@ -429,7 +429,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <TooltipTrigger asChild>
                 <Button
                   onClick={() => setLocation("/requests/new")}
-                  className="pressable h-11 w-full justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 font-bold text-white hover:from-indigo-700 hover:to-indigo-800 shadow-lg shadow-indigo-950/40 group-data-[collapsible=icon]:size-11 group-data-[collapsible=icon]:p-0"
+                  className="pressable h-11 w-full justify-center rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 font-bold text-white hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-950/40 group-data-[collapsible=icon]:size-11 group-data-[collapsible=icon]:p-0"
                 >
                   <FilePlus2 className="size-4 shrink-0 group-data-[collapsible=icon]:ml-0 ml-1.5" />
                   <span className="group-data-[collapsible=icon]:hidden">إنشاء طلب جديد</span>
@@ -536,15 +536,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* ── Sidebar Footer: Profile, Status, Controls ─────────────── */}
         <SidebarFooter className="border-t border-white/10 p-3 bg-black/20">
           {/* Executive Support Card (Hidden in icon rail) */}
-          <div className="mb-2 rounded-2xl border border-indigo-500/20 bg-indigo-950/40 p-3 group-data-[collapsible=icon]:hidden">
+          <div className="mb-2 rounded-2xl border border-blue-500/20 bg-blue-950/40 p-3 group-data-[collapsible=icon]:hidden">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-bold text-indigo-300 flex items-center gap-1">
-                <ShieldCheck className="size-3.5 text-indigo-400" />
+              <span className="text-[11px] font-bold text-blue-300 flex items-center gap-1">
+                <ShieldCheck className="size-3.5 text-blue-400" />
                 الامتثال السيادي
               </span>
               <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
             </div>
-            <p className="text-[10px] leading-relaxed text-indigo-200/80">
+            <p className="text-[10px] leading-relaxed text-blue-200/80">
               نظام العمل السعودي MHRSD ولائحة منصة مدد حماية الأجور WPS نشطة.
             </p>
           </div>
@@ -552,9 +552,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* User Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="pressable flex w-full items-center gap-3 rounded-2xl p-2 text-right hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 group-data-[collapsible=icon]:justify-center">
-                <Avatar className="size-9 border border-indigo-500/40 shadow-sm">
-                  <AvatarFallback className="bg-indigo-900 text-xs font-black text-indigo-200">
+              <button className="pressable flex w-full items-center gap-3 rounded-2xl p-2 text-right hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 group-data-[collapsible=icon]:justify-center">
+                <Avatar className="size-9 border border-blue-500/40 shadow-sm">
+                  <AvatarFallback className="bg-blue-900 text-xs font-black text-blue-200">
                     {user.name?.charAt(0).toUpperCase() || "م"}
                   </AvatarFallback>
                 </Avatar>
@@ -563,7 +563,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <p className="truncate text-xs font-bold text-white">
                       {user.name || "موظف حلول الغد"}
                     </p>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-white/10 text-indigo-200">
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-white/10 text-blue-200">
                       {user.role === "admin" ? "مسؤول" : user.role === "manager" ? "مدير" : user.role === "hr" ? "HR" : "موظف"}
                     </span>
                   </div>
@@ -583,7 +583,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 onClick={() => setLocation("/app")}
                 className="cursor-pointer text-xs font-semibold hover:bg-slate-100 rounded-xl"
               >
-                <LayoutDashboard className="ml-2 size-4 text-indigo-600" />
+                <LayoutDashboard className="ml-2 size-4 text-blue-600" />
                 لوحة التحكم الرئيسية
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -657,7 +657,7 @@ function GroupedNavigationItem({
         tooltip={{
           children: (
             <div className="text-right">
-              <p className="text-[10px] text-indigo-400 font-bold">{groupTitle}</p>
+              <p className="text-[10px] text-blue-400 font-bold">{groupTitle}</p>
               <p className="text-xs font-extrabold text-white">{label}</p>
               {badge !== undefined && (
                 <p className="text-[10px] text-amber-300 font-semibold mt-0.5">{badge} عنصر جديد</p>
@@ -666,7 +666,7 @@ function GroupedNavigationItem({
           ),
           side: "left",
         }}
-        className="pressable h-10 rounded-xl px-2.5 text-xs text-slate-300 hover:bg-white/10 hover:text-white transition data-[active=true]:bg-gradient-to-r data-[active=true]:from-indigo-600 data-[active=true]:to-indigo-700 data-[active=true]:font-bold data-[active=true]:text-white shadow-sm"
+        className="pressable h-10 rounded-xl px-2.5 text-xs text-slate-300 hover:bg-white/10 hover:text-white transition data-[active=true]:bg-blue-600 data-[active=true]:font-bold data-[active=true]:text-white shadow-sm"
       >
         <Icon className="size-4 shrink-0" />
         <span className="truncate flex-1 text-right">{label}</span>
@@ -677,7 +677,7 @@ function GroupedNavigationItem({
                 ? "bg-rose-500 text-white"
                 : badgeTone === "amber"
                 ? "bg-amber-400 text-slate-950 font-black"
-                : "bg-indigo-500/30 text-indigo-200"
+                : "bg-blue-500/30 text-blue-200"
             }`}
           >
             {badge}
@@ -746,7 +746,7 @@ function TopBar({
         <div>
           <div className="flex items-center gap-1.5">
             {activeGroup && (
-              <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded-md">
+              <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded-md">
                 {activeGroup.title}
               </span>
             )}
@@ -765,7 +765,7 @@ function TopBar({
         <Button
           onClick={() => setLocation("/requests/new")}
           size="sm"
-          className="hidden md:inline-flex h-9 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-black text-xs px-3.5 shadow-sm"
+          className="hidden md:inline-flex h-9 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-black text-xs px-3.5 shadow-sm"
         >
           <FilePlus2 className="ml-1.5 size-3.5" />
           طلب جديد
@@ -773,7 +773,7 @@ function TopBar({
 
         <NotificationBell onNavigate={setLocation} />
 
-        <div className="hidden items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50/80 px-3 py-1.5 text-xs font-bold text-indigo-800 sm:flex shadow-xs">
+        <div className="hidden items-center gap-2 rounded-full border border-blue-200 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/40 px-3 py-1.5 text-xs font-bold text-blue-800 dark:text-blue-300 sm:flex shadow-xs">
           <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
           {availabilityLabel} (نشط)
         </div>

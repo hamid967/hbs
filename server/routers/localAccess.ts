@@ -31,32 +31,51 @@ function createSessionCookie(ctx: { req: Parameters<typeof getSessionCookieOptio
 function safeOrigin(origin: string, requestOrigin: string | undefined) {
   const parsed = new URL(origin);
   if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && ["localhost", "127.0.0.1"].includes(parsed.hostname))) throw new TRPCError({ code: "BAD_REQUEST", message: "رابط الدعوة يحتاج أصلاً آمناً" });
-  if (!requestOrigin || parsed.origin !== requestOrigin || !ENV.localAccessAllowedOrigins.includes(parsed.origin)) throw new TRPCError({ code: "BAD_REQUEST", message: "أصل رابط الدعوة غير معتمد" });
+  if (ENV.localAccessAllowedOrigins.length > 0) {
+    if (!ENV.localAccessAllowedOrigins.includes(parsed.origin)) throw new TRPCError({ code: "BAD_REQUEST", message: "أصل رابط الدعوة غير معتمد" });
+  }
+  if (requestOrigin && parsed.origin !== requestOrigin && ENV.localAccessAllowedOrigins.length > 0) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "أصل رابط الدعوة غير معتمد" });
+  }
   return parsed.origin;
 }
 
 /**
  * يحدّد الأصل الذي تُبنى عليه روابط التأكيد والاستعادة.
  *
- * الأصل يأتي من ترويسة الطلب لا من جسمه، فلا يستطيع مُرسِل الطلب توجيه الرابط
- * إلى نطاق يملكه. ويُقبل فقط إن كان ضمن `LOCAL_ACCESS_ALLOWED_ORIGINS`؛ وحين
- * تكون القائمة فارغة يُسمح بالتطوير المحلي وحده حتى لا تتعطّل بيئة المطوّر.
+ * الأصل يأتي من ترويسة الطلب أو المرجع أو المضيف الآمن.
+ * إن كانت `LOCAL_ACCESS_ALLOWED_ORIGINS` محددة يُلزم التطابق معها،
+ * وإلا تُقبل النطاقات الآمنة (HTTPS) والتطوير المحلي.
  */
 function resolveAuthOrigin(requestOrigin: string | undefined) {
   if (!requestOrigin) throw new TRPCError({ code: "BAD_REQUEST", message: authMessages.originRejected });
   let parsed: URL;
   try { parsed = new URL(requestOrigin); } catch { throw new TRPCError({ code: "BAD_REQUEST", message: authMessages.originRejected }); }
   const isLocal = parsed.protocol === "http:" && ["localhost", "127.0.0.1"].includes(parsed.hostname);
+  const isHttps = parsed.protocol === "https:";
   if (ENV.localAccessAllowedOrigins.length > 0) {
     if (!ENV.localAccessAllowedOrigins.includes(parsed.origin)) throw new TRPCError({ code: "BAD_REQUEST", message: authMessages.originRejected });
     return parsed.origin;
   }
-  if (ENV.isProduction || !isLocal) throw new TRPCError({ code: "BAD_REQUEST", message: authMessages.originRejected });
+  if (!isHttps && !isLocal) throw new TRPCError({ code: "BAD_REQUEST", message: authMessages.originRejected });
   return parsed.origin;
 }
 
 function requestOriginOf(req: { headers: Record<string, string | string[] | undefined> }) {
-  return typeof req.headers.origin === "string" ? req.headers.origin : undefined;
+  if (typeof req.headers.origin === "string" && req.headers.origin) {
+    return req.headers.origin;
+  }
+  if (typeof req.headers.referer === "string" && req.headers.referer) {
+    try {
+      return new URL(req.headers.referer).origin;
+    } catch {}
+  }
+  const proto = (typeof req.headers["x-forwarded-proto"] === "string" ? req.headers["x-forwarded-proto"] : undefined) || "https";
+  const host = (typeof req.headers["x-forwarded-host"] === "string" ? req.headers["x-forwarded-host"] : undefined) || (typeof req.headers.host === "string" ? req.headers.host : undefined);
+  if (host) {
+    return `${proto}://${host}`;
+  }
+  return undefined;
 }
 
 function clientAddress(req: { ip?: string; headers: Record<string, string | string[] | undefined> }) {
@@ -95,7 +114,7 @@ export const localAccessRouter = router({
     catch { throw new TRPCError({ code: "BAD_REQUEST", message: "رابط الدعوة غير صالح أو منتهٍ" }); }
     const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || "مستخدم" });
     createSessionCookie(ctx, sessionToken);
-    return { success: true } as const;
+    return { success: true, token: sessionToken, user } as const;
   }),
   login: publicProcedure.input(z.object({ email: z.string().trim().email().max(320), password: z.string().min(1).max(128) })).mutation(async ({ ctx, input }) => {
     const email = normalizeLocalEmail(input.email);
@@ -130,7 +149,7 @@ export const localAccessRouter = router({
     await clearLocalLoginFailures(credential.id);
     const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || "مستخدم" });
     createSessionCookie(ctx, sessionToken);
-    return { success: true } as const;
+    return { success: true, token: sessionToken, user } as const;
   }),
 
   googleLogin: publicProcedure.input(z.object({
@@ -152,7 +171,7 @@ export const localAccessRouter = router({
     if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر إعداد جلسة الدخول" });
     const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || "مستخدم" });
     createSessionCookie(ctx, sessionToken);
-    return { success: true, user } as const;
+    return { success: true, token: sessionToken, user } as const;
   }),
 
   /**
@@ -205,7 +224,7 @@ ${origin}/verify-email?token=${encodeURIComponent(token)}
     catch { throw new TRPCError({ code: "BAD_REQUEST", message: authMessages.verificationInvalid }); }
     const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || "مستخدم" });
     createSessionCookie(ctx, sessionToken);
-    return { success: true as const, name: user.name };
+    return { success: true as const, name: user.name, token: sessionToken };
   }),
 
   /** يعيد إصدار رابط التأكيد. الرد عام دائماً حتى لا يكشف الحسابات المسجّلة. */

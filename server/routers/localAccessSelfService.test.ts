@@ -188,7 +188,7 @@ describe("الدخول بعد إضافة تأكيد البريد", () => {
   it("يبقي حسابات الدعوة القديمة تعمل رغم أن بريدها غير موسوم بالتأكيد", async () => {
     dbMocks.getLocalCredentialByEmail.mockResolvedValue(credential({ emailVerifiedAt: null, accountStatus: "active" }));
     const ctx = publicContext();
-    await expect(localAccessRouter.createCaller(ctx).login({ email: "old@example.test", password: validPassword })).resolves.toEqual({ success: true });
+    await expect(localAccessRouter.createCaller(ctx).login({ email: "old@example.test", password: validPassword })).resolves.toMatchObject({ success: true, token: "session-token" });
     expect(ctx.res.cookie).toHaveBeenCalled();
   });
 

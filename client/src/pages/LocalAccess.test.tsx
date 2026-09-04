@@ -16,7 +16,15 @@ const mutations = vi.hoisted(() => {
 vi.mock("@/const", () => ({ startLogin: vi.fn() }));
 vi.mock("@/lib/trpc", () => ({
   trpc: {
-    useUtils: () => ({ auth: { me: { invalidate: vi.fn() } } }),
+    useUtils: () => ({ auth: { me: { invalidate: vi.fn(), setData: vi.fn() } } }),
+    auth: {
+      me: {
+        useQuery: () => ({ data: null, isLoading: false, error: null }),
+      },
+      logout: {
+        useMutation: () => ({ mutateAsync: vi.fn(), isPending: false, error: null }),
+      },
+    },
     localAccess: Object.fromEntries(Object.entries(mutations).map(([name, state]) => [name, { useMutation: () => state }])),
   },
 }));
@@ -39,12 +47,28 @@ afterEach(cleanup);
 
 describe("صفحات الوصول العامة", () => {
   it("تعرض الدخول ومسارَي الاستعادة والتسجيل دون جلسة", () => {
+    window.history.replaceState({}, "", "/login");
     render(<LocalLogin />);
     expect(screen.getByRole("heading", { name: "الدخول بالبريد" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "تسجيل الدخول" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "نسيت كلمة المرور؟" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "أنشئ حساب منشأة جديد" })).toBeTruthy();
+    expect(screen.queryByText(/انتهت صلاحية الجلسة/)).toBeNull();
     expect(document.querySelector(".auth-spatial-scene")).toBeTruthy();
+  });
+
+  it("توضح للمستخدم عند انتهاء صلاحية الجلسة السابقة بدلاً من التكرار الصامت", () => {
+    window.history.replaceState({}, "", "/login?reason=expired");
+    render(<LocalLogin />);
+    expect(screen.getByText("انتهت صلاحية الجلسة")).toBeTruthy();
+    expect(screen.getByText(/انتهت صلاحية جلسة العمل السابقة لأسباب أمنية/)).toBeTruthy();
+  });
+
+  it("توضح للمستخدم عند طلب تسجيل الدخول للوصول إلى صفحة محمية", () => {
+    window.history.replaceState({}, "", "/login?reason=required");
+    render(<LocalLogin />);
+    expect(screen.getByText("تسجيل الدخول مطلوب")).toBeTruthy();
+    expect(screen.getByText(/يرجى تسجيل الدخول أولاً للوصول/)).toBeTruthy();
   });
 
   it("تعرض زر إعادة إرسال التأكيد فقط حين يكون سبب الرفض عدم التأكيد", () => {

@@ -176,10 +176,10 @@ export default function FloatingQuickActions() {
 
   const toneClasses = {
     indigo: {
-      bg: "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
-      iconBg: "bg-indigo-600 text-white",
-      hover: "hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50/40",
-      badge: "bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200",
+      bg: "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+      iconBg: "bg-blue-600 text-white",
+      hover: "hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/40",
+      badge: "bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200",
     },
     emerald: {
       bg: "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
@@ -200,10 +200,10 @@ export default function FloatingQuickActions() {
       badge: "bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200",
     },
     violet: {
-      bg: "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800",
-      iconBg: "bg-violet-600 text-white",
-      hover: "hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50/40",
-      badge: "bg-violet-100 dark:bg-violet-900/60 text-violet-800 dark:text-violet-200",
+      bg: "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+      iconBg: "bg-blue-700 text-white",
+      hover: "hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50/40",
+      badge: "bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200",
     },
   };
 
@@ -224,7 +224,7 @@ export default function FloatingQuickActions() {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 px-1">
               <div className="flex items-center gap-2">
-                <span className="flex size-7 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-xs">
+                <span className="flex size-7 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs">
                   <Zap className="size-4" />
                 </span>
                 <div>
@@ -279,7 +279,7 @@ export default function FloatingQuickActions() {
                         {action.description}
                       </p>
                     </div>
-                    <ArrowLeft className="size-4 shrink-0 text-slate-400 group-hover:-translate-x-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition" />
+                    <ArrowLeft className="size-4 shrink-0 text-slate-400 group-hover:-translate-x-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
                   </button>
                 );
               })}
@@ -288,7 +288,7 @@ export default function FloatingQuickActions() {
             {/* Footer Tip */}
             <div className="mt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-2.5 px-1 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
               <span className="flex items-center gap-1">
-                <Sparkles className="size-3 text-indigo-600" />
+                <Sparkles className="size-3 text-blue-600" />
                 متوافق مع الصلاحيات الممنوحة
               </span>
               <kbd className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[9px] font-mono text-slate-600 dark:text-slate-300">
@@ -306,8 +306,8 @@ export default function FloatingQuickActions() {
           aria-label="قائمة الإجراءات السريعة"
           className={`pressable group relative flex h-13 items-center gap-2.5 rounded-full px-4 shadow-xl backdrop-blur-md transition-all duration-300 cursor-pointer ${
             isOpen
-              ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 ring-4 ring-indigo-500/20"
-              : "bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 text-white shadow-indigo-600/30 hover:scale-105 hover:shadow-indigo-600/40"
+              ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 ring-4 ring-blue-500/20"
+              : "bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 text-white shadow-blue-600/30 hover:scale-105 hover:shadow-blue-600/40"
           }`}
         >
           <div
